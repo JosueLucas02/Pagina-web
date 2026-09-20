@@ -620,12 +620,17 @@ img,svg,table{
   </div>
   <div id="pregnancyAnthroFields" class="q hidden" style="margin-top:8px">
    <div class="qt">Datos específicos de embarazo</div>
-   <div class="grid3">
+   <div class="grid2">
     <div><label class="label">Peso pregestacional (kg)</label><input id="pesoPregestacional" type="number" step="0.01" oninput="calculateAll()"></div>
     <div><label class="label">Edad gestacional (semanas)</label><input id="edadGestacional" type="number" step="0.1" oninput="calculateAll()"></div>
-    <div><label class="label">Ganancia según curva</label><select id="gananciaCurva" onchange="calculateAll()"><option value="PENDIENTE">Seleccionar...</option><option value="BAJA GANANCIA DE PESO GESTACIONAL">Baja</option><option value="GANANCIA DE PESO GESTACIONAL ADECUADA">Adecuada</option><option value="GANANCIA DE PESO GESTACIONAL EXCESIVA">Excesiva</option></select></div>
    </div>
-   <div class="note">La app calcula automáticamente IMC pregestacional y kg ganados. La clasificación baja/adecuada/excesiva se selecciona según la curva clínica que estés usando.</div>
+   <div class="metrics" style="margin-top:7px">
+    <div class="metric"><span>IMC pregestacional</span><b id="pregPreBMI">—</b></div>
+    <div class="metric"><span>Ganancia real</span><b id="pregGain">—</b></div>
+    <div class="metric"><span>Rango esperado</span><b id="pregExpected">—</b></div>
+    <div class="metric"><span>Clasificación automática</span><b id="pregGainClass">—</b></div>
+   </div>
+   <div class="note" id="pregGainNote">La app clasifica automáticamente la ganancia para embarazo único según IMC pregestacional y edad gestacional.</div>
   </div>
   <div class="metrics"><div class="metric"><span>Peso actual/estimado</span><b id="mPeso">—</b></div><div class="metric"><span>Peso de cálculo</span><b id="mCalcWeight">—</b></div><div class="metric"><span>IMC</span><b id="mImc">—</b></div><div class="metric"><span>Clasificación</span><b id="mClass">—</b></div><div class="metric"><span>Kcal finales</span><b id="mKcal">—</b></div><div class="metric"><span>Proteína</span><b id="mPro">—</b></div></div>
  </section>
@@ -828,7 +833,6 @@ img,svg,table{
     ESPEN EII 2023 · ESPEN Polimórbidos 2023 · ESPEN UCI 2023 · ESPEN/UEG Obesidad GI/Hepática 2023 ·
     ESPEN Geriatría 2022 · ESPEN Cáncer 2021 · ESPEN Enfermedad hepática 2020 ·
     ASPEN UCI 2021 (guía vigente en la biblioteca ASPEN) · ADA Hospital 2026 · GLIM/ASPEN para valoración de malnutrición.
-    En obesidad no crítica estable se usa peso ajustado: 25 kcal/kg y 1,0 g proteína/kg; si hay riesgo/malnutrición se aumenta proteína a 1,2–1,5 g/kg.
     Neurología y quemaduras utilizan las recomendaciones ESPEN disponibles y se muestran como apoyo clínico, no como prescripción automática.
    </div>
   </details>
@@ -894,10 +898,10 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&
 const makeId=p=>`${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,9)}`;
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
 
-const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v16", FALLBACK_KEY="nutri_word_rounds_v16";
+const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v17", FALLBACK_KEY="nutri_word_rounds_v17";
 let db=null,currentRound=null,currentPatientId=null,history=[],loading=false,saveTimer=null;
 
-const simpleFields=["area","ambiente","cama","nombre","edad","cobertura","sexo","perfil","dieta","sourceText","alergia","intolerancia","ultima","bristol","habito","hallazgo","peso","cb","cp","talla","talonRodilla","pesoPregestacional","edadGestacional","gananciaCurva","pesoHabitual","tiempoPesoHabitual","nrsEnfOverride","reqPerfil","cie10","plan","planObs","kcalKg","extraKcal","choPct","proPct","proKg","lipPct","clinicalProfile","renalSubtype","egfr","icuDay","hasIC","measuredEE","ibdActivity","pancreasType","surgeryScenario","nrsApache","mnaNeuro2","nrsWeekMode","suppName","suppMl","suppKcal","suppProtein","suppServings"];
+const simpleFields=["area","ambiente","cama","nombre","edad","cobertura","sexo","perfil","dieta","sourceText","alergia","intolerancia","ultima","bristol","habito","hallazgo","peso","cb","cp","talla","talonRodilla","pesoPregestacional","edadGestacional","pesoHabitual","tiempoPesoHabitual","nrsEnfOverride","reqPerfil","cie10","plan","planObs","kcalKg","extraKcal","choPct","proPct","proKg","lipPct","clinicalProfile","renalSubtype","egfr","icuDay","hasIC","measuredEE","ibdActivity","pancreasType","surgeryScenario","nrsApache","mnaNeuro2","nrsWeekMode","suppName","suppMl","suppKcal","suppProtein","suppServings"];
 const radios=["conciencia","orientacion","colabora","apetito","consumoDieta","viaoral","masticacion","deglucion","diuresis","flatos","deambula","tieneAlergia","tieneIntolerancia","lactancia","mnaStress","mnaNeuro","facie","temporal","periorb","dientes","mucosa","piel","clavicula","extremidades","masaMuscular","masaGrasa","abdomen","edemaFisico","ojos","modoPeso","modoTalla","mFacie","mTemporal","mPeriorb","mDientes","mHidratacion","mClavicula","mAbdomen","mExtSup","mTricipital","mCuadriceps","mPatelar","mGemelos","mEdema"];
 const checks=["aNausea","aVomito","aDolor","aDistension","aDiarrea","aEstreni","aMelena"];
 
@@ -1502,19 +1506,8 @@ function guidelineEngine(){
   kMin=30;kMax=35;kChosen=mod.malnutrition?35:30;pMin=1.2;pMax=1.5;pChosen=1.5;source="ESPEN Hospital Nutrition / Polimórbidos";
   reason=["Heridas/LPP: 30 kcal/kg, aumentando a 35 kcal/kg si hay desnutrición; proteína 1,5 g/kg."];
  }else if(cp==="OBESIDAD"){
-  source="ESPEN/UEG Obesidad 2023";
-  eW=adj||actual;pW=adj||actual;
-  kMin=kMax=kChosen=25;
-  if(mod.muscle){
-   pMin=1.2;pMax=1.5;pChosen=1.5;
-   reason=["Obesidad no crítica con depleción muscular/sarcopenia: 25 kcal/kg de peso ajustado y 1,5 g proteína/kg de peso ajustado."];
-  }else if(mod.malnutrition){
-   pMin=1.2;pMax=1.5;pChosen=1.2;
-   reason=["Obesidad no crítica con riesgo/malnutrición: 25 kcal/kg de peso ajustado y 1,2 g proteína/kg de peso ajustado; aumentar hasta 1,5 g/kg si hay sarcopenia."];
-  }else{
-   pMin=.8;pMax=1.0;pChosen=1.0;
-   reason=["Obesidad no crítica estable, sin malnutrición ni sarcopenia: 25 kcal/kg de peso ajustado y 1,0 g proteína/kg de peso ajustado."];
-  }
+  source="ESPEN/UEG Obesidad GI-Hepática";eW=adj||actual;pW=adj||actual;kMin=kMax=kChosen=25;pMin=1.0;pMax=1.5;pChosen=mod.malnutrition?1.5:1.2;
+  reason=["Obesidad no crítica: se usa peso ajustado para evitar sobreestimar requerimientos; la obesidad no excluye malnutrición."];
  }else if(cp==="QUEMADOS"){
   kMin=30;kMax=35;kChosen=35;pMin=1.5;pMax=2.0;pChosen=2.0;source="ASPEN/ESPEN critical care principles";
   reason=["Quemaduras mayores: hipercatabolismo; se selecciona 35 kcal/kg y proteína alta si no hay calorimetría, con monitorización estrecha."];
@@ -1743,6 +1736,16 @@ function calculateAll(){
   if(s.totalProtein!==null)parts.push(`${one(s.totalProtein)} g prot`);
   $("suppManualTotal").textContent=parts.length?parts.join(" · "):"—";
  }
+ if($("pregPreBMI")){
+  const pg=pregnancyGainReference();
+  $("pregPreBMI").textContent=pg.complete?`${one(pg.preImc)} kg/m² · ${pg.category}`:"—";
+  $("pregGain").textContent=pg.complete?`${one(pg.gain)} kg`:"—";
+  $("pregExpected").textContent=pg.complete&&!pg.multiple?`${one(pg.expectedMin)}–${one(pg.expectedMax)} kg`:"—";
+  $("pregGainClass").textContent=pg.complete?pg.label:"—";
+  $("pregGainNote").textContent=pg.multiple
+   ?"Gestación múltiple detectada: no se aplica automáticamente el rango de embarazo único."
+   :"Clasificación automática según IMC pregestacional, semanas de gestación y ganancia acumulada.";
+ }
  updatePreview();
 }
 function giText(){const a=[];if(chk("aNausea"))a.push("NÁUSEAS");if(chk("aVomito"))a.push("VÓMITOS");if(chk("aDolor"))a.push("DOLOR ABDOMINAL");if(chk("aDistension"))a.push("SENSACIÓN DE DISTENSIÓN POR GASES");if(chk("aDiarrea"))a.push("DIARREA");if(chk("aEstreni"))a.push("ESTREÑIMIENTO");if(chk("aMelena"))a.push("MELENA");return a.length?a.join(", "):"NO REFIERE"}
@@ -1792,43 +1795,8 @@ function maternityExam(){
  let h=`FACIE ${radio("mFacie")}, MÚSCULO TEMPORAL: ${radio("mTemporal")}; REGIÓN PERIORBITARIA: ${radio("mPeriorb")}; PIEZAS DENTALES ${radio("mDientes")} MUCOSA ORAL Y PIEL ${radio("mHidratacion")}, REGIÓN CLAVICULAR: ${radio("mClavicula")} - REGIÓN ACROMIÓN: CURVAS REDONDEADAS EN BRAZOS, HOMBROS Y CUELLO; ABDOMEN: ${radio("mAbdomen")}, EXTREMIDADES SUPERIORES: ${radio("mExtSup")}, REGIÓN TRICIPITAL: ${radio("mTricipital")}. EXTREMIDADES INFERIORES: CUÁDRICEPS ANTERIOR: ${radio("mCuadriceps")} - REGIÓN PATELAR: ${radio("mPatelar")}. REGIÓN POSTERIOR DE LA PANTORRILLA: ${radio("mGemelos")}. ${radio("mEdema")==="SÍ"?"CON PRESENCIA DE EDEMA":"SIN PRESENCIA DE EDEMA"}.`;
  if(val("hallazgo").trim())h+=` ${up(val("hallazgo"))}.`;return h;
 }
-function antro(){
- const c=calculations(),p=[];
- if(c.w!==null){
-  if(radio("modoPeso")==="ESTIMADO"){
-   const cb=num(val("cb")),cp=num(val("cp"));
-   p.push(`PESO ESTIMADO: ${cb!==null&&cp!==null?`(CB: ${one(cb)} + CP: ${one(cp)}) `:""}${one(c.w)} KG`);
-  }else{
-   p.push(`PESO ACTUAL: ${one(c.w)} KG`);
-  }
- }
- if(c.h!==null){
-  const modo=radio("modoTalla");
-  const lbl=modo==="REFERIDA"?"TALLA REFERIDA":modo==="TALÓN-RODILLA"?"TALLA ESTIMADA":"TALLA";
-  p.push(`${lbl}: ${one(c.h)} CM`);
- }
- if(c.imc!==null)p.push(`IMC: ${one(c.imc)} KG/M2`);
+function antro(){const c=calculations();if(c.w===null&&c.h===null)return "";const wt=radio("modoPeso")==="ESTIMADO"?`PESO ESTIMADO: (CB: ${val("cb")||"-"} + CP: ${val("cp")||"-"}) ${c.w!==null?one(c.w):"-"} KG`:`PESO ACTUAL: ${c.w!==null?one(c.w):"-"} KG`;return `${wt}, ${radio("modoTalla")}: ${c.h!==null?one(c.h)+" CM":"-"}${radio("modoTalla")==="TALLA ESTIMADA"&&val("talonRodilla")?`, TALÓN-RODILLA: ${val("talonRodilla")} CM`:""}, IMC: ${c.imc!==null?one(c.imc):"-"} KG/M2.`}
 
- // Mostrar peso ideal si hay bajo peso o está muy cerca del límite.
- // Adulto <60: IMC <20. Adulto mayor >=60: usa corte geriátrico <23.
- const borderlineLow = Number.isFinite(c.imc) && (c.age>=60 ? c.imc<23 : c.imc<20);
- if(borderlineLow && c.idealWeight!==null){
-  p.push(`PESO IDEAL: ${one(c.idealWeight)} KG`);
- }
-
- // Mostrar peso ajustado solo si la clasificación corresponde a obesidad.
- if(c.cl && c.cl.includes("OBESIDAD")){
-  const aw=adjustedWeight33();
-  if(aw!==null)p.push(`PESO AJUSTADO: ${one(aw)} KG`);
- }
-
- return p.join(", ");
-}
-function weightBasisLabel(g){
- const actual=getWeight();
- if(g.eW!==null&&actual!==null&&Math.abs(g.eW-actual)>0.2)return " PESO DE CÁLCULO";
- return "";
-}
 function proteinBasisLabel(g){
  const actual=getWeight();
  if(g.pW!==null&&actual!==null&&Math.abs(g.pW-actual)>0.2)return " PESO DE CÁLCULO";
@@ -1868,6 +1836,57 @@ function req(){
  return `CALORÍAS: ${kcalKg}${Math.round(c.kcal)} KCAL/DÍA. CARBOHIDRATOS ${Math.round(c.cho)}%: ${Math.round(c.choG)} G/DÍA. PROTEÍNA ${Math.round(c.pp)}%: ${one(g.pChosen)} G/KG${proteinBasisLabel(g)} = ${Math.round(c.proG)} G/DÍA. LÍPIDOS ${Math.round(c.lip)}%: ${Math.round(c.lipG)} G/DÍA.${lowWeightSupplementText(c)}`;
 }
 
+function two(n){return Number.isFinite(Number(n))?Number(n).toFixed(2):"—"}
+function pregnancyGainReference(){
+ const h=num(val("talla")),preW=num(val("pesoPregestacional")),curW=getWeight(),ga=num(val("edadGestacional"));
+ if(h===null||preW===null||curW===null||ga===null||h<=0||preW<=0||ga<=0){
+  return {complete:false,preImc:null,gain:null,expectedMin:null,expectedMax:null,label:"PENDIENTE",category:""};
+ }
+ const hm=h/100,preImc=preW/(hm*hm),gain=curW-preW;
+ let cat,totalMin,totalMax,weekMin,weekMax;
+ if(preImc<18.5){
+  cat="BAJO PESO"; totalMin=12.5; totalMax=18.0; weekMin=.44; weekMax=.58;
+ }else if(preImc<25){
+  cat="NORMOPESO"; totalMin=11.5; totalMax=16.0; weekMin=.35; weekMax=.50;
+ }else if(preImc<30){
+  cat="SOBREPESO"; totalMin=7.0; totalMax=11.5; weekMin=.23; weekMax=.33;
+ }else{
+  cat="OBESIDAD"; totalMin=5.0; totalMax=9.0; weekMin=.17; weekMax=.27;
+ }
+
+ // IOM/ACOG: 0.5–2.0 kg en el primer trimestre.
+ // Desde la semana 14, sumar el rango semanal del 2º/3º trimestre.
+ let expectedMin,expectedMax;
+ if(ga<=13){
+  // No existe un objetivo semanal oficial específico para cada semana del 1er trimestre.
+  // Usamos el rango acumulado de 0–2 kg durante el trimestre para evitar clasificar
+  // como "baja" una gestante muy temprana simplemente por no haber ganado 0.5 kg aún.
+  expectedMin=0;
+  expectedMax=2.0;
+ }else{
+  const weeksAfter13=ga-13;
+  expectedMin=.5 + weekMin*weeksAfter13;
+  expectedMax=2.0 + weekMax*weeksAfter13;
+  // No exceder el rango total recomendado al término.
+  expectedMin=Math.min(expectedMin,totalMin);
+  expectedMax=Math.min(expectedMax,totalMax);
+ }
+
+ let label;
+ if(gain<expectedMin-.05)label="BAJA GANANCIA DE PESO GESTACIONAL";
+ else if(gain>expectedMax+.05)label="GANANCIA DE PESO GESTACIONAL EXCESIVA";
+ else label="GANANCIA DE PESO GESTACIONAL ADECUADA";
+
+ const multiple=/GEMELAR|GEMELOS|MELLIZOS|EMBARAZO MULTIPLE|EMBARAZO MÚLTIPLE|GESTACION MULTIPLE|GESTACIÓN MÚLTIPLE/.test(normalizedUpper(val("sourceText")));
+ if(multiple){
+  label="GESTACIÓN MÚLTIPLE: REQUIERE RANGO ESPECÍFICO";
+ }
+
+ return {
+  complete:true,preImc,gain,expectedMin,expectedMax,label,category:cat,
+  totalMin,totalMax,weekMin,weekMax,multiple
+ };
+}
 function pregnancyReferenceWeights(){
  const h=num(val("talla")),preW=num(val("pesoPregestacional"));
  if(h===null||preW===null)return {ideal:null,adjusted:null,preImc:null};
@@ -1876,8 +1895,8 @@ function pregnancyReferenceWeights(){
  return {ideal,adjusted,preImc};
 }
 function pregnancyAnthro(){
- const c=calculations(),parts=[],r=pregnancyReferenceWeights();
- const w=c.w,preW=num(val("pesoPregestacional")),h=num(val("talla")),gain=(w!==null&&preW!==null)?w-preW:null;
+ const c=calculations(),parts=[],r=pregnancyReferenceWeights(),g=pregnancyGainReference();
+ const w=c.w,preW=num(val("pesoPregestacional")),h=num(val("talla"));
  if(w!==null){
   const weightLabel=radio("modoPeso")==="ESTIMADO"?"PESO ESTIMADO":"PESO BALANZA";
   parts.push(`${weightLabel}: ${one(w)} KG`);
@@ -1889,19 +1908,12 @@ function pregnancyAnthro(){
   parts.push(`${label}: ${one(h)} CM`);
  }
  if(Number.isFinite(r.preImc))parts.push(`IMC PREGESTACIONAL: ${one(r.preImc)} KG/M2`);
-
- // En embarazo se usa el IMC PREGESTACIONAL para decidir si mostrar peso ideal/ajustado.
- if(Number.isFinite(r.preImc)&&r.preImc<20&&r.ideal!==null){
-  parts.push(`PESO IDEAL PREGESTACIONAL: ${one(r.ideal)} KG`);
- }
- if(Number.isFinite(r.preImc)&&r.preImc>=30&&r.adjusted!==null){
-  parts.push(`PESO AJUSTADO PREGESTACIONAL: ${one(r.adjusted)} KG`);
- }
-
- const gc=val("gananciaCurva");
- if(gain!==null){
-  const curve=(gc&&gc!=="PENDIENTE")?` (${gc})`:"";
-  parts.push(`GANANCIA DE PESO (SEGÚN CURVAS): ${one(gain)} KG${curve}`);
+ if(Number.isFinite(r.preImc)&&r.preImc<20&&r.ideal!==null)parts.push(`PESO IDEAL PREGESTACIONAL: ${one(r.ideal)} KG`);
+ if(Number.isFinite(r.preImc)&&r.preImc>=30&&r.adjusted!==null)parts.push(`PESO AJUSTADO PREGESTACIONAL: ${one(r.adjusted)} KG`);
+ if(g.complete){
+  parts.push(`GANANCIA DE PESO: ${one(g.gain)} KG`);
+  if(!g.multiple)parts.push(`RANGO ESPERADO A LA SEMANA ${one(num(val("edadGestacional")))}: ${one(g.expectedMin)}–${one(g.expectedMax)} KG`);
+  parts.push(g.label);
  }
  return parts.join(". ")+".";
 }
@@ -1913,12 +1925,8 @@ function postpartumAnthro(){
  }
  if(c.h!==null)parts.push(`TALLA: ${two(c.h/100)} M`);
  if(c.imc!==null)parts.push(`IMC: ${one(c.imc)} KG/M2`);
-
- // Posparto: misma lógica de peso ideal/ajustado del adulto.
  const borderlineLow=Number.isFinite(c.imc)&&(c.age>=60?c.imc<23:c.imc<20);
- if(borderlineLow&&c.idealWeight!==null){
-  parts.push(`PESO IDEAL: ${one(c.idealWeight)} KG`);
- }
+ if(borderlineLow&&c.idealWeight!==null)parts.push(`PESO IDEAL: ${one(c.idealWeight)} KG`);
  if(c.cl&&c.cl.includes("OBESIDAD")){
   const aw=adjustedWeight33();
   if(aw!==null)parts.push(`PESO AJUSTADO: ${one(aw)} KG`);
@@ -1932,41 +1940,11 @@ function maternityReq(){
 }
 function maternityPlan(){const route=importedRoute(),times=importedTimes();if(route==="NPO")return "NPO";return `${up(val("plan")||val("dieta"))}${route==="SNG"?" POR SNG":""}${times!=="N/A"?` FRACCIONADO EN ${times} TIEMPOS DE COMIDA`:""}`}
 function postpartumDiagnosis(){const c=calculations(),n=nrsResult();return `${c.cl||"ESTADO NUTRICIONAL PENDIENTE"} SEGÚN INDICADOR ANTROPOMÉTRICO IMC, ${n.total>=3?"CON RIESGO NUTRICIONAL":"SIN RIESGO NUTRICIONAL"} SEGÚN CRIBADO.`}
-function pregnancyDiagnosis(){const c=calculations(),gc=val("gananciaCurva");let t=`${c.preClass||"ESTADO PREGESTACIONAL PENDIENTE"} SEGÚN INDICADOR ANTROPOMÉTRICO IMC PREGESTACIONAL`;if(gc&&gc!=="PENDIENTE")t+=`, HA PRESENTADO ${gc} SEGÚN CURVA DE GESTACIÓN`;return t+"."}
-function nutritionNote(){
- const p=val("perfil"),tam=`TAMIZAJE NUTRICIONAL: ${screeningText()}`;
- if(p==="posparto")return [
-  `EXAMEN FÍSICO: ${maternityExam()}`,
-  `VALORACIÓN NUTRICIONAL: ${postpartumValuation()}`,
-  `VALORACIÓN ANTROPOMÉTRICA: ${postpartumAnthro()}`,
-  tam,
-  `DIAGNÓSTICO NUTRICIONAL: ${postpartumDiagnosis()}`,
-  `PLAN DIETOTERAPÉUTICO: ${maternityPlan()}.`,
-  `REQUERIMIENTO NUTRICIONAL: ${maternityReq()}`
- ];
- if(p==="embarazada")return [
-  `EXAMEN FÍSICO: ${maternityExam()}`,
-  `VALORACIÓN NUTRICIONAL: ${pregnancyValuation()}`,
-  `VALORACIÓN ANTROPOMÉTRICA: ${pregnancyAnthro()}`,
-  tam,
-  `DIAGNÓSTICO NUTRICIONAL: ${pregnancyDiagnosis()}`,
-  `PLAN DIETOTERAPÉUTICO: ${maternityPlan()}.`,
-  `REQUERIMIENTO NUTRICIONAL: ${maternityReq()}`
- ];
- const c=calculations(),a=[
-  `VALORACIÓN NUTRICIONAL: ${valuation()}`,
-  `EXAMEN FÍSICO: ${exam()}`
- ];
- const an=antro();if(an)a.push(`VALORACIÓN ANTROPOMÉTRICA: ${an}`);
- a.push(tam);
- if(c.cl)a.push(`DIAGNÓSTICO NUTRICIONAL: ${c.cl} EVIDENCIADO POR INDICADOR ANTROPOMÉTRICO IMC.`);
- const route=importedRoute(),times=importedTimes();
- let plan=route==="NPO"?"NPO":`${up(val("plan")||val("dieta"))}${route==="SNG"?" POR SNG":""}${times!=="N/A"?` FRACCIONADA EN ${times} TIEMPOS DE COMIDA`:""}`;
- if(val("planObs").trim())plan+=`. ${up(val("planObs"))}`;
- 
- a.push(`PLAN DIETOTERAPÉUTICO: ${plan}.`);
- const r=req();if(r)a.push(`REQUERIMIENTO NUTRICIONAL: ${r}`);
- return a;
+function pregnancyDiagnosis(){
+ const c=calculations(),g=pregnancyGainReference();
+ let t=`${c.preClass||"ESTADO PREGESTACIONAL PENDIENTE"} SEGÚN INDICADOR ANTROPOMÉTRICO IMC PREGESTACIONAL`;
+ if(g.complete)t+=`, ${g.label}`;
+ return t+".";
 }
 function updatePreview(){if(!loading)updateNpoVisibility();if(!$("clinicalSections").classList.contains("hidden"))$("preview").textContent=nutritionNote().join("\n\n");if(!loading)scheduleSave()}
 

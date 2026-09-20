@@ -894,7 +894,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&
 const makeId=p=>`${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,9)}`;
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
 
-const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v15", FALLBACK_KEY="nutri_word_rounds_v15";
+const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v16", FALLBACK_KEY="nutri_word_rounds_v16";
 let db=null,currentRound=null,currentPatientId=null,history=[],loading=false,saveTimer=null;
 
 const simpleFields=["area","ambiente","cama","nombre","edad","cobertura","sexo","perfil","dieta","sourceText","alergia","intolerancia","ultima","bristol","habito","hallazgo","peso","cb","cp","talla","talonRodilla","pesoPregestacional","edadGestacional","gananciaCurva","pesoHabitual","tiempoPesoHabitual","nrsEnfOverride","reqPerfil","cie10","plan","planObs","kcalKg","extraKcal","choPct","proPct","proKg","lipPct","clinicalProfile","renalSubtype","egfr","icuDay","hasIC","measuredEE","ibdActivity","pancreasType","surgeryScenario","nrsApache","mnaNeuro2","nrsWeekMode","suppName","suppMl","suppKcal","suppProtein","suppServings"];
@@ -1866,6 +1866,64 @@ function req(){
  const c=calculations(),g=c.guide;if(c.kcal===null||c.proG===null)return "";
  const kcalKg=g.kChosen!==null?`${one(g.kChosen)} KCAL/KG${weightBasisLabel(g)}: `:"";
  return `CALORÍAS: ${kcalKg}${Math.round(c.kcal)} KCAL/DÍA. CARBOHIDRATOS ${Math.round(c.cho)}%: ${Math.round(c.choG)} G/DÍA. PROTEÍNA ${Math.round(c.pp)}%: ${one(g.pChosen)} G/KG${proteinBasisLabel(g)} = ${Math.round(c.proG)} G/DÍA. LÍPIDOS ${Math.round(c.lip)}%: ${Math.round(c.lipG)} G/DÍA.${lowWeightSupplementText(c)}`;
+}
+
+function pregnancyReferenceWeights(){
+ const h=num(val("talla")),preW=num(val("pesoPregestacional"));
+ if(h===null||preW===null)return {ideal:null,adjusted:null,preImc:null};
+ const hm=h/100,preImc=preW/(hm*hm),ideal=22*(hm*hm);
+ const adjusted=preImc>=30?ideal+0.33*(preW-ideal):null;
+ return {ideal,adjusted,preImc};
+}
+function pregnancyAnthro(){
+ const c=calculations(),parts=[],r=pregnancyReferenceWeights();
+ const w=c.w,preW=num(val("pesoPregestacional")),h=num(val("talla")),gain=(w!==null&&preW!==null)?w-preW:null;
+ if(w!==null){
+  const weightLabel=radio("modoPeso")==="ESTIMADO"?"PESO ESTIMADO":"PESO BALANZA";
+  parts.push(`${weightLabel}: ${one(w)} KG`);
+ }
+ if(preW!==null)parts.push(`PESO PREGESTACIONAL: ${one(preW)} KG`);
+ if(h!==null){
+  const mode=radio("modoTalla");
+  const label=mode==="TALÓN-RODILLA"?"TALLA ESTIMADA":"TALLA REFERIDA";
+  parts.push(`${label}: ${one(h)} CM`);
+ }
+ if(Number.isFinite(r.preImc))parts.push(`IMC PREGESTACIONAL: ${one(r.preImc)} KG/M2`);
+
+ // En embarazo se usa el IMC PREGESTACIONAL para decidir si mostrar peso ideal/ajustado.
+ if(Number.isFinite(r.preImc)&&r.preImc<20&&r.ideal!==null){
+  parts.push(`PESO IDEAL PREGESTACIONAL: ${one(r.ideal)} KG`);
+ }
+ if(Number.isFinite(r.preImc)&&r.preImc>=30&&r.adjusted!==null){
+  parts.push(`PESO AJUSTADO PREGESTACIONAL: ${one(r.adjusted)} KG`);
+ }
+
+ const gc=val("gananciaCurva");
+ if(gain!==null){
+  const curve=(gc&&gc!=="PENDIENTE")?` (${gc})`:"";
+  parts.push(`GANANCIA DE PESO (SEGÚN CURVAS): ${one(gain)} KG${curve}`);
+ }
+ return parts.join(". ")+".";
+}
+function postpartumAnthro(){
+ const c=calculations(),parts=[];
+ if(c.w!==null){
+  const label=radio("modoPeso")==="ESTIMADO"?"PESO ESTIMADO":"PESO ACTUAL";
+  parts.push(`${label}: ${one(c.w)} KG`);
+ }
+ if(c.h!==null)parts.push(`TALLA: ${two(c.h/100)} M`);
+ if(c.imc!==null)parts.push(`IMC: ${one(c.imc)} KG/M2`);
+
+ // Posparto: misma lógica de peso ideal/ajustado del adulto.
+ const borderlineLow=Number.isFinite(c.imc)&&(c.age>=60?c.imc<23:c.imc<20);
+ if(borderlineLow&&c.idealWeight!==null){
+  parts.push(`PESO IDEAL: ${one(c.idealWeight)} KG`);
+ }
+ if(c.cl&&c.cl.includes("OBESIDAD")){
+  const aw=adjustedWeight33();
+  if(aw!==null)parts.push(`PESO AJUSTADO: ${one(aw)} KG`);
+ }
+ return parts.join(", ")+".";
 }
 function maternityReq(){
  const c=calculations(),g=c.guide;if(c.kcal===null||c.proG===null)return "";

@@ -900,7 +900,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&
 const makeId=p=>`${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,9)}`;
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
 
-const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v18", FALLBACK_KEY="nutri_word_rounds_v18";
+const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v19", FALLBACK_KEY="nutri_word_rounds_v19";
 let db=null,currentRound=null,currentPatientId=null,history=[],loading=false,saveTimer=null;
 
 const simpleFields=["area","ambiente","cama","nombre","edad","cobertura","sexo","perfil","dieta","sourceText","alergia","intolerancia","ultima","bristol","habito","hallazgo","peso","cb","cp","talla","talonRodilla","pesoPregestacional","edadGestacional","pesoHabitual","tiempoPesoHabitual","nrsEnfOverride","reqPerfil","cie10","plan","planObs","kcalKg","extraKcal","choPct","proPct","proKg","lipPct","clinicalProfile","renalSubtype","egfr","icuDay","hasIC","measuredEE","ibdActivity","pancreasType","surgeryScenario","nrsApache","mnaNeuro2","nrsWeekMode","suppName","suppMl","suppKcal","suppProtein","suppServings"];
@@ -922,10 +922,10 @@ function parseDateText(s){
 }
 function parseHeader(text){
  const original=String(text||"").trim(),s=stripNumbering(original);
- if(!/\bAMB\b/i.test(s))return null;
+ if(!/\bAMB\s*[A-Za-z0-9-]+/i.test(s))return null;
  const seg=s.split(/\t+/).map(x=>x.trim()).filter(Boolean);
  if(seg.length>=5){
-  const ai=seg.findIndex(x=>/\bAMB\b/i.test(x));
+  const ai=seg.findIndex(x=>/\bAMB\s*[A-Za-z0-9-]+/i.test(x));
   if(ai>=0){
    const am=seg[ai].match(/\bAMB\s*([A-Za-z0-9-]+)\s+C\s*([A-Za-z0-9-]+)/i);
    if(am){

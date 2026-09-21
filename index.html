@@ -849,7 +849,7 @@ img,svg,table{
  </section>
 
  <section class="card section">
-  <div class="secHead"><div class="step">7</div><div><h2>Vista previa nutricional</h2><p>Formato fijo de revaloración. La valoración anterior solo autorrellena; el encabezado actual manda.</p></div></div>
+  <div class="secHead"><div class="step">7</div><div><h2>Vista previa nutricional</h2><p>Formato final fijo hospitalario. La valoración anterior solo autorrellena datos; no cambia el formato.</p></div></div>
   <div id="preview" class="preview"></div>
  </section>
 
@@ -898,7 +898,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&
 const makeId=p=>`${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,9)}`;
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
 
-const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v27", FALLBACK_KEY="nutri_word_rounds_v27";
+const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v28", FALLBACK_KEY="nutri_word_rounds_v28";
 let db=null,currentRound=null,currentPatientId=null,history=[],loading=false,saveTimer=null;
 
 const simpleFields=["area","ambiente","cama","nombre","edad","cobertura","sexo","perfil","dieta","sourceText","alergia","intolerancia","ultima","bristol","habito","hallazgo","peso","pesoEstimadoDoc","cb","cp","talla","talonRodilla","pesoPregestacional","edadGestacional","reqPerfil","cie10","plan","planObs","kcalKg","extraKcal","choPct","proPct","proKg","lipPct","clinicalProfile","renalSubtype","egfr","icuDay","hasIC","measuredEE","ibdActivity","pancreasType","surgeryScenario","suppName","suppMl","suppKcal","suppProtein","suppServings","acompanante","acompananteDetalle","informante","extremidadesDetalle","mExtSupDetalle"];
@@ -2529,7 +2529,7 @@ function canonicalNormalNote(){
  const an=antro();if(an)a.push(`VALORACIÓN ANTROPOMÉTRICA: ${an}`);
  a.push(`TAMIZAJE NUTRICIONAL: ${screeningText()}`);
  if(c.cl)a.push(`DIAGNÓSTICO NUTRICIONAL: ${diagnosisByBMI()}`);
- const r=req();if(r)a.push(`GET: ${r}`);
+ const r=req();if(r)a.push(`REQUERIMIENTO NUTRICIONAL: ${r}`);
  a.push(`PLAN DIETOTERAPÉUTICO: ${currentDietPlanText()}.`);
  return a;
 }
@@ -2540,7 +2540,7 @@ function canonicalPregnancyNote(){
   `VALORACIÓN ANTROPOMÉTRICA: ${pregnancyAnthro()}`,
   `TAMIZAJE NUTRICIONAL: ${screeningText()}`,
   `DIAGNÓSTICO NUTRICIONAL: ${pregnancyDiagnosis()}`,
-  `GET: ${maternityReq()}`,
+  `REQUERIMIENTO NUTRICIONAL: ${maternityReq()}`,
   `PLAN DIETOTERAPÉUTICO: ${currentDietPlanText()}.`
  ];
 }
@@ -2551,7 +2551,7 @@ function canonicalPostpartumNote(){
   `VALORACIÓN ANTROPOMÉTRICA: ${postpartumAnthro()}`,
   `TAMIZAJE NUTRICIONAL: ${screeningText()}`,
   `DIAGNÓSTICO NUTRICIONAL: ${postpartumDiagnosis()}`,
-  `GET: ${maternityReq()}`,
+  `REQUERIMIENTO NUTRICIONAL: ${maternityReq()}`,
   `PLAN DIETOTERAPÉUTICO: ${currentDietPlanText()}.`
  ];
 }

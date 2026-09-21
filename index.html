@@ -480,7 +480,28 @@ img,svg,table{
    </div><div class="chips" style="margin-top:5px">
     <label class="chip"><input type="radio" name="colabora" value="SÍ" checked><span>Colabora</span></label>
     <label class="chip"><input type="radio" name="colabora" value="NO"><span>No colabora</span></label>
-   </div></div>
+   </div>
+   <div class="grid2" style="margin-top:7px">
+    <div><label class="label">Acompañante</label>
+     <select id="acompanante" onchange="toggleCompanion();calculateAll()">
+      <option value="NO">Sin acompañante</option>
+      <option value="HIJO">Hijo</option><option value="HIJA">Hija</option>
+      <option value="MADRE">Madre</option><option value="PADRE">Padre</option>
+      <option value="ESPOSO">Esposo</option><option value="ESPOSA">Esposa</option>
+      <option value="HERMANO">Hermano</option><option value="HERMANA">Hermana</option>
+      <option value="CUIDADOR/A">Cuidador/a</option><option value="OTRO">Otro</option>
+     </select>
+    </div>
+    <div id="informantBox" class="hidden"><label class="label">¿Quién aporta la información?</label>
+     <select id="informante" onchange="calculateAll()">
+      <option value="PACIENTE">Paciente</option>
+      <option value="AMBOS">Paciente y familiar</option>
+      <option value="FAMILIAR">Familiar / acompañante</option>
+     </select>
+    </div>
+   </div>
+   <input id="acompananteDetalle" class="hidden" style="margin-top:6px" placeholder="Opcional: nombre, parentesco o detalle">
+   </div>
   </div>
 
   <div class="grid2" style="margin-top:7px">
@@ -522,8 +543,8 @@ img,svg,table{
    <label class="chip"><input type="checkbox" id="aVomito"><span>Vómitos</span></label>
    <label class="chip"><input type="checkbox" id="aDolor"><span>Dolor abdominal</span></label>
    <label class="chip"><input type="checkbox" id="aDistension"><span>Distensión/gases</span></label>
-   <label class="chip"><input type="checkbox" id="aDiarrea"><span>Diarrea</span></label>
-   <label class="chip"><input type="checkbox" id="aEstreni"><span>Estreñimiento</span></label>
+   <label class="chip"><input type="checkbox" id="aDiarrea" onchange="updateBowelHabit();calculateAll()"><span>Diarrea</span></label>
+   <label class="chip"><input type="checkbox" id="aEstreni" onchange="updateBowelHabit();calculateAll()"><span>Estreñimiento</span></label>
    <label class="chip"><input type="checkbox" id="aMelena"><span>Melena</span></label>
   </div></div>
 
@@ -552,9 +573,9 @@ img,svg,table{
   </div>
 
   <div class="grid3" style="margin-top:7px">
-   <div><label class="label">13. Última deposición</label><select id="ultima"><option>HOY</option><option>AYER</option><option>HACE 2 DÍAS</option><option>HACE 3 DÍAS O MÁS</option></select></div>
-   <div><label class="label">Bristol</label><select id="bristol"><option>1</option><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option><option>7</option></select></div>
-   <div><label class="label">Hábito evacuatorio</label><select id="habito"><option>REGULAR</option><option>IRREGULAR</option></select></div>
+   <div><label class="label">13. Última deposición</label><select id="ultima" onchange="updateBowelHabit();calculateAll()"><option>HOY</option><option>AYER</option><option>HACE 2 DÍAS</option><option>HACE 3 DÍAS O MÁS</option></select></div>
+   <div><label class="label">Bristol</label><select id="bristol" onchange="updateBowelHabit();calculateAll()"><option>1</option><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option><option>7</option></select></div>
+   <div><label class="label">Hábito evacuatorio</label><input id="habito" value="REGULAR" readonly></div>
   </div>
 
   <div class="q" style="margin-top:7px"><div class="qt">14. Deambulación</div><div class="chips">
@@ -581,7 +602,7 @@ img,svg,table{
    <div class="q"><div class="qt">Mucosa oral</div><div class="chips"><label class="chip"><input type="radio" name="mucosa" value="HIDRATADA" checked><span>Hidratada</span></label><label class="chip"><input type="radio" name="mucosa" value="SEMIHIDRATADA"><span>Semihidratada</span></label><label class="chip"><input type="radio" name="mucosa" value="SECA"><span>Seca</span></label></div></div>
    <div class="q"><div class="qt">Piel</div><div class="chips"><label class="chip"><input type="radio" name="piel" value="HIDRATADA" checked><span>Hidratada</span></label><label class="chip"><input type="radio" name="piel" value="SEMIHIDRATADA"><span>Semihidratada</span></label><label class="chip"><input type="radio" name="piel" value="SECA"><span>Seca</span></label></div></div>
    <div class="q"><div class="qt">Clavícula / acromion</div><div class="chips"><label class="chip"><input type="radio" name="clavicula" value="NO PROMINENTES" checked><span>No prominentes</span></label><label class="chip"><input type="radio" name="clavicula" value="LIGERAMENTE PROMINENTES"><span>Ligeramente</span></label><label class="chip"><input type="radio" name="clavicula" value="PROMINENTES"><span>Prominentes</span></label></div></div>
-   <div class="q"><div class="qt">Extremidades</div><div class="chips"><label class="chip"><input type="radio" name="extremidades" value="SIMÉTRICAS" checked><span>Simétricas</span></label><label class="chip"><input type="radio" name="extremidades" value="ASIMÉTRICAS"><span>Asimétricas</span></label></div></div>
+   <div class="q"><div class="qt">Extremidades</div><div class="chips"><label class="chip"><input type="radio" name="extremidades" value="SIMÉTRICAS" checked onchange="toggleExtremityDetail();calculateAll()"><span>Simétricas</span></label><label class="chip"><input type="radio" name="extremidades" value="ASIMÉTRICAS" onchange="toggleExtremityDetail();calculateAll()"><span>Asimétricas</span></label></div><input id="extremidadesDetalle" class="hidden" style="margin-top:6px" placeholder="Ej. amputación supracondílea izquierda"></div>
    <div class="q"><div class="qt">Masa muscular</div><div class="chips"><label class="chip"><input type="radio" name="masaMuscular" value="CONSERVADA" checked><span>Conservada</span></label><label class="chip"><input type="radio" name="masaMuscular" value="LEVE DEPLECIÓN"><span>Leve</span></label><label class="chip"><input type="radio" name="masaMuscular" value="MODERADA DEPLECIÓN"><span>Moderada</span></label><label class="chip"><input type="radio" name="masaMuscular" value="SEVERA DEPLECIÓN"><span>Severa</span></label></div></div>
    <div class="q"><div class="qt">Masa grasa</div><div class="chips"><label class="chip"><input type="radio" name="masaGrasa" value="CONSERVADA" checked><span>Conservada</span></label><label class="chip"><input type="radio" name="masaGrasa" value="LEVE DEPLECIÓN"><span>Leve</span></label><label class="chip"><input type="radio" name="masaGrasa" value="MODERADA DEPLECIÓN"><span>Moderada</span></label><label class="chip"><input type="radio" name="masaGrasa" value="SEVERA DEPLECIÓN"><span>Severa</span></label></div></div>
    <div class="q"><div class="qt">Abdomen</div><div class="chips"><label class="chip"><input type="radio" name="abdomen" value="BLANDO, DEPRESIBLE, NO DOLOROSO A LA PALPACIÓN" checked><span>Normal</span></label><label class="chip"><input type="radio" name="abdomen" value="DOLOROSO A LA PALPACIÓN"><span>Doloroso</span></label><label class="chip"><input type="radio" name="abdomen" value="DISTENDIDO"><span>Distendido</span></label><label class="chip"><input type="radio" name="abdomen" value="DISTENDIDO, ASCITIS, DOLOROSO A LA PALPACIÓN"><span>Ascitis</span></label></div></div>
@@ -597,7 +618,7 @@ img,svg,table{
    <div class="q"><div class="qt">Mucosa oral y piel</div><div class="chips"><label class="chip"><input type="radio" name="mHidratacion" value="HIDRATADAS"><span>Hidratadas</span></label><label class="chip"><input type="radio" name="mHidratacion" value="SEMIHIDRATADAS"><span>Semihidratadas</span></label><label class="chip"><input type="radio" name="mHidratacion" value="SECAS"><span>Secas</span></label></div></div>
    <div class="q"><div class="qt">Región clavicular</div><div class="chips"><label class="chip"><input type="radio" name="mClavicula" value="MÚSCULO BIEN DEFINIDO RODEANDO EL HUESO. NO PROMINENTE"><span>No prominente</span></label><label class="chip"><input type="radio" name="mClavicula" value="LIGERAMENTE PROMINENTE"><span>Ligeramente</span></label><label class="chip"><input type="radio" name="mClavicula" value="PROMINENTE"><span>Prominente</span></label></div></div>
    <div class="q"><div class="qt">Abdomen</div><div class="chips"><label class="chip"><input type="radio" name="mAbdomen" value="BLANDO, DEPRESIBLE NO DOLOROSO A LA PALPACIÓN"><span>No doloroso</span></label><label class="chip"><input type="radio" name="mAbdomen" value="BLANDO, DEPRESIBLE, DOLOROSO A LA PALPACIÓN"><span>Doloroso</span></label><label class="chip"><input type="radio" name="mAbdomen" value="DISTENDIDO"><span>Distendido</span></label></div></div>
-   <div class="q"><div class="qt">Extremidades superiores</div><div class="chips"><label class="chip"><input type="radio" name="mExtSup" value="SIMÉTRICAS"><span>Simétricas</span></label><label class="chip"><input type="radio" name="mExtSup" value="ASIMÉTRICAS"><span>Asimétricas</span></label></div></div>
+   <div class="q"><div class="qt">Extremidades superiores</div><div class="chips"><label class="chip"><input type="radio" name="mExtSup" value="SIMÉTRICAS" onchange="toggleMaternityExtremityDetail();calculateAll()"><span>Simétricas</span></label><label class="chip"><input type="radio" name="mExtSup" value="ASIMÉTRICAS" onchange="toggleMaternityExtremityDetail();calculateAll()"><span>Asimétricas</span></label></div><input id="mExtSupDetalle" class="hidden" style="margin-top:6px" placeholder="Ej. amputación, lesión o limitación"></div>
    <div class="q"><div class="qt">Región tricipital</div><div class="chips"><label class="chip"><input type="radio" name="mTricipital" value="TEJIDO GRASO Y MASA MUSCULAR NORMAL EVIDENTE ENTRE LOS PLIEGUES DE PIEL PELLIZCADOS"><span>Normal</span></label><label class="chip"><input type="radio" name="mTricipital" value="LEVE DEPLECIÓN DE TEJIDO GRASO Y MASA MUSCULAR"><span>Leve</span></label><label class="chip"><input type="radio" name="mTricipital" value="DEPLECIÓN MODERADA/SEVERA"><span>Mod./severa</span></label></div></div>
    <div class="q"><div class="qt">Cuádriceps anterior</div><div class="chips"><label class="chip"><input type="radio" name="mCuadriceps" value="REDONDEADO Y BIEN DESARROLLADO"><span>Bien desarrollado</span></label><label class="chip"><input type="radio" name="mCuadriceps" value="LEVE DEPLECIÓN"><span>Leve</span></label><label class="chip"><input type="radio" name="mCuadriceps" value="DEPLECIÓN MODERADA/SEVERA"><span>Mod./severa</span></label></div></div>
    <div class="q"><div class="qt">Región patelar</div><div class="chips"><label class="chip"><input type="radio" name="mPatelar" value="MÚSCULOS SOBRESALEN. RÓTULA NO PROMINENTE"><span>Normal</span></label><label class="chip"><input type="radio" name="mPatelar" value="RÓTULA PROMINENTE / DEPLECIÓN"><span>Prominente</span></label></div></div>
@@ -636,55 +657,29 @@ img,svg,table{
  </section>
 
  <section id="screeningSection" class="card section">
-  <div class="secHead"><div class="step">5</div><div><h2>Tamizaje automático</h2><p>Usa casi todo lo que ya marcaste en la entrevista y examen físico. Solo pregunta lo que no puede deducir con seguridad.</p></div></div>
+  <div class="secHead"><div class="step">5</div><div><h2>Tamizaje automático</h2><p>No repite preguntas: usa diagnóstico, antecedentes, ingesta, tolerancia, síntomas, movilidad, examen físico y antropometría.</p></div></div>
 
-  <div class="grid2">
-   <div>
-    <label class="label">Peso habitual / previo reciente (kg)</label>
-    <input id="pesoHabitual" type="number" step="0.1" placeholder="Solo si lo conoce" oninput="calculateAll()">
-   </div>
-   <div>
-    <label class="label">¿Hace cuánto era ese peso?</label>
-    <select id="tiempoPesoHabitual" onchange="calculateAll()"><option value="3">≈3 meses</option><option value="2">≈2 meses</option><option value="1">≈1 mes</option></select>
+  <div id="adultRiskBox">
+   <div class="metrics">
+    <div class="metric"><span>NRS-2002</span><b id="adultRiskResult">—</b></div>
+    <div class="metric"><span>Resultado</span><b id="adultStressResult">—</b></div>
+    <div class="metric"><span>Datos utilizados</span><b>ENTREVISTA + WORD + ANTROPOMETRÍA</b></div>
    </div>
   </div>
 
-  <div class="q" style="margin-top:7px">
-   <div class="qt">Única pregunta rápida para NRS-2002</div>
-   <label class="label">En la última semana, ¿la ingesta fue parecida a la que refiere hoy?</label>
-   <select id="nrsWeekMode" onchange="calculateAll()">
-    <option value="CURRENT">Sí / usar el % de ingesta ya marcado</option>
-    <option value="75">La semana previa fue ≥75%</option>
-    <option value="62">La semana previa fue 50–75%</option>
-    <option value="37">La semana previa fue 25–50%</option>
-    <option value="12">La semana previa fue 0–25%</option>
-   </select>
-   <div id="nrsWeekHint" class="note" style="margin-top:5px"></div>
+  <div id="mnaQuickBox" class="hidden">
+   <div class="metrics">
+    <div class="metric"><span>MNA-SF</span><b id="screenMnaTotal">—</b></div>
+    <div class="metric"><span>Resultado</span><b id="screenMnaResult">—</b></div>
+    <div class="metric"><span>Datos utilizados</span><b>ENTREVISTA + MOVILIDAD + IMC/CP</b></div>
+   </div>
+   <div class="note" style="margin-top:7px">Si el Word/interrogatorio no informa pérdida de peso, la app no la inventa: utiliza la opción “no sabe” del MNA-SF.</div>
   </div>
 
-  <div class="metrics" style="margin-top:8px">
-   <div class="metric"><span>NRS-2002</span><b id="screenNrsTotal">0</b></div>
-   <div class="metric"><span>NRS nutricional</span><b id="screenNrsNut">0</b></div>
-   <div class="metric"><span>NRS enfermedad</span><b id="screenNrsDis">0</b></div>
-   <div class="metric"><span>MNA-SF</span><b id="screenSecond">—</b></div>
-   <div class="metric"><span>Resultado</span><b id="screenRisk">BAJO RIESGO</b></div>
-   <div class="metric"><span>Datos usados</span><b id="screenAutoData">ENTREVISTA</b></div>
-  </div>
-
-  <div id="screenReason" class="sourceBox" style="margin-top:8px">
-   <div class="srcTitle">Cómo lo obtuvo</div>
+  <div class="sourceBox" style="margin-top:8px">
+   <div class="srcTitle">Criterios detectados</div>
    <div id="screenReasonText" class="sourceText" style="min-height:auto;max-height:none"></div>
   </div>
-
-  <details style="margin-top:8px"><summary>Corregir tamizaje manualmente (solo si hace falta)</summary>
-   <div class="grid2" style="margin-top:7px">
-    <div><label class="label">NRS · severidad de enfermedad</label>
-     <select id="nrsEnfOverride" onchange="calculateAll()"><option value="AUTO">Automático</option><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select>
-    </div>
-    <div><label class="label">APACHE II (si existe)</label><input id="nrsApache" type="number" min="0" step="1" placeholder="Opcional" oninput="calculateAll()"></div>
-    <div id="mnaManualBox" class="hidden"><label class="label">MNA-SF · problemas neuropsicológicos</label><select id="mnaNeuro2" onchange="calculateAll()"><option value="AUTO">Detectar del Word</option><option value="NONE">Ninguno</option><option value="MILD">Demencia leve</option><option value="SEVERE">Demencia severa/depresión severa</option></select></div>
-   </div>
-  </details>
  </section>
  <section class="card section">
   <div class="secHead"><div class="step">6</div><div><h2>Motor clínico nutricional</h2><p>Adapta energía, proteína, peso de cálculo y soporte según enfermedad, estado nutricional y guías vigentes.</p></div></div>
@@ -900,11 +895,11 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&
 const makeId=p=>`${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,9)}`;
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
 
-const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v19", FALLBACK_KEY="nutri_word_rounds_v19";
+const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v22", FALLBACK_KEY="nutri_word_rounds_v22";
 let db=null,currentRound=null,currentPatientId=null,history=[],loading=false,saveTimer=null;
 
-const simpleFields=["area","ambiente","cama","nombre","edad","cobertura","sexo","perfil","dieta","sourceText","alergia","intolerancia","ultima","bristol","habito","hallazgo","peso","cb","cp","talla","talonRodilla","pesoPregestacional","edadGestacional","pesoHabitual","tiempoPesoHabitual","nrsEnfOverride","reqPerfil","cie10","plan","planObs","kcalKg","extraKcal","choPct","proPct","proKg","lipPct","clinicalProfile","renalSubtype","egfr","icuDay","hasIC","measuredEE","ibdActivity","pancreasType","surgeryScenario","nrsApache","mnaNeuro2","nrsWeekMode","suppName","suppMl","suppKcal","suppProtein","suppServings"];
-const radios=["conciencia","orientacion","colabora","apetito","consumoDieta","viaoral","masticacion","deglucion","diuresis","flatos","deambula","tieneAlergia","tieneIntolerancia","lactancia","mnaStress","mnaNeuro","facie","temporal","periorb","dientes","mucosa","piel","clavicula","extremidades","masaMuscular","masaGrasa","abdomen","edemaFisico","ojos","modoPeso","modoTalla","mFacie","mTemporal","mPeriorb","mDientes","mHidratacion","mClavicula","mAbdomen","mExtSup","mTricipital","mCuadriceps","mPatelar","mGemelos","mEdema"];
+const simpleFields=["area","ambiente","cama","nombre","edad","cobertura","sexo","perfil","dieta","sourceText","alergia","intolerancia","ultima","bristol","habito","hallazgo","peso","cb","cp","talla","talonRodilla","pesoPregestacional","edadGestacional","reqPerfil","cie10","plan","planObs","kcalKg","extraKcal","choPct","proPct","proKg","lipPct","clinicalProfile","renalSubtype","egfr","icuDay","hasIC","measuredEE","ibdActivity","pancreasType","surgeryScenario","suppName","suppMl","suppKcal","suppProtein","suppServings","acompanante","acompananteDetalle","informante","extremidadesDetalle","mExtSupDetalle"];
+const radios=["conciencia","orientacion","colabora","apetito","consumoDieta","viaoral","masticacion","deglucion","diuresis","flatos","deambula","tieneAlergia","tieneIntolerancia","lactancia","facie","temporal","periorb","dientes","mucosa","piel","clavicula","extremidades","masaMuscular","masaGrasa","abdomen","edemaFisico","ojos","modoPeso","modoTalla","mFacie","mTemporal","mPeriorb","mDientes","mHidratacion","mClavicula","mAbdomen","mExtSup","mTricipital","mCuadriceps","mPatelar","mGemelos","mEdema"];
 const checks=["aNausea","aVomito","aDolor","aDistension","aDiarrea","aEstreni","aMelena"];
 
 function flash(t){$("status").textContent=t;clearTimeout(flash.t);flash.t=setTimeout(()=>$("status").textContent="",2300)}
@@ -996,10 +991,10 @@ function makeDefaultState(h,sourceText){
  const sex=inferSex(sourceText),age=parseInt(h.edad||"0",10),diet=validDietText(h.dieta)||"DIETA GENERAL";
  const profile=inferProfileFromText(sourceText,sex,age,diet);
  const state={area:h.area,ambiente:h.ambiente,cama:h.cama,nombre:h.nombre,edad:h.edad,cobertura:h.cobertura,sexo:sex,perfil:profile,dieta:diet,sourceText,
-  alergia:"",intolerancia:"",ultima:"HOY",bristol:"4",habito:"REGULAR",hallazgo:"",peso:"",cb:"",cp:"",talla:"",talonRodilla:"",pesoPregestacional:"",edadGestacional:"",pesoHabitual:"",tiempoPesoHabitual:"3",nrsEnfOverride:"AUTO",
+  alergia:"",intolerancia:"",ultima:"HOY",bristol:"4",habito:"REGULAR",hallazgo:"",peso:"",cb:"",cp:"",talla:"",talonRodilla:"",pesoPregestacional:"",edadGestacional:"",acompanante:"NO",acompananteDetalle:"",informante:"PACIENTE",extremidadesDetalle:"",mExtSupDetalle:"",nrsLoss3m:"NONE",mnaIntake3m:"NO",mnaLoss3m:"NONE",mnaStress3m:"YES",nrsEnfOverride:"AUTO",
   reqPerfil:"general",cie10:"Z71.3 – VIGILANCIA Y ASESORAMIENTO DE LA DIETA",plan:diet,planObs:"",kcalKg:"30",extraKcal:"0",choPct:"55",proPct:"15",proKg:"1.3",lipPct:"30"};
  Object.assign(state,{
-  r_conciencia:"DESPIERTO/A",r_orientacion:"ORIENTADO/A",r_colabora:"SÍ",r_mnaStress:"SÍ",r_mnaNeuro:"NINGUNO",r_apetito:"CONSERVADO",r_consumoDieta:"100%",r_viaoral:(/^NPO\b/i.test(diet)||/^SNG\b/i.test(diet))?"NO APLICA":"TOLERA",r_masticacion:"SIN INCONVENIENTES",r_deglucion:"SIN INCONVENIENTES",r_diuresis:"CONSERVADA",r_flatos:"SÍ",r_deambula:"SIN ASISTENCIA",
+  r_conciencia:"DESPIERTO/A",r_orientacion:"ORIENTADO/A",r_colabora:"SÍ",r_apetito:"CONSERVADO",r_consumoDieta:"100%",r_viaoral:(/^NPO\b/i.test(diet)||/^SNG\b/i.test(diet))?"NO APLICA":"TOLERA",r_masticacion:"SIN INCONVENIENTES",r_deglucion:"SIN INCONVENIENTES",r_diuresis:"CONSERVADA",r_flatos:"SÍ",r_deambula:"SIN ASISTENCIA",
   r_tieneAlergia:"NO",r_tieneIntolerancia:"NO",r_lactancia:"NO APLICA",r_facie:"CÁLIDA",r_temporal:"BIEN DEFINIDO / SIN DEPLECIÓN",r_periorb:"CONSERVADA",r_dientes:"COMPLETAS",r_mucosa:"HIDRATADA",r_piel:"HIDRATADA",r_clavicula:"NO PROMINENTES",r_extremidades:"SIMÉTRICAS",r_masaMuscular:"CONSERVADA",r_masaGrasa:"CONSERVADA",r_abdomen:"BLANDO, DEPRESIBLE, NO DOLOROSO A LA PALPACIÓN",r_edemaFisico:"NO",r_ojos:"SIN HALLAZGOS",r_modoPeso:"ACTUAL",r_modoTalla:"TALLA",
   r_mFacie:"SEMICÁLIDA",r_mTemporal:"DEFINIDO",r_mPeriorb:"COLORACIÓN UNIFORME, SIN OJERAS, NI HUNDIMIENTOS",r_mDientes:"COMPLETAS",r_mHidratacion:"SEMIHIDRATADAS",r_mClavicula:"MÚSCULO BIEN DEFINIDO RODEANDO EL HUESO. NO PROMINENTE",r_mAbdomen:"BLANDO, DEPRESIBLE NO DOLOROSO A LA PALPACIÓN",r_mExtSup:"SIMÉTRICAS",r_mTricipital:"TEJIDO GRASO Y MASA MUSCULAR NORMAL EVIDENTE ENTRE LOS PLIEGUES DE PIEL PELLIZCADOS",r_mCuadriceps:"REDONDEADO Y BIEN DESARROLLADO",r_mPatelar:"MÚSCULOS SOBRESALEN. RÓTULA NO PROMINENTE",r_mGemelos:"GEMELOS BIEN DESARROLLADOS",r_mEdema:"NO",
   aNausea:false,aVomito:false,aDolor:false,aDistension:false,aDiarrea:false,aEstreni:false,aMelena:false
@@ -1138,16 +1133,11 @@ function openPatient(id){
 function captureState(){const s={};simpleFields.forEach(id=>s[id]=val(id));radios.forEach(n=>s["r_"+n]=radio(n));checks.forEach(id=>s[id]=chk(id));return s}
 function restoreState(s){
  loading=true;try{
-  checks.forEach(id=>$(id).checked=false);
+  checks.forEach(id=>{if($(id))$(id).checked=false});
   radios.forEach(n=>document.querySelectorAll(`input[name="${n}"]`).forEach(x=>x.checked=false));
   Object.entries(s||{}).forEach(([k,v])=>{if(k.startsWith("r_"))setRadio(k.slice(2),v);else if($(k)){if($(k).type==="checkbox")$(k).checked=!!v;else $(k).value=v??""}});
-  if(!s.r_mnaStress)setRadio("mnaStress","SÍ");
-  if(!s.r_mnaNeuro)setRadio("mnaNeuro","NINGUNO");
-  if(!val("tiempoPesoHabitual"))$("tiempoPesoHabitual").value="3";
-  if(!val("nrsEnfOverride"))$("nrsEnfOverride").value="AUTO";
-  if($("nrsWeekMode")&&!val("nrsWeekMode"))$("nrsWeekMode").value="CURRENT";
-  if($("mnaNeuro2")&&!val("mnaNeuro2"))$("mnaNeuro2").value="AUTO";
-      if($("mnaNeuro2")&&!val("mnaNeuro2"))$("mnaNeuro2").value="NONE";
+  if($("acompanante")&&!val("acompanante"))$("acompanante").value="NO";
+  if($("informante")&&!val("informante"))$("informante").value="PACIENTE";
   if($("clinicalProfile")&&!val("clinicalProfile"))$("clinicalProfile").value="AUTO";
   if($("surgeryScenario")&&!val("surgeryScenario"))$("surgeryScenario").value="AUTO";
   if($("renalSubtype")&&!val("renalSubtype"))$("renalSubtype").value="CKD_STABLE";
@@ -1155,7 +1145,9 @@ function restoreState(s){
   if($("hasIC")&&!val("hasIC"))$("hasIC").value="NO";
   if($("ibdActivity")&&!val("ibdActivity"))$("ibdActivity").value="ACTIVA";
   if($("pancreasType")&&!val("pancreasType"))$("pancreasType").value="AGUDA";
-  syncAgeProfile();updateProfileVisibility();applyMaternityDefaults(val("perfil"),false);toggleAlergia(false);toggleIntolerancia(false);toggleWeightMode(false);toggleHeightMode(false);updateNpoVisibility();autoRequirementProfile();calculateAll();
+  syncAgeProfile();updateProfileVisibility();applyMaternityDefaults(val("perfil"),false);
+  toggleAlergia(false);toggleIntolerancia(false);toggleCompanion();toggleExtremityDetail();toggleMaternityExtremityDetail();
+  toggleWeightMode(false);toggleHeightMode(false);updateNpoVisibility();updateBowelHabit();autoRequirementProfile();calculateAll();
  }finally{loading=false}
 }
 async function saveCurrentPatient(completed=false,show=true){
@@ -1227,15 +1219,78 @@ function profileChanged(){
  updateProfileVisibility();autoRequirementProfile();calculateAll();updatePreview();
 }
 function updateProfileVisibility(){
- const p=val("perfil"),mat=p==="embarazada"||p==="posparto";
+ const p=val("perfil"),mat=p==="embarazada"||p==="posparto",age=num(val("edad"))||0,older=age>=60;
  $("maternaBox").classList.toggle("hidden",p!=="posparto");
  $("consumoBox").classList.toggle("hidden",p==="posparto");
  $("generalExamFields").classList.toggle("hidden",mat);
  $("maternityExamFields").classList.toggle("hidden",!mat);
  $("pregnancyAnthroFields").classList.toggle("hidden",p!=="embarazada");
- if($("mnaExtra"))$("mnaExtra").classList.toggle("hidden",(num(val("edad"))||0)<65);
+ if($("adultRiskBox"))$("adultRiskBox").classList.toggle("hidden",older);
+ if($("mnaQuickBox"))$("mnaQuickBox").classList.toggle("hidden",!older);
  $("examSubtitle").textContent=mat?(p==="posparto"?"Examen físico específico de posparto/lactancia.":"Examen físico específico de gestante."):"Opciones completas y separadas.";
  if(mat)applyMaternityDefaults(p,false);
+}
+
+function toggleCompanion(){
+ const has=val("acompanante")&&val("acompanante")!=="NO";
+ if($("informantBox"))$("informantBox").classList.toggle("hidden",!has);
+ if($("acompananteDetalle"))$("acompananteDetalle").classList.toggle("hidden",!has);
+ if(!has){
+  if($("informante"))$("informante").value="PACIENTE";
+  if($("acompananteDetalle"))$("acompananteDetalle").value="";
+ }
+}
+function toggleExtremityDetail(){
+ const asym=radio("extremidades")==="ASIMÉTRICAS";
+ if($("extremidadesDetalle"))$("extremidadesDetalle").classList.toggle("hidden",!asym);
+ if(!asym&&$("extremidadesDetalle"))$("extremidadesDetalle").value="";
+}
+function toggleMaternityExtremityDetail(){
+ const asym=radio("mExtSup")==="ASIMÉTRICAS";
+ if($("mExtSupDetalle"))$("mExtSupDetalle").classList.toggle("hidden",!asym);
+ if(!asym&&$("mExtSupDetalle"))$("mExtSupDetalle").value="";
+}
+function updateBowelHabit(){
+ if(!$("habito"))return;
+ const last=val("ultima"),br=Number(val("bristol")||4);
+ const irregular=last==="HACE 2 DÍAS"||last==="HACE 3 DÍAS O MÁS"||br<=2||br>=6||chk("aDiarrea")||chk("aEstreni");
+ $("habito").value=irregular?"IRREGULAR":"REGULAR";
+}
+function companionNarrative(){
+ const rel=val("acompanante");
+ if(!rel||rel==="NO")return "";
+ const sex=val("sexo")==="F"?"ACOMPAÑADA":"ACOMPAÑADO";
+ const relMap={HIJO:"SU HIJO",HIJA:"SU HIJA",MADRE:"SU MADRE",PADRE:"SU PADRE",ESPOSO:"SU ESPOSO",ESPOSA:"SU ESPOSA",HERMANO:"SU HERMANO",HERMANA:"SU HERMANA","CUIDADOR/A":"SU CUIDADOR/A",OTRO:"UN ACOMPAÑANTE"};
+ let who=relMap[rel]||"UN ACOMPAÑANTE";
+ const detail=val("acompananteDetalle").trim();
+ if(detail)who+=` (${up(detail)})`;
+ const info=val("informante")||"PACIENTE";
+ if(info==="FAMILIAR")return `SE ENCUENTRA ${sex} DE ${who}; EL ACOMPAÑANTE APORTA LA INFORMACIÓN DEL INTERROGATORIO NUTRICIONAL.`;
+ if(info==="AMBOS")return `SE ENCUENTRA ${sex} DE ${who}; PACIENTE Y ACOMPAÑANTE COLABORAN CON EL INTERROGATORIO NUTRICIONAL.`;
+ return `SE ENCUENTRA ${sex} DE ${who}; EL PACIENTE APORTA LA INFORMACIÓN DEL INTERROGATORIO NUTRICIONAL.`;
+}
+function foodArticle(value){
+ const raw=String(value||"").trim();
+ if(!raw)return "";
+ const u=normalizedUpper(raw);
+ if(/^(LA|EL|LOS|LAS|AL|A LA|A LOS|A LAS)\s/.test(u))return raw;
+ const map={
+  "LACTOSA":"LA LACTOSA","LECHE":"LA LECHE","PROTEINA DE LECHE":"LA PROTEÍNA DE LECHE",
+  "GLUTEN":"EL GLUTEN","HUEVO":"EL HUEVO","HUEVOS":"LOS HUEVOS","MARISCOS":"LOS MARISCOS",
+  "PESCADO":"EL PESCADO","MANI":"EL MANÍ","MANÍ":"EL MANÍ","CACAHUATE":"EL CACAHUATE",
+  "NUECES":"LAS NUECES","SOYA":"LA SOYA","SOJA":"LA SOJA"
+ };
+ return map[u]||raw;
+}
+function allergySentence(){
+ if(radio("tieneAlergia")!=="SÍ")return "NO REFIERE ALERGIAS ALIMENTARIAS";
+ const v=val("alergia").trim();
+ return v?`REFIERE ALERGIA A ${up(foodArticle(v))}`:"REFIERE ALERGIA ALIMENTARIA NO ESPECIFICADA";
+}
+function intoleranceSentence(){
+ if(radio("tieneIntolerancia")!=="SÍ")return "NO REFIERE INTOLERANCIAS ALIMENTARIAS";
+ const v=val("intolerancia").trim();
+ return v?`REFIERE SER INTOLERANTE A ${up(foodArticle(v))}`:"REFIERE INTOLERANCIA ALIMENTARIA NO ESPECIFICADA";
 }
 function toggleAlergia(update=true){const y=radio("tieneAlergia")==="SÍ";$("alergia").classList.toggle("hidden",!y);if(!y)$("alergia").value="";if(update)updatePreview()}
 function toggleIntolerancia(update=true){const y=radio("tieneIntolerancia")==="SÍ";$("intolerancia").classList.toggle("hidden",!y);if(!y)$("intolerancia").value="";if(update)updatePreview()}
@@ -1275,54 +1330,151 @@ function clinicalText(){
  return normalizedUpper(`${val("sourceText")} ${val("dieta")} ${val("area")} ${val("plan")}`);
 }
 function activeDiagnosisText(){
- const raw=up(val("sourceText")||"");
+ const raw=normalizedUpper(val("sourceText")||"").replace(/\*/g," ");
  const patterns=[
-  /BAJO LOS DIAGN[ÓO]STICOS(?: DE)?\s*:\s*/i,
-  /DIAGN[ÓO]STICOS?\s*:\s*/i,
-  /DX\s*:\s*/i
+  /IMPRESI[ÓO]N\s+DIAGN[ÓO]STIC[AO]S?(?:\s+DE)?\s*[:.]?\s*/gi,
+  /BAJO\s+LOS\s+DIAGN[ÓO]STICOS?(?:\s+DE)?\s*[:.]?\s*/gi,
+  /DIAGN[ÓO]STIC[AO]S?(?:\s+DE)?\s*[:.]?\s*/gi,
+  /\bDX(?:\s+DE)?\s*[:.]?\s*/gi
  ];
- let best=-1,end="";
+ let bestEnd=-1;
  for(const rx of patterns){
-  rx.lastIndex=0;const m=rx.exec(raw);
-  if(m&&m.index>=best){best=m.index;end=raw.slice(m.index+m[0].length);}
+  let m;
+  while((m=rx.exec(raw))!==null){
+   if(rx.lastIndex>bestEnd)bestEnd=rx.lastIndex;
+  }
  }
- return normalizedUpper(end||"");
+ return bestEnd>=0?raw.slice(bestEnd).trim():"";
+}
+
+function backgroundClinicalText(){
+ return normalizedUpper(`${val("sourceText")} ${val("dieta")} ${val("area")} ${val("plan")}`);
+}
+function diseaseFlags(){
+ const all=backgroundClinicalText(),active=activeDiagnosisText(),area=normalizedUpper(val("area"));
+ return {
+  renal:/ENFERMEDAD RENAL|INSUFICIENCIA RENAL|\bERC\b|\bCKD\b|\bAKI\b|N18\.?|HEMODIAL|DIALISIS|DIÁLISIS/.test(all),
+  dialysis:/HEMODIAL|DIALISIS|DIÁLISIS|\bKRT\b|CKRT|PIKRT/.test(all),
+  hepatic:/CIRROSIS|HEPATOPAT|INSUFICIENCIA HEPATICA|INSUFICIENCIA HEPÁTICA|TRASPLANTE HEPATICO|TRANSPLANTE HEPATICO|SINDROME COLESTASICO|SÍNDROME COLESTÁSICO/.test(all),
+  pancreas:/PANCREATIT/.test(active),
+  ibd:/CROHN|COLITIS ULCEROSA|ENFERMEDAD INFLAMATORIA INTESTINAL|\bEII\b/.test(all),
+  cancer:/CANCER|CÁNCER|CARCINOMA|NEOPLAS|ONCOLOG|LEUCEMIA|LINFOMA|TUMOR MALIGNO/.test(all),
+  diabetes:/DIABETES|PREDIABETES|HIPERGLUCEM|CETOACIDOSIS DIABETICA|CETOACIDOSIS DIABÉTICA/.test(all),
+  cardiac:/INSUFICIENCIA CARDIACA|INSUFICIENCIA CARDÍACA|FALLA CARDIACA|FALLA CARDÍACA|CARDIOPAT|BLOQUEO AURICULOVENTRICULAR|ARRITMIA/.test(all),
+  respiratory:/EPOC|INSUFICIENCIA RESPIRATORIA|FALLA RESPIRATORIA|NEUMOPAT|VENTILACION MECANICA|VENTILACIÓN MECÁNICA/.test(all),
+  neuro:/ACV|ICTUS|ACCIDENTE CEREBROVASCULAR|DISFAGIA|DISFAGÍA|ENCEFALITIS|EPILEPSIA|NEUROLOG/.test(all),
+  dementia:/DEMENCIA|ALZHEIMER/.test(all),
+  psychiatric:/ESQUIZOFREN|PSICOSIS|TRASTORNO DEPRESIVO|EPISODIO DEPRESIVO/.test(all),
+  autoimmune:/LUPUS|VASCULITIS|ARTRITIS REUMATOIDE/.test(all),
+  hematologic:/PURPURA TROMBOCITOP|PÚRPURA TROMBOCITOP|LEUCEMIA|LINFOMA|ANEMIA HEMOLIT/.test(all),
+  infection:/SEPSIS|INFECCION|INFECCIÓN|NEUMONIA|NEUMONÍA|ENDOCARDITIS|COLANGITIS|ABSCESO|PERITONITIS|BACTERIEMIA/.test(active),
+  sepsis:/SEPSIS|CHOQUE SEPTICO|CHOQUE SÉPTICO|SHOCK SEPTICO|SHOCK SÉPTICO/.test(active),
+  giBleed:/HEMORRAGIA GASTROINTESTINAL|HEMORRAGIA DIGESTIVA|MELENA/.test(active),
+  wound:/ULCERA POR PRESION|ÚLCERA POR PRESIÓN|LESION POR PRESION|LESIÓN POR PRESIÓN|ESCARA|HERIDA/.test(all),
+  burn:/QUEMAD/.test(active),
+  surgery:/POSTOPERATOR|POSTQUIR|ANASTOMOS|LAPAROTOM|COLECTOM|GASTRECTOM|RESECCION INTESTINAL|RESECCIÓN INTESTINAL|DEHISCENCIA|FISTULA|FÍSTULA/.test(active),
+  trauma:/POLITRAUMA|TRAUMA ACTUAL|FRACTURA ACTUAL/.test(active),
+  critical:/\bUCI\b|\bICU\b/.test(area)||/VENTILACION MECANICA ACTUAL|VENTILACIÓN MECÁNICA ACTUAL|CHOQUE SEPTICO|CHOQUE SÉPTICO|SHOCK SEPTICO|SHOCK SÉPTICO/.test(active)
+ };
+}
+function clinicalStressState(){
+ const f=diseaseFlags(),a=activeDiagnosisText();
+ if(f.critical||f.sepsis||f.burn||f.trauma||/CETOACIDOSIS DIABETICA|CETOACIDOSIS DIABÉTICA/.test(a))
+  return {level:"ALTO",score:2};
+ if(f.infection||f.pancreas||f.cancer||f.hematologic||f.autoimmune||f.giBleed||f.surgery||
+    /COLECISTITIS|COLEDOCOLITIASIS|TROMBOSIS|EMBOLISMO|PURPURA|PÚRPURA|BLOQUEO AURICULOVENTRICULAR/.test(a))
+  return {level:"MODERADO",score:1};
+ if(a&&a.length>8&&!f.psychiatric)return {level:"MODERADO",score:1};
+ return {level:"BAJO",score:0};
+}
+function currentIntakePercent(){
+ if(importedRoute()==="NPO")return null;
+ const raw=radio("consumoDieta")||"100%";
+ const n=parseInt(raw,10);
+ return Number.isFinite(n)?n:100;
+}
+function clinicalNutritionRisk(){
+ const b=calculationsBase(),stress=clinicalStressState(),f=diseaseFlags(),factors=[];
+ let score=0;
+ const intake=currentIntakePercent(),app=radio("apetito"),route=importedRoute();
+
+ if(Number.isFinite(b.imc)){
+  if((b.age>=60&&b.imc<23)||(b.age<60&&b.imc<18.5)){score+=3;factors.push("IMC compatible con bajo peso");}
+  else if((b.age>=60&&b.imc<25)||(b.age<60&&b.imc<20)){score+=1;factors.push("IMC cercano al límite inferior");}
+ }
+ if(route!=="NPO"&&intake!==null){
+  if(intake<=25){score+=3;factors.push(`ingesta ${intake}%`);}
+  else if(intake<=50){score+=2;factors.push(`ingesta ${intake}%`);}
+  else if(intake<75){score+=1;factors.push(`ingesta ${intake}%`);}
+ }
+ if(app==="AUSENTE"){score+=2;factors.push("apetito ausente");}
+ else if(app==="DISMINUIDO"){score+=1;factors.push("apetito disminuido");}
+
+ if(radio("viaoral")==="NO TOLERA"&&route!=="NPO"){score+=1;factors.push("mala tolerancia oral");}
+ if(radio("deglucion")==="CON DIFICULTAD"){score+=1;factors.push("dificultad para deglutir");}
+ if(radio("masticacion")==="CON DIFICULTAD"){score+=1;factors.push("dificultad para masticar");}
+ if(chk("aVomito")||chk("aDiarrea")){score+=1;factors.push("síntomas gastrointestinales con potencial impacto en ingesta/pérdidas");}
+
+ const muscle=radio("masaMuscular"),fat=radio("masaGrasa");
+ if(muscle==="SEVERA DEPLECIÓN"){score+=3;factors.push("depleción muscular severa");}
+ else if(muscle==="MODERADA DEPLECIÓN"){score+=2;factors.push("depleción muscular moderada");}
+ else if(muscle==="LEVE DEPLECIÓN"){score+=1;factors.push("depleción muscular leve");}
+ if(fat==="SEVERA DEPLECIÓN"||fat==="MODERADA DEPLECIÓN"){score+=1;factors.push("depleción de masa grasa");}
+
+ if(stress.score===2){score+=2;factors.push("alto estrés metabólico por condición actual");}
+ else if(stress.score===1){score+=1;factors.push("enfermedad activa con estrés metabólico");}
+
+ if(f.cancer||f.dialysis||f.hepatic||f.ibd||f.wound){score+=1;factors.push("comorbilidad con impacto nutricional");}
+
+ const high=score>=5;
+ const risk=score>=2;
+ const malnutritionEvidence=
+  (Number.isFinite(b.imc)&&((b.age>=60&&b.imc<23)||(b.age<60&&b.imc<18.5)))||
+  ["MODERADA DEPLECIÓN","SEVERA DEPLECIÓN"].includes(muscle);
+
+ return {score,risk,high,malnutritionEvidence,factors:[...new Set(factors)],stress};
+}
+function inferredWeightLossMNA(){
+ const u=backgroundClinicalText();
+ if(/NO REFIERE (?:P[ÉE]RDIDA|BAJA) DE PESO|SIN P[ÉE]RDIDA DE PESO/.test(u))return {points:3,label:"sin pérdida referida"};
+ const kg=u.match(/P[ÉE]RDIDA DE PESO[^0-9]{0,25}([0-9]+(?:[.,][0-9]+)?)\s*KG/);
+ if(kg){
+  const n=parseFloat(kg[1].replace(",","."));
+  if(n>3)return {points:0,label:`pérdida referida >3 kg`};
+  if(n>=1)return {points:2,label:`pérdida referida 1–3 kg`};
+ }
+ if(/P[ÉE]RDIDA DE PESO|BAJA DE PESO|HA BAJADO DE PESO/.test(u))return {points:1,label:"pérdida referida sin cuantificar"};
+ return {points:1,label:"pérdida de peso no conocida"};
 }
 function currentContextText(){
  const area=normalizedUpper(val("area")),diet=normalizedUpper(val("dieta")),dx=activeDiagnosisText();
  return `${area} ${diet} ${dx}`.trim();
 }
 function inferClinicalProfile(){
- const p=val("perfil"),area=normalizedUpper(val("area")),u=currentContextText(),dx=activeDiagnosisText();
+ const p=val("perfil"),f=diseaseFlags(),active=activeDiagnosisText(),all=backgroundClinicalText();
  if(p==="embarazada")return "EMBARAZO";
  if(p==="posparto")return "POSPARTO";
-
- // UCI SOLO si el servicio/área actual es UCI/ICU o el diagnóstico activo dice situación crítica actual.
- if(/\bUCI\b|\bICU\b/.test(area)||/VENTILACION MECANICA ACTUAL|VENTILACIÓN MECÁNICA ACTUAL|CHOQUE SEPTICO|CHOQUE SÉPTICO|SHOCK SEPTICO|SHOCK SÉPTICO/.test(dx))return "UCI";
-
- if(/HEMODIAL|DIALISIS|DIÁLISIS|ENFERMEDAD RENAL|INSUFICIENCIA RENAL|NEFROPAT|AKI|ERC|CKD/.test(dx))return "RENAL";
- if(/CIRROSIS|HEPATOPAT|INSUFICIENCIA HEPATICA|INSUFICIENCIA HEPÁTICA/.test(dx))return "HEPATICO";
- if(/PANCREATIT/.test(dx))return "PANCREATITIS";
- if(/CROHN|COLITIS ULCEROSA|ENFERMEDAD INFLAMATORIA INTESTINAL|\bEII\b/.test(dx))return "IBD";
- if(/CANCER|CÁNCER|CARCINOMA|NEOPLAS|ONCOLOG|LEUCEMIA|LINFOMA|TUMOR MALIGNO/.test(dx))return "ONCOLOGIA";
- if(/QUEMAD/.test(dx))return "QUEMADOS";
- if(/FALLA INTESTINAL|INSUFICIENCIA INTESTINAL|INTESTINO CORTO|SHORT BOWEL|MALABSORC/.test(dx))return "INTESTINAL";
- if(/ACV|ICTUS|ACCIDENTE CEREBROVASCULAR|DISFAGIA|DISFAGÍA|NEUROLOG/.test(dx))return "NEURO";
- if(/INSUFICIENCIA CARDIACA|INSUFICIENCIA CARDÍACA|FALLA CARDIACA|FALLA CARDÍACA|NYHA|CARDIOPATIA|CARDIOPATÍA/.test(dx))return "CARDIACO";
- if(/EPOC|INSUFICIENCIA RESPIRATORIA|FALLA RESPIRATORIA|NEUMOPATIA|NEUMOPATÍA/.test(dx))return "RESPIRATORIO";
- if(/SEPSIS|INFECCION SISTEMICA|INFECCIÓN SISTÉMICA|BACTERIEMIA|NEUMONIA|NEUMONÍA/.test(dx))return "INFECCION";
- if(/ULCERA POR PRESION|ÚLCERA POR PRESIÓN|LESION POR PRESION|LESIÓN POR PRESIÓN|ESCARA/.test(dx))return "HERIDAS";
- if(/DIABETES|HIPERGLUCEM/.test(dx))return "DIABETES";
-
- // Cirugía/trauma solo si la situación ACTIVA lo sugiere; no por antecedente quirúrgico remoto.
- if(/POSTOPERATOR|POSTQUIR|ANASTOMOS|LAPAROTOM|COLECTOM|GASTRECTOM|RESECCION INTESTINAL|RESECCIÓN INTESTINAL|DEHISCENCIA|FISTULA|FÍSTULA/.test(dx))return "CIRUGIA";
- if(/POLITRAUMA|TRAUMA ACTUAL|FRACTURA ACTUAL/.test(dx))return "TRAUMA";
-
- if((num(val("edad"))||0)>=60&&/DEMENCIA|ALZHEIMER/.test(u))return "DEMENCIA";
+ if(f.critical)return "UCI";
+ if(f.renal)return "RENAL";
+ if(f.pancreas)return "PANCREATITIS";
+ if(f.ibd)return "IBD";
+ if(f.hepatic)return "HEPATICO";
+ if(f.cancer)return "ONCOLOGIA";
+ if(f.burn)return "QUEMADOS";
+ if(/FALLA INTESTINAL|INSUFICIENCIA INTESTINAL|INTESTINO CORTO|SHORT BOWEL|MALABSORC/.test(all))return "INTESTINAL";
+ if(f.surgery)return "CIRUGIA";
+ if(f.trauma)return "TRAUMA";
+ if(f.infection)return "INFECCION";
+ if(f.wound)return "HERIDAS";
+ if(f.neuro)return "NEURO";
+ if(f.respiratory)return "RESPIRATORIO";
+ if(f.cardiac)return "CARDIACO";
+ if(f.diabetes)return "DIABETES";
+ if((num(val("edad"))||0)>=60&&f.dementia)return "DEMENCIA";
  if((num(val("edad"))||0)>=60)return "GERIATRIA";
- const b=calculationsBase();
+ const b=calculationsBase(),risk=clinicalNutritionRisk();
  if(Number.isFinite(b.imc)&&b.imc>=30)return "OBESIDAD";
- if(nrsResult().total>=3)return "MALNUTRICION";
+ if(risk.malnutritionEvidence||risk.high)return "MALNUTRICION";
  return "GENERAL";
 }
 function currentClinicalProfile(){
@@ -1408,52 +1560,72 @@ function metabolicStress(g){
  return "BAJO-MODERADO";
 }
 function modifierState(){
- const b=calculationsBase(),u=clinicalText(),n=nrsResult(),loss=percentWeightLoss(),intake=importedRoute()==="NPO"?null:parseInt(radio("consumoDieta")||"100",10),cx=complicationState();
+ const b=calculationsBase(),u=backgroundClinicalText(),older=b.age>=60,cx=complicationState(),f=diseaseFlags(),risk=clinicalNutritionRisk();
+ const m=older?mnaResult():null;
+ const intake=currentIntakePercent();
  const obesity=Number.isFinite(b.imc)&&b.imc>=30;
- const older=b.age>=60;
  const under=Number.isFinite(b.imc)&&(older?b.imc<23:b.imc<18.5);
  const muscle=["MODERADA DEPLECIÓN","SEVERA DEPLECIÓN"].includes(radio("masaMuscular"));
- const malnutrition=n.total>=3||under||loss>=5||muscle;
- const wound=cx.pressureInjury||/HERIDA/.test(u);
- const dialysis=/HEMODIAL|DIALISIS|DIÁLISIS|\bKRT\b|CKRT|PIKRT/.test(u);
- return {obesity,older,under,muscle,malnutrition,diabetes:cx.diabetes,wound,dysphagia:cx.dysphagia,dialysis,loss,intake,nrs:n.total,cx};
+ const fatLoss=["MODERADA DEPLECIÓN","SEVERA DEPLECIÓN"].includes(radio("masaGrasa"));
+ const nutritionRisk=older?(m.complete&&m.total<=11):risk.risk;
+ const malnutrition=under||muscle||(older?(m.complete&&m.total<=7):risk.malnutritionEvidence);
+ const wound=f.wound||cx.pressureInjury;
+ return {
+  obesity,older,under,muscle,fatLoss,nutritionRisk,malnutrition,
+  diabetes:f.diabetes,wound,dysphagia:cx.dysphagia,dialysis:f.dialysis,
+  intake,screenScore:older?(m.total??null):risk.score,cx,flags:f,stress:risk.stress
+ };
 }
 function guideLabel(cp){
  const m={GENERAL:"GENERAL / POLIMÓRBIDO",MALNUTRICION:"DESNUTRICIÓN / ALTO RIESGO",GERIATRIA:"ADULTO MAYOR",DEMENCIA:"DEMENCIA",ONCOLOGIA:"ONCOLOGÍA",CIRUGIA:"CIRUGÍA",TRAUMA:"TRAUMA",UCI:"UCI / CRÍTICO",RENAL:"RENAL",HEPATICO:"HEPÁTICO",PANCREATITIS:"PANCREATITIS",IBD:"EII",NEURO:"NEURO / ACV",DIABETES:"DIABETES",CARDIACO:"CARDIOLOGÍA",RESPIRATORIO:"RESPIRATORIO",INFECCION:"INFECCIÓN/SEPSIS",HERIDAS:"HERIDAS / LPP",OBESIDAD:"OBESIDAD",QUEMADOS:"QUEMADOS",INTESTINAL:"FALLA INTESTINAL",MANUAL:"MANUAL",EMBARAZO:"EMBARAZO",POSPARTO:"POSPARTO"};
  return m[cp]||cp;
 }
 function guidelineEngine(){
- const b=calculationsBase(),mod=modifierState(),cx=mod.cx,cp=currentClinicalProfile(),actual=b.w,usual=num(val("pesoHabitual")),ideal=idealWeightForGuide(),adj=adjustedWeight33();
- let eW=actual,pW=actual,kMin=25,kMax=30,kChosen=30,pMin=1.0,pMax=1.5,pChosen=mod.malnutrition?1.5:1.2,extra=0;
- let source="ESPEN Hospital Nutrition 2021 / Polimórbidos 2023",reason=["Paciente hospitalizado: se selecciona una meta concreta dentro del rango según edad, enfermedad y estado nutricional."],diseaseAdvice=[];
+ const b=calculationsBase(),mod=modifierState(),cx=mod.cx,cp=currentClinicalProfile(),actual=b.w,ideal=idealWeightForGuide(),adj=adjustedWeight33();
+ let eW=actual,pW=actual,kMin=25,kMax=30,kChosen=25,pMin=.8,pMax=1.5,pChosen=1.0,extra=0;
+ let source="ESPEN Hospital Nutrition 2021 / ESPEN Polimórbidos 2023",reason=[],diseaseAdvice=[];
+
+ // Paciente hospitalizado general: 25/1.0 si realmente está estable;
+ // 30/1.2 con enfermedad activa/riesgo; 30/1.5 con alto catabolismo o malnutrición.
+ if(mod.malnutrition||mod.stress.level==="ALTO"){
+  kChosen=30;pChosen=1.5;reason.push("Malnutrición o estrés metabólico alto: se usa el extremo alto del esquema hospitalario.");
+ }else if(mod.nutritionRisk||mod.stress.level==="MODERADO"){
+  kChosen=30;pChosen=1.2;reason.push("Enfermedad activa o riesgo nutricional: dieta hospitalaria de mayor densidad energética y proteica.");
+ }else{
+  kChosen=25;pChosen=1.0;reason.push("Paciente estable, sin riesgo ni estrés metabólico relevante: requerimiento mínimo de dieta estándar hospitalaria.");
+ }
 
  if(cp==="EMBARAZO"){
-  kMin=kMax=kChosen=35;pMin=pMax=pChosen=1.5;source="Esquema materno configurado";reason=["Gestación: 35 kcal/kg y 1,5 g proteína/kg según el esquema clínico definido para esta app."];
+  kMin=kMax=kChosen=35;pMin=pMax=pChosen=1.5;source="Esquema materno configurado";
+  reason=["Gestación: esquema clínico configurado de 35 kcal/kg y 1,5 g proteína/kg."];
  }else if(cp==="POSPARTO"){
-  kMin=kMax=kChosen=30;pMin=pMax=pChosen=1.5;extra=250;source="Esquema materno configurado";reason=["Posparto/lactancia: 30 kcal/kg +250 kcal y 1,5 g proteína/kg."];
+  kMin=kMax=kChosen=30;pMin=pMax=pChosen=1.5;extra=250;source="Esquema materno configurado";
+  reason=["Posparto/lactancia: 30 kcal/kg +250 kcal y 1,5 g proteína/kg."];
  }else if(cp==="MALNUTRICION"){
   kMin=30;kMax=35;kChosen=mod.under?35:30;pMin=1.2;pMax=1.5;pChosen=1.5;source="ESPEN Polimórbidos 2023";
-  reason=["Alto riesgo/desnutrición: se selecciona el extremo alto de energía/proteína cuando no existe contraindicación específica."];
+  reason=["Malnutrición/depleción: 30–35 kcal/kg según contexto y 1,5 g proteína/kg como meta de trabajo si no existe una condición que obligue a otra prescripción."];
  }else if(cp==="GERIATRIA"||cp==="DEMENCIA"){
-  kMin=27;kMax=30;kChosen=30;pMin=1.0;pMax=1.5;pChosen=mod.malnutrition?1.5:1.2;source=cp==="DEMENCIA"?"ESPEN Demencia 2024 + Geriatría 2022":"ESPEN Geriatría 2022";
+  kMin=27;kMax=30;kChosen=30;pMin=1.0;pMax=1.5;
+  pChosen=(mod.malnutrition||mod.stress.level==="ALTO"||mod.wound)?1.5:(mod.nutritionRisk||mod.stress.level==="MODERADO"?1.2:1.0);
+  source=cp==="DEMENCIA"?"ESPEN Demencia 2024 + Geriatría 2022":"ESPEN Geriatría 2022";
   if(Number.isFinite(b.imc)&&b.imc<=21){kMin=32;kMax=38;kChosen=32;}
-  reason=[Number.isFinite(b.imc)&&b.imc<=21?"Adulto mayor con IMC ≤21: se inicia en 32 kcal/kg, dentro del rango 32–38 descrito para bajo peso.":"Adulto mayor hospitalizado: se selecciona 30 kcal/kg como orientación general; proteína aumenta si existe riesgo/desnutrición."];
+  reason=[Number.isFinite(b.imc)&&b.imc<=21
+    ?"Adulto mayor con IMC ≤21: se selecciona 32 kcal/kg; proteína se ajusta por enfermedad y estado nutricional."
+    :"Adulto mayor hospitalizado: 30 kcal/kg como orientación; proteína 1,0–1,5 g/kg según enfermedad, riesgo y depleción."];
  }else if(cp==="ONCOLOGIA"){
-  kMin=25;kMax=30;kChosen=mod.malnutrition?30:27.5;pMin=1.0;pMax=1.5;pChosen=mod.malnutrition?1.5:1.2;source="ESPEN Cáncer 2021";
-  reason=["Oncología: se selecciona 30 kcal/kg si existe riesgo/desnutrición y 27,5 kcal/kg si está estable; proteína 1,2–1,5 g/kg según riesgo."];
+  kMin=25;kMax=30;kChosen=(mod.nutritionRisk||mod.malnutrition||mod.intake!==null&&mod.intake<75)?30:27.5;
+  pMin=1.0;pMax=1.5;pChosen=mod.malnutrition||mod.muscle?1.5:1.2;source="ESPEN Cáncer 2021";
+  reason=["Oncología: 25–30 kcal/kg y proteína >1,0 hasta 1,5 g/kg; se eleva con baja ingesta, malnutrición o depleción muscular."];
  }else if(cp==="CIRUGIA"||cp==="TRAUMA"){
   const s=currentSurgeryScenario();source="ESPEN Cirugía Update 2025";eW=ideal||actual;pW=ideal||actual;
-  if(s==="POSTOP_SIMPLE"){kMin=25;kMax=30;kChosen=25;pMin=1.2;pMax=1.5;pChosen=mod.malnutrition?1.5:1.2;reason=["Posoperatorio sin complicación metabólica mayor: 25 kcal/kg de peso ideal; proteína aumenta si hay riesgo nutricional."];}
-  if(s==="ABDOMINAL_MAJOR"){kMin=25;kMax=30;kChosen=30;pMin=pMax=pChosen=1.5;reason=["Cirugía abdominal mayor: se selecciona 30 kcal/kg de peso ideal y 1,5 g proteína/kg."];}
-  if(s==="ONCOLOGIC"){kMin=25;kMax=30;kChosen=30;pMin=pMax=pChosen=1.5;reason=["Cirugía oncológica: se selecciona el extremo alto del rango quirúrgico y proteína 1,5 g/kg."];}
-  if(s==="ORTHOPEDIC"){kMin=25;kMax=30;kChosen=(mod.older||mod.malnutrition)?30:25;pMin=1.2;pMax=1.5;pChosen=(mod.older||mod.malnutrition)?1.5:1.2;reason=["Ortopedia/fractura: se aumenta a 30 kcal/kg y 1,5 g/kg si es adulto mayor o existe riesgo nutricional."];}
-  if(s==="TRAUMA"){kMin=25;kMax=30;kChosen=30;pMin=pMax=pChosen=1.5;reason=["Trauma/politrauma: 30 kcal/kg y 1,5 g proteína/kg como meta inicial sin calorimetría."];}
-  if(s==="GI_RESECTION"){kMin=25;kMax=30;kChosen=30;pMin=pMax=pChosen=1.5;reason=["Resección gastrointestinal/anastomosis: 30 kcal/kg y 1,5 g proteína/kg; vía según función y tolerancia."];}
-  if(s==="ILEUS_OBSTRUCTION"){kMin=25;kMax=30;kChosen=25;pMin=1.2;pMax=1.5;pChosen=mod.malnutrition?1.5:1.2;reason=["Íleo/obstrucción: el cálculo es una meta metabólica; la seguridad de la vía debe definirse aparte."];}
-  if(s==="FISTULA_LEAK"){kMin=25;kMax=30;kChosen=30;pMin=pMax=pChosen=1.5;reason=["Fístula/fuga/dehiscencia: 30 kcal/kg y 1,5 g/kg; ajustar posteriormente por débito/pérdidas."];}
-  if(s==="STOMA_HIGH_OUTPUT"){kMin=25;kMax=30;kChosen=30;pMin=pMax=pChosen=1.5;reason=["Ostomía de alto débito: 30 kcal/kg y 1,5 g/kg; pérdidas hidroelectrolíticas se manejan aparte."];}
-  if(s==="OPEN_ABDOMEN"){kMin=25;kMax=30;kChosen=30;pMin=1.5;pMax=2.0;pChosen=1.8;reason=["Abdomen abierto: se selecciona 30 kcal/kg con aporte proteico elevado por pérdidas nitrogenadas."];}
-  if(s==="INFECTION_SEPSIS"){kMin=25;kMax=30;kChosen=30;pMin=1.2;pMax=1.5;pChosen=1.5;reason=["Infección/sepsis posoperatoria no crítica: 30 kcal/kg y 1,5 g/kg; si está actualmente en UCI debe usarse el perfil UCI."];}
+  if(s==="POSTOP_SIMPLE"){kMin=25;kMax=30;kChosen=mod.nutritionRisk?30:25;pMin=1.2;pMax=1.5;pChosen=mod.malnutrition?1.5:1.2;reason=["Posoperatorio: 25–30 kcal/kg y proteína elevada; se usa peso ideal como referencia."];}
+  if(s==="ABDOMINAL_MAJOR"||s==="ONCOLOGIC"||s==="GI_RESECTION"){kMin=25;kMax=30;kChosen=30;pMin=pMax=pChosen=1.5;reason=["Cirugía mayor/oncogastrointestinal: 30 kcal/kg y 1,5 g proteína/kg de peso ideal."];}
+  if(s==="ORTHOPEDIC"){kMin=25;kMax=30;kChosen=(mod.older||mod.nutritionRisk)?30:25;pMin=1.2;pMax=1.5;pChosen=(mod.malnutrition||mod.older)?1.5:1.2;reason=["Ortopedia/fractura: energía y proteína aumentan con edad, riesgo o depleción."];}
+  if(s==="TRAUMA"){kMin=25;kMax=30;kChosen=30;pMin=1.5;pMax=2.0;pChosen=1.5;reason=["Trauma: 30 kcal/kg y aporte proteico alto; si está crítico se aplica el perfil UCI."];}
+  if(s==="ILEUS_OBSTRUCTION"){kMin=25;kMax=30;kChosen=25;pMin=1.2;pMax=1.5;pChosen=mod.malnutrition?1.5:1.2;reason=["Íleo/obstrucción: la cifra es meta metabólica; la vía debe definirse según seguridad y función gastrointestinal."];}
+  if(s==="FISTULA_LEAK"||s==="STOMA_HIGH_OUTPUT"){kMin=25;kMax=30;kChosen=30;pMin=pMax=pChosen=1.5;reason=["Fístula/fuga/alto débito: 30 kcal/kg y 1,5 g/kg como meta inicial, con ajuste por pérdidas."];}
+  if(s==="OPEN_ABDOMEN"){kMin=25;kMax=30;kChosen=30;pMin=1.5;pMax=2.0;pChosen=1.8;reason=["Abdomen abierto: proteína elevada por pérdidas nitrogenadas."];}
+  if(s==="INFECTION_SEPSIS"){kMin=25;kMax=30;kChosen=30;pMin=1.2;pMax=1.5;pChosen=1.5;reason=["Infección posoperatoria/sepsis no crítica: 30 kcal/kg y 1,5 g/kg."];}
  }else if(cp==="UCI"){
   source="ESPEN ICU 2023 + ASPEN Critical Care 2022";
   const day=Number(val("icuDay")||1),measured=num(val("measuredEE")),hasIC=val("hasIC")==="SI";
@@ -1462,93 +1634,98 @@ function guidelineEngine(){
    if(b.imc>=50){eW=ideal||actual;kMin=22;kMax=25;kChosen=23.5;}
    else{eW=actual;kMin=11;kMax=14;kChosen=12.5;}
    pW=ideal||adj||actual;pChosen=b.imc>=40?2.5:2.0;pMin=pMax=pChosen;
-   reason=["UCI + obesidad: estrategia hipocalórica hiperproteica según ASPEN cuando no hay calorimetría."];
+   reason=["UCI con obesidad: estrategia hipocalórica e hiperproteica; no se usa el mismo esquema del paciente de sala."];
   }else if(hasIC&&measured!==null){
-   kMin=kMax=kChosen=null;reason=["Calorimetría indirecta disponible: se usa el gasto energético medido como referencia."];
+   kMin=kMax=kChosen=null;reason=["Calorimetría indirecta disponible: se usa el gasto energético medido."];
   }else{
-   kMin=20;kMax=25;kChosen=day<=3?20:25;
-   reason=[day<=3?"UCI fase aguda temprana: se selecciona 20 kcal/kg para evitar sobrealimentación; reevaluar/progresar según estabilidad.":"UCI después de fase inicial: se selecciona 25 kcal/kg si no hay calorimetría y la evolución lo permite."];
+   kMin=12;kMax=25;kChosen=day<=3?20:25;
+   reason=[day<=3?"UCI temprana: se usa una meta prudente dentro del rango 12–25 kcal/kg y se reevalúa.":"UCI después de la fase inicial: se aproxima a 25 kcal/kg si la evolución y tolerancia lo permiten."];
   }
  }else if(cp==="RENAL"){
-  source="ESPEN Renal Hospitalaria Practical Guideline 2024";eW=usual||actual;pW=usual||actual;
-  kMin=30;kMax=35;kChosen=30;
+  source="ESPEN Renal Hospitalaria 2024";
+  // Si hay edema/ascitis, evitar cargar automáticamente el peso líquido cuando hay talla disponible.
+  if((cx.edema||cx.ascites)&&ideal){eW=ideal;pW=ideal;reason.push("Edema/ascitis: se usa peso de referencia por talla como aproximación para evitar sobreestimar con retención hídrica.");}
+  else{eW=actual;pW=actual;}
+  kMin=20;kMax=30;kChosen=mod.stress.level==="ALTO"?25:30;
   const r=val("renalSubtype")||"CKD_STABLE";
-  if(r==="CKD_STABLE"){pMin=.6;pMax=.8;pChosen=.8;reason=["ERC estable no crítica: 30 kcal/kg como meta práctica y 0,6–0,8 g proteína/kg según situación clínica/dieta renal."];}
-  if(r==="DIALYSIS_STABLE"){pMin=pMax=pChosen=1.2;reason=["Diálisis crónica estable: 30 kcal/kg y ≥1,2 g proteína/kg."];}
-  if(r==="AKI_NONCRIT"){pMin=.8;pMax=1.0;pChosen=1.0;reason=["AKI/AKI sobre ERC no crítico: 30 kcal/kg y 0,8–1,0 g proteína/kg."];}
-  if(r==="CRIT_NO_KRT"){kMin=20;kMax=25;kChosen=25;pMin=1.0;pMax=1.3;pChosen=1.3;reason=["Renal crítico sin KRT: meta energética tipo crítico y proteína hasta 1,3 g/kg."];}
-  if(r==="CRIT_IHD"){kMin=20;kMax=25;kChosen=25;pMin=1.3;pMax=1.5;pChosen=1.5;reason=["Crítico + KRT intermitente: 25 kcal/kg y 1,3–1,5 g proteína/kg."];}
-  if(r==="CRIT_CKRT"){kMin=20;kMax=25;kChosen=25;pMin=1.5;pMax=1.7;pChosen=1.7;reason=["Crítico + CKRT/PIKRT: 25 kcal/kg y 1,5–1,7 g proteína/kg."];}
+  if(r==="CKD_STABLE"){pMin=.6;pMax=.8;pChosen=.8;reason.push("ERC estable no crítica: 0,6–0,8 g proteína/kg.");}
+  if(r==="DIALYSIS_STABLE"){pMin=pMax=pChosen=1.2;reason.push("Diálisis crónica estable: ≥1,2 g proteína/kg.");}
+  if(r==="AKI_NONCRIT"){pMin=.8;pMax=1.0;pChosen=1.0;reason.push("AKI no crítica: 0,8–1,0 g proteína/kg.");}
+  if(r==="CRIT_NO_KRT"){kChosen=25;pMin=1.0;pMax=1.3;pChosen=1.3;reason.push("Renal crítico sin KRT: proteína hasta 1,3 g/kg.");}
+  if(r==="CRIT_IHD"){kChosen=25;pMin=1.3;pMax=1.5;pChosen=1.5;reason.push("Crítico + KRT intermitente: 1,3–1,5 g proteína/kg.");}
+  if(r==="CRIT_CKRT"){kChosen=25;pMin=1.5;pMax=1.7;pChosen=1.7;reason.push("Crítico + CKRT/PIKRT: 1,5–1,7 g proteína/kg.");}
  }else if(cp==="HEPATICO"){
-  kMin=30;kMax=35;kChosen=mod.malnutrition?35:30;pMin=1.2;pMax=1.5;pChosen=mod.malnutrition?1.5:1.2;source="ESPEN Enfermedad Hepática";
-  reason=["Cirrrosis/hepatopatía: 30 kcal/kg si estable y 35 kcal/kg con desnutrición/sarcopenia; proteína 1,2–1,5 g/kg."];
+  kMin=30;kMax=35;kChosen=mod.malnutrition?35:30;pMin=1.2;pMax=1.5;pChosen=(mod.malnutrition||mod.muscle)?1.5:1.2;source="ESPEN Enfermedad Hepática";
+  reason=["Hepatopatía/cirrosis: 30–35 kcal/kg y 1,2–1,5 g proteína/kg, elevando con sarcopenia/malnutrición."];
  }else if(cp==="PANCREATITIS"){
-  kMin=25;kMax=30;kChosen=mod.malnutrition?30:25;pMin=1.2;pMax=1.5;pChosen=mod.malnutrition?1.5:1.2;source="ESPEN Pancreatitis Practical Guideline 2024";
-  reason=["Pancreatitis: se selecciona 25 kcal/kg si estable y 30 kcal/kg si hay riesgo/desnutrición; vía/tolerancia son determinantes."];
+  kMin=25;kMax=30;kChosen=(mod.nutritionRisk||mod.malnutrition)?30:25;pMin=1.2;pMax=1.5;pChosen=mod.malnutrition?1.5:1.2;source="ESPEN Pancreatitis 2024 + Hospital Nutrition";
+  reason=["Pancreatitis: meta inicial individualizada dentro de 25–30 kcal/kg; proteína 1,2–1,5 g/kg según estado nutricional y estrés."];
  }else if(cp==="IBD"){
   kMin=30;kMax=35;kChosen=mod.malnutrition?35:30;const active=(val("ibdActivity")||"ACTIVA")==="ACTIVA";
-  pMin=active?1.2:1.0;pMax=active?1.5:1.0;pChosen=active?(mod.malnutrition?1.5:1.2):1.0;source="ESPEN EII Update 2023";
-  reason=[active?"EII activa: 30–35 kcal/kg; se selecciona 35 con riesgo/desnutrición y proteína 1,2–1,5 g/kg.":"EII en remisión: 30 kcal/kg y alrededor de 1 g proteína/kg."];
+  pMin=active?1.2:1.0;pMax=active?1.5:1.0;pChosen=active?(mod.malnutrition?1.5:1.2):1.0;source="ESPEN EII 2023";
+  reason=[active?"EII activa: 30–35 kcal/kg y 1,2–1,5 g proteína/kg.":"EII en remisión: energía similar a población sana y proteína alrededor de 1 g/kg."];
  }else if(cp==="NEURO"){
-  kMin=25;kMax=30;kChosen=mod.malnutrition?30:27.5;pMin=1.0;pMax=1.5;pChosen=mod.malnutrition?1.5:1.2;source="ESPEN Neurología + Hospital Nutrition";
-  reason=["Neurología/ACV: se selecciona 30 kcal/kg si existe riesgo nutricional; la seguridad deglutoria define la vía."];
+  kMin=25;kMax=30;kChosen=mod.nutritionRisk?30:27.5;pMin=1.0;pMax=1.5;pChosen=mod.malnutrition?1.5:(mod.stress.level==="MODERADO"?1.2:1.0);source="ESPEN Neurología + Hospital Nutrition";
+  reason=["Neurología/ACV: energía según riesgo y enfermedad; deglución/tolerancia determinan la vía."];
  }else if(cp==="DIABETES"){
-  kMin=25;kMax=30;kChosen=mod.malnutrition?30:27.5;pMin=1.0;pMax=1.5;pChosen=mod.malnutrition?1.5:1.2;source="ADA Hospital 2026 + ESPEN Hospital Nutrition";
-  reason=["Diabetes: energía según estado nutricional; la distribución de macronutrientes se individualiza, sin porcentaje universal obligatorio."];
+  kMin=25;kMax=30;kChosen=(mod.nutritionRisk||mod.stress.level!=="BAJO")?30:25;pMin=1.0;pMax=1.5;pChosen=mod.malnutrition?1.5:(mod.stress.level!=="BAJO"?1.2:1.0);source="ADA Hospital + ESPEN Hospital Nutrition";
+  reason=["Diabetes: energía según estado clínico; proteína según estrés y estado nutricional, salvo que enfermedad renal obligue a otra prescripción."];
  }else if(cp==="CARDIACO"){
-  kMin=25;kMax=30;kChosen=(mod.older||mod.malnutrition||cx.infection)?30:27.5;pMin=1.0;pMax=1.5;pChosen=mod.malnutrition?1.5:1.2;source="ESPEN Hospital Nutrition / Polimórbidos 2023";
-  reason=["Insuficiencia cardiaca hospitalizada: se selecciona 30 kcal/kg si es adulto mayor, existe riesgo nutricional o infección; no se reduce energía solo por antecedente de UCI."];
+  kMin=25;kMax=30;kChosen=(mod.older||mod.nutritionRisk||mod.stress.level!=="BAJO")?30:25;pMin=1.0;pMax=1.5;pChosen=mod.malnutrition?1.5:(mod.stress.level!=="BAJO"?1.2:1.0);source="ESPEN Hospital Nutrition / Polimórbidos";
+  reason=["Cardiología: 25 kcal/kg si estable; 30 kcal/kg y mayor proteína si hay enfermedad activa, adulto mayor o riesgo nutricional."];
  }else if(cp==="RESPIRATORIO"){
-  kMin=25;kMax=30;kChosen=mod.malnutrition?30:27.5;pMin=1.2;pMax=1.5;pChosen=mod.malnutrition?1.5:1.2;source="ESPEN Hospital Nutrition / Polimórbidos";
-  reason=["EPOC/insuficiencia respiratoria no crítica: 27,5–30 kcal/kg; evitar sobrealimentación y ajustar a tolerancia."];
+  kMin=25;kMax=30;kChosen=(mod.nutritionRisk||mod.stress.level!=="BAJO")?30:25;pMin=1.0;pMax=1.5;pChosen=mod.malnutrition?1.5:1.2;source="ESPEN Hospital Nutrition / Polimórbidos";
+  reason=["Respiratorio: evitar sobrealimentación; proteína aumenta con enfermedad/riesgo."];
  }else if(cp==="INFECCION"){
-  kMin=25;kMax=30;kChosen=30;pMin=1.2;pMax=1.5;pChosen=1.5;source="ESPEN Hospital Nutrition / Polimórbidos";
-  reason=["Infección/sepsis no UCI: se selecciona 30 kcal/kg y proteína 1,5 g/kg por mayor catabolismo."];
+  kMin=25;kMax=30;kChosen=30;pMin=1.2;pMax=1.5;pChosen=(mod.malnutrition||mod.stress.level==="ALTO")?1.5:1.2;source="ESPEN Hospital Nutrition / Polimórbidos";
+  reason=["Infección activa: 30 kcal/kg y 1,2–1,5 g proteína/kg según catabolismo y estado nutricional."];
  }else if(cp==="HERIDAS"){
   kMin=30;kMax=35;kChosen=mod.malnutrition?35:30;pMin=1.2;pMax=1.5;pChosen=1.5;source="ESPEN Hospital Nutrition / Polimórbidos";
-  reason=["Heridas/LPP: 30 kcal/kg, aumentando a 35 kcal/kg si hay desnutrición; proteína 1,5 g/kg."];
+  reason=["Heridas/LPP: energía y proteína elevadas para cubrir reparación tisular."];
  }else if(cp==="OBESIDAD"){
-  source="ESPEN/UEG Obesidad 2023";
-  eW=adj||actual;pW=adj||actual;
-  kMin=kMax=kChosen=25;
-  if(mod.muscle){
-   pMin=1.2;pMax=1.5;pChosen=1.5;
-   reason=["Obesidad no crítica con depleción muscular/sarcopenia: 25 kcal/kg de peso ajustado y 1,5 g proteína/kg de peso ajustado."];
-  }else if(mod.malnutrition){
-   pMin=1.2;pMax=1.5;pChosen=1.2;
-   reason=["Obesidad no crítica con riesgo/malnutrición: 25 kcal/kg de peso ajustado y 1,2 g proteína/kg de peso ajustado; aumentar hasta 1,5 g/kg si hay sarcopenia."];
-  }else{
-   pMin=.8;pMax=1.0;pChosen=1.0;
-   reason=["Obesidad no crítica estable, sin malnutrición ni sarcopenia: 25 kcal/kg de peso ajustado y 1,0 g proteína/kg de peso ajustado."];
-  }
+  source="ESPEN/UEG Obesidad 2023";eW=adj||actual;pW=adj||actual;kMin=kMax=kChosen=25;
+  if(mod.muscle||mod.malnutrition){pMin=1.2;pMax=1.5;pChosen=1.5;reason=["Obesidad con depleción/malnutrición: 25 kcal/kg de peso ajustado y proteína 1,5 g/kg de peso ajustado."];}
+  else if(mod.nutritionRisk||mod.stress.level!=="BAJO"){pMin=1.0;pMax=1.5;pChosen=1.2;reason=["Obesidad hospitalizada con enfermedad/riesgo: 25 kcal/kg de peso ajustado y 1,2 g proteína/kg."];}
+  else{pMin=.8;pMax=1.0;pChosen=1.0;reason=["Obesidad estable no crítica: 25 kcal/kg y 1,0 g proteína/kg de peso ajustado."];}
  }else if(cp==="QUEMADOS"){
-  kMin=30;kMax=35;kChosen=35;pMin=1.5;pMax=2.0;pChosen=2.0;source="ASPEN/ESPEN critical care principles";
-  reason=["Quemaduras mayores: hipercatabolismo; se selecciona 35 kcal/kg y proteína alta si no hay calorimetría, con monitorización estrecha."];
+  kMin=30;kMax=35;kChosen=35;pMin=1.5;pMax=2.0;pChosen=2.0;source="ASPEN/ESPEN Critical Care";
+  reason=["Quemaduras: alto catabolismo; requerimiento debe reevaluarse estrechamente y calorimetría es preferible cuando está disponible."];
  }else if(cp==="INTESTINAL"){
-  kMin=25;kMax=30;kChosen=30;pMin=1.2;pMax=1.5;pChosen=1.5;source="ESPEN Falla Intestinal Update 2023";
-  reason=["Falla intestinal/malabsorción: 30 kcal/kg y 1,5 g/kg como meta inicial; ajustar según absorción, pérdidas y vía."];
+  kMin=25;kMax=30;kChosen=30;pMin=1.2;pMax=1.5;pChosen=1.5;source="ESPEN Falla Intestinal 2023";
+  reason=["Falla intestinal/malabsorción: 30 kcal/kg y proteína alta como meta inicial; ajustar según absorción y pérdidas."];
  }else if(cp==="MANUAL"){
   kMin=kMax=kChosen=num(val("kcalKg"));pMin=pMax=pChosen=num(val("proKg"));extra=num(val("extraKcal"))||0;source="Ajuste manual";reason=["Valores definidos manualmente por el profesional."];
  }
 
- if(mod.obesity&&!["UCI","RENAL","EMBARAZO","POSPARTO","OBESIDAD"].includes(cp)){eW=adj||eW;pW=adj||pW;reason.push("Obesidad concomitante: se usa peso ajustado para evitar sobreestimación.");}
+ // Obesidad coexistente: usar peso ajustado si la guía primaria no exige otro peso de referencia.
+ if(mod.obesity&&!["UCI","RENAL","EMBARAZO","POSPARTO","OBESIDAD","CIRUGIA","TRAUMA"].includes(cp)){
+  eW=adj||eW;pW=adj||pW;reason.push("Obesidad concomitante: cálculo con peso ajustado para evitar sobreestimación.");
+ }
+
  if(eW===null)eW=actual;if(pW===null)pW=actual;
 
  let estimatedKcal=null,goalKcal=null;
- if(cp==="UCI"&&val("hasIC")==="SI"&&num(val("measuredEE"))!==null){estimatedKcal=num(val("measuredEE"));goalKcal=estimatedKcal;}
- else if(eW!==null&&kChosen!==null){estimatedKcal=eW*kChosen+extra;goalKcal=estimatedKcal;}
+ if(cp==="UCI"&&val("hasIC")==="SI"&&num(val("measuredEE"))!==null){
+  estimatedKcal=num(val("measuredEE"));goalKcal=estimatedKcal;
+ }else if(eW!==null&&kChosen!==null){
+  estimatedKcal=eW*kChosen+extra;goalKcal=estimatedKcal;
+ }
  const proteinG=pW!==null&&pChosen!==null?pW*pChosen:null;
  return {cp,mod,eW,pW,kMin,kMax,kChosen,pMin,pMax,pChosen,source,reason,diseaseAdvice,extra,estimatedKcal,goalKcal,proteinG};
 }
 function requirementSanity(){
  const g=guidelineEngine(),b=calculationsBase(),k=g.goalKcal;
+ if(b.w===null)return "Falta peso actual o estimado: la app no inventa kcal ni proteína.";
+ if(!Number.isFinite(b.h)||b.h<=0)return k!==null
+  ?`Cálculo provisional: ${Math.round(k)} kcal/día. Falta talla para definir IMC y, cuando corresponda, peso ideal/ajustado.`
+  :"Falta talla para completar antropometría.";
  if(k===null)return "";
  if(g.kChosen!==null&&g.eW!==null){
   const raw=g.eW*g.kChosen+(g.extra||0);
   const extra=g.extra?` + ${Math.round(g.extra)} kcal`:"";
-  return `Cálculo verificado: ${one(g.eW)} kg × ${one(g.kChosen)} kcal/kg${extra} = ${Math.round(raw)} kcal/día.`;
+  return `Cálculo verificado: ${one(g.eW)} kg × ${one(g.kChosen)} kcal/kg${extra} = ${Math.round(raw)} kcal/día. Talla ${one(b.h)} cm · IMC ${Number.isFinite(b.imc)?one(b.imc):"—"} kg/m².`;
  }
- if(g.cp==="UCI"&&val("hasIC")==="SI")return `Cálculo basado en calorimetría indirecta: ${Math.round(k)} kcal/día.`;
+ if(g.cp==="UCI"&&val("hasIC")==="SI")return `Calorimetría indirecta: ${Math.round(k)} kcal/día.`;
  return `Meta energética calculada: ${Math.round(k)} kcal/día.`;
 }
 function updateClinicalUI(){
@@ -1601,9 +1778,10 @@ function updateClinicalUI(){
  $("modifierTags").innerHTML=tags.length?tags.map(t=>`<span class="tag">${esc(t)}</span>`).join(""):'<span class="note">Sin complicaciones/modificadores adicionales detectados.</span>';
 }
 function percentWeightLoss(){
- const current=getWeight(),usual=num(val("pesoHabitual"));
- if(current===null||usual===null||usual<=0||usual<=current)return 0;
- return ((usual-current)/usual)*100;
+ const code=val("nrsLoss3m");
+ if(code==="GT15_3M")return 16;
+ if(code==="GT5_1M"||code==="GT5_2M"||code==="GT5_3M")return 6;
+ return 0;
 }
 function weeklyIntakePercent(){
  const mode=val("nrsWeekMode")||"CURRENT";
@@ -1611,31 +1789,34 @@ function weeklyIntakePercent(){
  return parseInt(radio("consumoDieta")||"100",10);
 }
 function nrsNutritionScore(){
- const c=calculationsBase(),loss=percentWeightLoss(),months=Number(val("tiempoPesoHabitual")||3),intake=weeklyIntakePercent();
+ const c=calculationsBase(),intake=weeklyIntakePercent(),loss=val("nrsLoss3m");
  let score=0,reasons=[];
- if(intake<25){score=3;reasons.push("ingesta 0–25% en la semana previa");}
- else if(intake<50){score=2;reasons.push("ingesta 25–50% en la semana previa");}
- else if(intake<75){score=1;reasons.push("ingesta 50–75% en la semana previa");}
+ if(intake<=25){score=3;reasons.push("ingesta 0–25% de lo habitual en la semana previa");}
+ else if(intake<=60){score=2;reasons.push("ingesta 25–60% de lo habitual en la semana previa");}
+ else if(intake<75){score=1;reasons.push("ingesta 50–75% de lo habitual en la semana previa");}
+
+ if(loss==="GT15_3M"){score=Math.max(score,3);reasons.push("pérdida >15% en 3 meses");}
+ else if(loss==="GT5_1M"){score=Math.max(score,3);reasons.push("pérdida >5% en 1 mes");}
+ else if(loss==="GT5_2M"){score=Math.max(score,2);reasons.push("pérdida >5% en 2 meses");}
+ else if(loss==="GT5_3M"){score=Math.max(score,1);reasons.push("pérdida >5% en 3 meses");}
+
  if(Number.isFinite(c.imc)){
   const impaired=radio("conciencia")!=="DESPIERTO/A"||radio("deambula")==="NO DEAMBULA"||radio("apetito")==="AUSENTE";
-  if(c.imc<18.5&&impaired){score=Math.max(score,3);reasons.push("IMC <18,5 + estado general deteriorado");}
-  else if(c.imc<=20.5&&impaired){score=Math.max(score,2);reasons.push("IMC 18,5–20,5 + deterioro general");}
- }
- if(loss>0){
-  if((months<=1&&loss>5)||(months<=3&&loss>15)){score=Math.max(score,3);reasons.push("pérdida ponderal severa");}
-  else if(months<=2&&loss>5){score=Math.max(score,2);reasons.push(">5% en 2 meses");}
-  else if(months<=3&&loss>5){score=Math.max(score,1);reasons.push(">5% en 3 meses");}
+  if(c.imc<18.5&&impaired){score=Math.max(score,3);reasons.push("IMC <18,5 con condición general deteriorada");}
+  else if(c.imc<=20.5&&impaired){score=Math.max(score,2);reasons.push("IMC 18,5–20,5 con condición general deteriorada");}
  }
  return {score:Math.min(3,score),reasons,intake};
 }
 function nrsDiseaseAuto(){
- const u=clinicalText(),apache=num(val("nrsApache"));
+ const u=currentContextText(),apache=num(val("nrsApache"));
  if(apache!==null&&apache>10)return {score:3,reason:`APACHE II ${apache} >10`,uncertain:false};
- if(/TCE SEVERO|TRAUMA CRANEOENCEFALICO SEVERO|TRAUMA CRANEOENCEFÁLICO SEVERO|TRANSPLANTE DE MEDULA|TRASPLANTE DE MÉDULA/.test(u))return {score:3,reason:"estrés metabólico severo compatible con prototipo NRS",uncertain:false};
- if(/CIRUGIA ABDOMINAL MAYOR|CIRUGÍA ABDOMINAL MAYOR|LAPAROTOMIA MAYOR|LAPAROTOMÍA MAYOR|ACV|ICTUS|ACCIDENTE CEREBROVASCULAR|NEUMONIA SEVERA|NEUMONÍA SEVERA|HEMATOLOG|LEUCEMIA|LINFOMA|SEPSIS/.test(u))return {score:2,reason:"estrés moderado compatible con prototipo NRS",uncertain:false};
- if(/\bUCI\b|\bICU\b/.test(u))return {score:2,reason:"UCI detectada; confirmar si APACHE II >10 para 3 puntos",uncertain:true};
- if(/FRACTURA DE CADERA|HEMODIAL|CIRROSIS|EPOC|DIABETES|ONCOLOG|CANCER|CÁNCER/.test(u))return {score:1,reason:"estrés leve/cronicidad con complicación",uncertain:false};
- return {score:0,reason:"sin prototipo NRS específico identificado",uncertain:true};
+ if(/\bUCI\b|\bICU\b|VENTILACION MECANICA|VENTILACIÓN MECÁNICA|TCE SEVERO|TRAUMA CRANEOENCEFALICO SEVERO|TRAUMA CRANEOENCEFÁLICO SEVERO|TRANSPLANTE DE MEDULA|TRASPLANTE DE MÉDULA/.test(u))
+  return {score:3,reason:"estrés metabólico severo compatible con NRS-2002",uncertain:false};
+ if(/CIRUGIA ABDOMINAL MAYOR|CIRUGÍA ABDOMINAL MAYOR|LAPAROTOMIA|LAPAROTOMÍA|ACV|ICTUS|ACCIDENTE CEREBROVASCULAR|NEUMONIA SEVERA|NEUMONÍA SEVERA|HEMATOLOG|LEUCEMIA|LINFOMA/.test(u))
+  return {score:2,reason:"estrés metabólico moderado compatible con NRS-2002",uncertain:false};
+ if(/FRACTURA DE CADERA|HEMODIAL|CIRROSIS|EPOC|DIABETES|ONCOLOG|CANCER|CÁNCER/.test(u))
+  return {score:1,reason:"enfermedad crónica con complicación / estrés leve",uncertain:false};
+ return {score:0,reason:"sin prototipo NRS de mayor estrés identificado",uncertain:true};
 }
 function nrsDiseaseAutoScore(){return nrsDiseaseAuto().score}
 function nrsDiseaseScore(){const o=val("nrsEnfOverride");return o&&o!=="AUTO"?Number(o):nrsDiseaseAuto().score}
@@ -1644,38 +1825,82 @@ function nrsResult(){
  return {nut:nutObj.score,dis,agePt,total,intake:nutObj.intake,nutReasons:nutObj.reasons,risk:total>=3?"CON RIESGO NUTRICIONAL":"BAJO RIESGO NUTRICIONAL"};
 }
 function mnaAutoNeuro(){
- const manual=val("mnaNeuro2");
- if(manual&&manual!=="AUTO")return manual;
- const u=clinicalText();
- if(/DEMENCIA SEVERA|ALZHEIMER SEVER|DEPRESION SEVERA|DEPRESIÓN SEVERA/.test(u))return "SEVERE";
- if(/DEMENCIA|ALZHEIMER|DETERIORO COGNITIVO/.test(u))return "MILD";
+ const u=backgroundClinicalText();
+ if(/DEMENCIA SEVERA|ALZHEIMER.*SEVER|DEPRESION SEVERA|DEPRESIÓN SEVERA/.test(u))return "SEVERE";
+ if(/DEMENCIA|ALZHEIMER|DEPRESION|DEPRESIÓN/.test(u))return "MILD";
  return "NONE";
 }
 function mnaResult(){
- const c=calculationsBase(),intake=weeklyIntakePercent(),app=radio("apetito");
- const a=(intake<25||app==="AUSENTE")?0:(intake<75||app==="DISMINUIDO")?1:2;
- const usual=num(val("pesoHabitual")),current=getWeight(),kg=(usual!==null&&current!==null)?Math.max(0,usual-current):null;
- const b=kg===null?1:kg>3?0:kg>=1?2:3;
- const mob=radio("deambula"),cMob=mob==="NO DEAMBULA"?0:mob==="CON ASISTENCIA"?1:2;
- const u=clinicalText(),acute=/HOSPITALIZ|AGUD|UCI|ICU|CIRUGIA|CIRUGÍA|TRAUMA|FRACTURA|INFECCION|INFECCIÓN|SEPSIS|NEUMONIA|NEUMONÍA|ACV|ICTUS/.test(u);
- const d=acute?0:2;
- const neuro=mnaAutoNeuro(),e=neuro==="SEVERE"?0:neuro==="MILD"?1:2;
+ const c=calculationsBase(),route=importedRoute(),intake=currentIntakePercent(),app=radio("apetito");
+ let a=2;
+ if(app==="AUSENTE"||(route!=="NPO"&&intake!==null&&intake<=25)||radio("viaoral")==="NO TOLERA")a=0;
+ else if(app==="DISMINUIDO"||(route!=="NPO"&&intake!==null&&intake<=75)||radio("masticacion")==="CON DIFICULTAD"||radio("deglucion")==="CON DIFICULTAD"||chk("aVomito")||chk("aDiarrea"))a=1;
+
+ const loss=inferredWeightLossMNA(),b=loss.points;
+
+ const mob=radio("deambula");
+ const cMob=mob==="NO DEAMBULA"?0:mob==="CON ASISTENCIA"?1:2;
+
+ const d=clinicalStressState().score>0?0:2;
+
+ const neuro=mnaAutoNeuro();
+ const e=neuro==="SEVERE"?0:neuro==="MILD"?1:2;
+
  let f=null,anthro="";
  if(Number.isFinite(c.imc)){f=c.imc<19?0:c.imc<21?1:c.imc<23?2:3;anthro=`IMC ${one(c.imc)}`;}
  else{const calf=num(val("cp"));if(calf!==null){f=calf<31?0:3;anthro=`CP ${one(calf)} cm`;}}
- if(f===null)return {complete:false,total:null,label:"PENDIENTE",reason:"Falta IMC o CP."};
- const total=a+b+cMob+d+e+f,label=total>=12?"ESTADO NUTRICIONAL NORMAL":total>=8?"RIESGO DE MALNUTRICIÓN":"MALNUTRICIÓN";
- return {complete:true,total,label,anthro,parts:{a,b,c:cMob,d,e,f},neuro};
+ if(f===null)return {complete:false,total:null,label:"PENDIENTE",reason:"Falta IMC o perímetro de pantorrilla.",parts:{a,b,c:cMob,d,e,f},loss};
+
+ const total=a+b+cMob+d+e+f;
+ const label=total>=12?"ESTADO NUTRICIONAL NORMAL":total>=8?"RIESGO DE MALNUTRICIÓN":"MALNUTRICIÓN";
+ return {complete:true,total,label,anthro,parts:{a,b,c:cMob,d,e,f},loss,neuro};
+}
+
+function automaticNRS2002(){
+ const b=calculationsBase(),intake=currentIntakePercent(),route=importedRoute(),active=activeDiagnosisText(),area=normalizedUpper(val("area"));
+ let nut=0,nutReason=[];
+
+ // Estado nutricional: usar lo ya obtenido en entrevista/antropometría.
+ if(route!=="NPO"&&intake!==null){
+  if(intake<=25){nut=3;nutReason.push("ingesta 0–25%");}
+  else if(intake<=50){nut=Math.max(nut,2);nutReason.push("ingesta 25–50%");}
+  else if(intake<75){nut=Math.max(nut,1);nutReason.push("ingesta 50–75%");}
+ }
+ const impaired=radio("apetito")==="AUSENTE"||radio("deambula")==="NO DEAMBULA"||
+                radio("viaoral")==="NO TOLERA"||
+                ["MODERADA DEPLECIÓN","SEVERA DEPLECIÓN"].includes(radio("masaMuscular"));
+ if(Number.isFinite(b.imc)){
+  if(b.imc<18.5&&impaired){nut=Math.max(nut,3);nutReason.push("IMC <18,5 con deterioro clínico");}
+  else if(b.imc<=20.5&&impaired){nut=Math.max(nut,2);nutReason.push("IMC 18,5–20,5 con deterioro clínico");}
+ }
+
+ // Gravedad de enfermedad: prototipos NRS-2002 a partir del diagnóstico ACTUAL.
+ let dis=0,disReason="sin prototipo de mayor estrés";
+ if(/\bUCI\b|\bICU\b/.test(area)||
+    /TCE SEVERO|TRAUMA CRANEOENCEFALICO SEVERO|TRAUMA CRANEOENCEFÁLICO SEVERO|TRANSPLANTE DE MEDULA|TRASPLANTE DE MÉDULA/.test(active)){
+   dis=3;disReason="enfermedad severa / UCI";
+ }else if(/CIRUGIA ABDOMINAL MAYOR|CIRUGÍA ABDOMINAL MAYOR|LAPAROTOMIA|LAPAROTOMÍA|ACV|ICTUS|ACCIDENTE CEREBROVASCULAR|NEUMONIA SEVERA|NEUMONÍA SEVERA|LEUCEMIA|LINFOMA|SEPSIS/.test(active)){
+   dis=2;disReason="enfermedad de estrés moderado";
+ }else if(/FRACTURA DE CADERA|HEMODIAL|CIRROSIS|EPOC|DIABETES|ONCOLOG|CANCER|CÁNCER/.test(active)){
+   dis=1;disReason="enfermedad crónica con complicación";
+ }
+
+ const age=num(val("edad"))||0,agePt=age>=70?1:0;
+ const total=Math.min(7,nut+dis+agePt);
+ return {
+  nut,dis,agePt,total,
+  risk:total>=3?"CON RIESGO NUTRICIONAL":"SIN RIESGO NUTRICIONAL",
+  nutReason,disReason
+ };
 }
 function screeningText(){
- const n=nrsResult(),age=num(val("edad"))||0;
+ const age=num(val("edad"))||0;
  if(age>=60){
   const m=mnaResult();
-  return m.complete
-   ?`${n.risk}, EVIDENCIADO POR NRS-2002 (${n.total} PUNTOS) Y MNA-SF (${m.total}/14 PUNTOS) – ${m.label}.`
-   :`${n.risk}, EVIDENCIADO POR NRS-2002 (${n.total} PUNTOS). MNA-SF PENDIENTE POR ANTROPOMETRÍA.`;
+  return m.complete?`${m.label}, SEGÚN MNA-SF: ${m.total}/14 PUNTOS.`:"MNA-SF PENDIENTE POR ANTROPOMETRÍA.";
  }
- return `${n.risk}, EVIDENCIADO POR NRS-2002 (${n.total} PUNTOS).`;
+ const n=automaticNRS2002();
+ return `${n.risk}, SEGÚN NRS-2002: ${n.total} PUNTOS.`;
 }
 function calculationsBase(){
  const w=getWeight(),h=num(val("talla")),age=num(val("edad"))||0;
@@ -1683,40 +1908,46 @@ function calculationsBase(){
  return {w,h,age,imc};
 }
 function updateScreeningUI(){
- if(!$("screenNrsNut"))return;
- const n=nrsResult(),age=num(val("edad"))||0,dAuto=nrsDiseaseAuto(),mode=val("nrsWeekMode")||"CURRENT";
- $("screenNrsNut").textContent=n.nut;
- $("screenNrsDis").textContent=n.dis;
- $("screenNrsTotal").textContent=n.total;
- $("screenRisk").textContent=n.risk;
- $("screenAutoData").textContent=mode==="CURRENT"?"ENTREVISTA + EXAMEN":"ENTREVISTA + INGESTA SEMANAL";
- $("nrsWeekHint").textContent=mode==="CURRENT"
-  ?`Usando ${n.intake}% ya marcado como aproximación de la semana previa. Si fue diferente, cambia solo este selector.`
-  :`Usando ${n.intake}% para la semana previa.`;
- const older=age>=60;
- if($("mnaManualBox"))$("mnaManualBox").classList.toggle("hidden",!older);
- let details=`NRS-2002: nutricional ${n.nut} + enfermedad ${n.dis}${n.agePt?` + edad ≥70 (${n.agePt})`:""}. ${n.nutReasons.length?n.nutReasons.join(", "):"sin criterio nutricional adicional"}.`;
+ const age=num(val("edad"))||0,older=age>=60;
+ if($("adultRiskBox"))$("adultRiskBox").classList.toggle("hidden",older);
+ if($("mnaQuickBox"))$("mnaQuickBox").classList.toggle("hidden",!older);
+
  if(older){
   const m=mnaResult();
-  $("screenSecond").textContent=m.complete?`MNA ${m.total}/14`:"MNA pendiente";
-  details+=m.complete?` MNA-SF: ${m.total}/14 (${m.label}).`:` MNA-SF: ${m.reason}`;
- }else{
-  $("screenSecond").textContent="NO APLICA";
+  if($("screenMnaTotal"))$("screenMnaTotal").textContent=m.complete?`${m.total}/14`:"—";
+  if($("screenMnaResult"))$("screenMnaResult").textContent=m.label;
+  if($("screenReasonText"))$("screenReasonText").textContent=m.complete
+   ?`MNA-SF automático: ingesta ${m.parts.a} + pérdida de peso ${m.parts.b} (${m.loss.label}) + movilidad ${m.parts.c} + enfermedad/estrés ${m.parts.d} + neuropsicológico ${m.parts.e} + antropometría ${m.parts.f} = ${m.total}/14.`
+   :m.reason;
+  return;
  }
- $("screenReasonText").textContent=details;
+
+ const n=automaticNRS2002();
+ if($("adultRiskResult"))$("adultRiskResult").textContent=`NRS-2002: ${n.total} PUNTOS`;
+ if($("adultStressResult"))$("adultStressResult").textContent=n.risk;
+ if($("screenReasonText"))$("screenReasonText").textContent=
+  `NRS-2002 automático: estado nutricional ${n.nut} + gravedad de enfermedad ${n.dis}${n.agePt?` + edad ≥70 (${n.agePt})`:""} = ${n.total} puntos.`;
 }
 function macroTargets(kcal,proteinG,profile,dietText){
  if(kcal===null||proteinG===null||kcal<=0)return {choPct:null,proPct:null,lipPct:null,choG:null,lipG:null};
- const u=normalizedUpper(dietText||"");
+ const u=normalizedUpper(dietText||""),cp=currentClinicalProfile(),mod=modifierState();
  let choPct=55;
+
  if(profile==="embarazada")choPct=58;
  else if(profile==="posparto")choPct=55;
- else if(u.includes("HIPOGLUCIDA")||u.includes("DIABET")||currentClinicalProfile()==="DIABETES")choPct=50;
- else if(currentClinicalProfile()==="UCI")choPct=50;
+ else if(u.includes("HIPOGLUCIDA")||u.includes("DIABET")||cp==="DIABETES")choPct=45;
+ else if(cp!=="GENERAL"||mod.nutritionRisk||mod.stress.level!=="BAJO"||u.includes("HIPERPROTEICA"))choPct=48;
+
  const proPct=(proteinG*4/kcal)*100;
  let lipPct=100-choPct-proPct;
- if(lipPct<20){choPct=Math.max(35,80-proPct);lipPct=100-choPct-proPct;}
- const choG=kcal*choPct/100/4,lipG=kcal*lipPct/100/9;
+
+ // Evitar que una proteína alta deje un porcentaje lipídico irrealmente bajo.
+ if(lipPct<20){
+  lipPct=20;
+  choPct=Math.max(30,100-proPct-lipPct);
+ }
+ const choG=kcal*choPct/100/4;
+ const lipG=kcal*lipPct/100/9;
  return {choPct,proPct,lipPct,choG,lipG};
 }
 function calculations(){
@@ -1732,6 +1963,7 @@ function calculations(){
   cho:m.choPct,pp:m.proPct,pk:g.pChosen,lip:m.lipPct,rawKcal:g.estimatedKcal,kcal,choG:m.choG,proG,lipG:m.lipG,guide:g};
 }
 function calculateAll(){
+ updateBowelHabit();
  const c=calculations();
  $("mPeso").textContent=c.w!==null?one(c.w)+" kg":"—";
  $("mCalcWeight").textContent=c.calcWeight!==null?one(c.calcWeight)+" kg"+(c.low?" (ideal)":""):"—";
@@ -1767,44 +1999,75 @@ function consciousnessText(){
  return {c,o,coll};
 }
 function valuation(){
- const x=consciousnessText(),p=[];p.push(`PACIENTE ${x.c}, ${x.o}${x.coll==="SÍ"?" Y COLABORA CON EL INTERROGATORIO NUTRICIONAL":" Y NO COLABORA CON EL INTERROGATORIO NUTRICIONAL"}.`);
+ const x=consciousnessText(),p=[];
+ p.push(`PACIENTE ${x.c}, ${x.o}${x.coll==="SÍ"?" Y COLABORA CON EL INTERROGATORIO NUTRICIONAL":" Y NO COLABORA CON EL INTERROGATORIO NUTRICIONAL"}.`);
+ const comp=companionNarrative();if(comp)p.push(comp);
+
  const route=importedRoute();
  if(route==="NPO")p.push("PACIENTE EN NPO SEGÚN PRESCRIPCIÓN IMPORTADA.");
  else if(route==="SNG")p.push("ALIMENTACIÓN POR SNG SEGÚN PRESCRIPCIÓN IMPORTADA.");
- else{if(radio("viaoral")==="TOLERA")p.push("TOLERANDO LA VÍA ORAL.");if(radio("viaoral")==="NO TOLERA")p.push("NO TOLERA ADECUADAMENTE LA VÍA ORAL.");p.push(`REFIERE APETITO ${radio("apetito")} CON UN CONSUMO DEL ${radio("consumoDieta")} DE LA INGESTA PRESCRITA.`)}
- if(route!=="NPO"){if(radio("masticacion")==="SIN INCONVENIENTES"&&radio("deglucion")==="SIN INCONVENIENTES")p.push("NO REFIERE INCONVENIENTES EN LA MASTICACIÓN O DEGLUCIÓN.");else{if(radio("masticacion")==="CON DIFICULTAD")p.push("REFIERE DIFICULTAD EN LA MASTICACIÓN.");if(radio("deglucion")==="CON DIFICULTAD")p.push("REFIERE DIFICULTAD EN LA DEGLUCIÓN.")}}
- p.push(`SÍNTOMAS GASTROINTESTINALES: ${giText()}.`);const al=radio("tieneAlergia")==="SÍ"?(val("alergia").trim()?`REFIERE ALERGIA A ${up(val("alergia"))}`:"REFIERE ALERGIA, NO ESPECIFICA"):"NO REFIERE",it=radio("tieneIntolerancia")==="SÍ"?(val("intolerancia").trim()?`REFIERE INTOLERANCIA A ${up(val("intolerancia"))}`:"REFIERE INTOLERANCIA, NO ESPECIFICA"):"NO REFIERE";p.push(`ALERGIAS: ${al}. INTOLERANCIAS: ${it}.`);p.push(`DIURESIS ${radio("diuresis")}. ${radio("flatos")==="NO"?"NO CANALIZA FLATOS.":"CANALIZA FLATOS."}`);p.push(`HÁBITO EVACUATORIO: ${val("habito")}. ÚLTIMA DEPOSICIÓN: ${val("ultima")}, EN ESCALA DE BRISTOL ${val("bristol")}.`);const d=radio("deambula");p.push(d==="NO DEAMBULA"?"NO DEAMBULA.":d==="CON ASISTENCIA"?"DEAMBULA CON ASISTENCIA.":"DEAMBULA SIN ASISTENCIA.");return p.join(" ")
+ else{
+  if(radio("viaoral")==="TOLERA")p.push("TOLERA ADECUADAMENTE LA VÍA ORAL.");
+  if(radio("viaoral")==="NO TOLERA")p.push("NO TOLERA ADECUADAMENTE LA VÍA ORAL.");
+  p.push(`REFIERE APETITO ${radio("apetito")} CON UN CONSUMO DEL ${radio("consumoDieta")} DE LA INGESTA PRESCRITA.`);
+ }
+ if(route!=="NPO"){
+  if(radio("masticacion")==="SIN INCONVENIENTES"&&radio("deglucion")==="SIN INCONVENIENTES")p.push("NO REFIERE INCONVENIENTES PARA MASTICAR NI DEGLUTIR.");
+  else{
+   if(radio("masticacion")==="CON DIFICULTAD")p.push("REFIERE DIFICULTAD PARA MASTICAR.");
+   if(radio("deglucion")==="CON DIFICULTAD")p.push("REFIERE DIFICULTAD PARA DEGLUTIR.");
+  }
+ }
+ p.push(`SÍNTOMAS GASTROINTESTINALES: ${giText()}.`);
+ p.push(`${allergySentence()}. ${intoleranceSentence()}.`);
+ p.push(`DIURESIS ${radio("diuresis")}. ${radio("flatos")==="NO"?"NO CANALIZA FLATOS.":"CANALIZA FLATOS."}`);
+ p.push(`HÁBITO EVACUATORIO ${val("habito")}; ÚLTIMA DEPOSICIÓN ${val("ultima")}, BRISTOL ${val("bristol")}.`);
+ const d=radio("deambula");p.push(d==="NO DEAMBULA"?"NO DEAMBULA.":d==="CON ASISTENCIA"?"DEAMBULA CON ASISTENCIA.":"DEAMBULA SIN ASISTENCIA.");
+ return p.join(" ");
 }
 function maternityAllergyText(){
- const al=radio("tieneAlergia")==="SÍ"?(val("alergia").trim()?`ALERGIA A ${up(val("alergia"))}`:"ALERGIA NO ESPECIFICADA"):"";
- const it=radio("tieneIntolerancia")==="SÍ"?(val("intolerancia").trim()?`INTOLERANCIA A ${up(val("intolerancia"))}`:"INTOLERANCIA NO ESPECIFICADA"):"";
- if(!al&&!it)return "NO REFIERE";return [al,it].filter(Boolean).join("; ");
+ const parts=[];
+ if(radio("tieneAlergia")==="SÍ")parts.push(allergySentence());
+ if(radio("tieneIntolerancia")==="SÍ")parts.push(intoleranceSentence());
+ return parts.length?parts.join(". "):"NO REFIERE ALERGIAS NI INTOLERANCIAS ALIMENTARIAS";
 }
 function postpartumValuation(){
  const x=consciousnessText(),p=[];
  const oriented=radio("orientacion")==="ORIENTADO/A"?"ORIENTADA EN SUS 3 ESFERAS":x.o;
  p.push(`PACIENTE ${x.c}, ${oriented}. ${x.coll==="SÍ"?"COLABORA":"NO COLABORA"} CON EL INTERROGATORIO NUTRICIONAL.`);
+ const comp=companionNarrative();if(comp)p.push(comp);
  const l=radio("lactancia");
- if(l==="BUEN AGARRE Y SUCCIÓN, BUENA PRODUCCIÓN")p.push("CUMPLIENDO CON LACTANCIA MATERNA: BUEN AGARRE, BUENA SUCCIÓN, REFIERE UNA BUENA PRODUCCIÓN.");
- else if(l==="BUEN AGARRE Y SUCCIÓN, BAJA PRODUCCIÓN")p.push("CUMPLIENDO CON LACTANCIA MATERNA: BUEN AGARRE, BUENA SUCCIÓN, REFIERE BAJA PRODUCCIÓN.");
+ if(l==="BUEN AGARRE Y SUCCIÓN, BUENA PRODUCCIÓN")p.push("CUMPLIENDO CON LACTANCIA MATERNA: BUEN AGARRE, BUENA SUCCIÓN Y REFIERE BUENA PRODUCCIÓN.");
+ else if(l==="BUEN AGARRE Y SUCCIÓN, BAJA PRODUCCIÓN")p.push("CUMPLIENDO CON LACTANCIA MATERNA: BUEN AGARRE Y BUENA SUCCIÓN; REFIERE BAJA PRODUCCIÓN.");
  else if(l!=="NO APLICA")p.push(`LACTANCIA MATERNA: ${l}.`);
- p.push(`APETITO ${radio("apetito")}. ${radio("viaoral")==="TOLERA"?"ADECUADA TOLERANCIA ORAL":"NO TOLERA ADECUADAMENTE LA VÍA ORAL"}, ${radio("masticacion")==="SIN INCONVENIENTES"&&radio("deglucion")==="SIN INCONVENIENTES"?"SIN PROBLEMAS PARA MASTICAR Y DEGLUTIR":"CON DIFICULTAD EN MASTICACIÓN Y/O DEGLUCIÓN"}, SÍNTOMAS GASTROINTESTINALES: ${giText()}, ALERGIAS E INTOLERANCIAS ALIMENTARIAS: ${maternityAllergyText()}.`);
- p.push(`DIURESIS ${radio("diuresis")}. ${radio("flatos")==="NO"?"NO CANALIZA FLATOS":"CANALIZA FLATOS"}, HÁBITO EVACUATORIO: ${val("habito")}, ÚLTIMA DEPOSICIÓN ${val("ultima")}, EN ESCALA DE BRISTOL ${val("bristol")}.`);
+ p.push(`APETITO ${radio("apetito")}. ${radio("viaoral")==="TOLERA"?"ADECUADA TOLERANCIA ORAL":"NO TOLERA ADECUADAMENTE LA VÍA ORAL"}, ${radio("masticacion")==="SIN INCONVENIENTES"&&radio("deglucion")==="SIN INCONVENIENTES"?"SIN PROBLEMAS PARA MASTICAR Y DEGLUTIR":"CON DIFICULTAD EN MASTICACIÓN Y/O DEGLUCIÓN"}. SÍNTOMAS GASTROINTESTINALES: ${giText()}. ${maternityAllergyText()}.`);
+ p.push(`DIURESIS ${radio("diuresis")}. ${radio("flatos")==="NO"?"NO CANALIZA FLATOS":"CANALIZA FLATOS"}. HÁBITO EVACUATORIO ${val("habito")}; ÚLTIMA DEPOSICIÓN ${val("ultima")}, BRISTOL ${val("bristol")}.`);
  p.push(radio("deambula")==="NO DEAMBULA"?"NO DEAMBULA.":radio("deambula")==="CON ASISTENCIA"?"DEAMBULA CON ASISTENCIA.":"DEAMBULA SIN ASISTENCIA.");
  return p.join(" ");
 }
 function pregnancyValuation(){
  const x=consciousnessText(),oriented=radio("orientacion")==="ORIENTADO/A"?"ORIENTADA EN SUS 3 ESFERAS":x.o,p=[];
  p.push(`PACIENTE ${x.c}, ${oriented}. ${x.coll==="SÍ"?"COLABORA":"NO COLABORA"} CON EL INTERROGATORIO NUTRICIONAL.`);
- p.push(`REFIERE APETITO ${radio("apetito")} CON UN ${radio("consumoDieta")} DE INGESTA DE LA DIETA PRESCRITA, ${radio("masticacion")==="SIN INCONVENIENTES"&&radio("deglucion")==="SIN INCONVENIENTES"?"SIN PROBLEMAS PARA MASTICAR Y DEGLUTIR":"CON DIFICULTAD EN MASTICACIÓN Y/O DEGLUCIÓN"}, SÍNTOMAS GASTROINTESTINALES: ${giText()}, ALERGIAS E INTOLERANCIAS ALIMENTARIAS: ${maternityAllergyText()}.`);
- p.push(`DIURESIS ${radio("diuresis")}. ${radio("flatos")==="NO"?"NO CANALIZA FLATOS":"CANALIZA FLATOS"}, HÁBITO EVACUATORIO: ${val("habito")}, ÚLTIMA DEPOSICIÓN ${val("ultima")}, EN ESCALA DE BRISTOL ${val("bristol")}.`);
+ const comp=companionNarrative();if(comp)p.push(comp);
+ p.push(`REFIERE APETITO ${radio("apetito")} CON UN ${radio("consumoDieta")} DE INGESTA DE LA DIETA PRESCRITA, ${radio("masticacion")==="SIN INCONVENIENTES"&&radio("deglucion")==="SIN INCONVENIENTES"?"SIN PROBLEMAS PARA MASTICAR Y DEGLUTIR":"CON DIFICULTAD EN MASTICACIÓN Y/O DEGLUCIÓN"}. SÍNTOMAS GASTROINTESTINALES: ${giText()}. ${maternityAllergyText()}.`);
+ p.push(`DIURESIS ${radio("diuresis")}. ${radio("flatos")==="NO"?"NO CANALIZA FLATOS":"CANALIZA FLATOS"}. HÁBITO EVACUATORIO ${val("habito")}; ÚLTIMA DEPOSICIÓN ${val("ultima")}, BRISTOL ${val("bristol")}.`);
  p.push(radio("deambula")==="NO DEAMBULA"?"NO DEAMBULA.":radio("deambula")==="CON ASISTENCIA"?"DEAMBULA CON ASISTENCIA.":"DEAMBULA SIN ASISTENCIA.");
  return p.join(" ");
 }
-function exam(){let h=`FACIE ${radio("facie")}, MÚSCULO TEMPORAL: ${radio("temporal")}; REGIÓN PERIORBITARIA: ${radio("periorb")}; PIEZAS DENTALES ${radio("dientes")}, MUCOSA ORAL ${radio("mucosa")}, PIEL ${radio("piel")}, REGIÓN CLAVICULAR Y ACROMIÓN: ${radio("clavicula")}; ABDOMEN: ${radio("abdomen")}; EXTREMIDADES: ${radio("extremidades")}. MASA MUSCULAR ${radio("masaMuscular")}. MASA GRASA ${radio("masaGrasa")}. ${radio("edemaFisico")==="SÍ"?"SE EVIDENCIA PRESENCIA DE EDEMA":"SIN PRESENCIA DE EDEMA"}.`;if(radio("ojos")!=="SIN HALLAZGOS")h+=` OJOS ${radio("ojos")}.`;if(val("hallazgo").trim())h+=` ${up(val("hallazgo"))}.`;return h}
+function exam(){
+ let ext=radio("extremidades");
+ if(ext==="ASIMÉTRICAS"&&val("extremidadesDetalle").trim())ext+=`, ${up(val("extremidadesDetalle"))}`;
+ let h=`FACIE ${radio("facie")}, MÚSCULO TEMPORAL: ${radio("temporal")}; REGIÓN PERIORBITARIA: ${radio("periorb")}; PIEZAS DENTALES ${radio("dientes")}, MUCOSA ORAL ${radio("mucosa")}, PIEL ${radio("piel")}, REGIÓN CLAVICULAR Y ACROMIÓN: ${radio("clavicula")}; ABDOMEN: ${radio("abdomen")}; EXTREMIDADES: ${ext}. MASA MUSCULAR ${radio("masaMuscular")}. MASA GRASA ${radio("masaGrasa")}. ${radio("edemaFisico")==="SÍ"?"SE EVIDENCIA PRESENCIA DE EDEMA":"SIN PRESENCIA DE EDEMA"}.`;
+ if(radio("ojos")!=="SIN HALLAZGOS")h+=` OJOS ${radio("ojos")}.`;
+ if(val("hallazgo").trim())h+=` ${up(val("hallazgo"))}.`;
+ return h;
+}
 function maternityExam(){
- let h=`FACIE ${radio("mFacie")}, MÚSCULO TEMPORAL: ${radio("mTemporal")}; REGIÓN PERIORBITARIA: ${radio("mPeriorb")}; PIEZAS DENTALES ${radio("mDientes")} MUCOSA ORAL Y PIEL ${radio("mHidratacion")}, REGIÓN CLAVICULAR: ${radio("mClavicula")} - REGIÓN ACROMIÓN: CURVAS REDONDEADAS EN BRAZOS, HOMBROS Y CUELLO; ABDOMEN: ${radio("mAbdomen")}, EXTREMIDADES SUPERIORES: ${radio("mExtSup")}, REGIÓN TRICIPITAL: ${radio("mTricipital")}. EXTREMIDADES INFERIORES: CUÁDRICEPS ANTERIOR: ${radio("mCuadriceps")} - REGIÓN PATELAR: ${radio("mPatelar")}. REGIÓN POSTERIOR DE LA PANTORRILLA: ${radio("mGemelos")}. ${radio("mEdema")==="SÍ"?"CON PRESENCIA DE EDEMA":"SIN PRESENCIA DE EDEMA"}.`;
- if(val("hallazgo").trim())h+=` ${up(val("hallazgo"))}.`;return h;
+ let ext=radio("mExtSup");
+ if(ext==="ASIMÉTRICAS"&&val("mExtSupDetalle").trim())ext+=`, ${up(val("mExtSupDetalle"))}`;
+ let h=`FACIE ${radio("mFacie")}, MÚSCULO TEMPORAL: ${radio("mTemporal")}; REGIÓN PERIORBITARIA: ${radio("mPeriorb")}; PIEZAS DENTALES ${radio("mDientes")} MUCOSA ORAL Y PIEL ${radio("mHidratacion")}, REGIÓN CLAVICULAR: ${radio("mClavicula")} - REGIÓN ACROMIÓN: CURVAS REDONDEADAS EN BRAZOS, HOMBROS Y CUELLO; ABDOMEN: ${radio("mAbdomen")}, EXTREMIDADES SUPERIORES: ${ext}, REGIÓN TRICIPITAL: ${radio("mTricipital")}. EXTREMIDADES INFERIORES: CUÁDRICEPS ANTERIOR: ${radio("mCuadriceps")} - REGIÓN PATELAR: ${radio("mPatelar")}. REGIÓN POSTERIOR DE LA PANTORRILLA: ${radio("mGemelos")}. ${radio("mEdema")==="SÍ"?"CON PRESENCIA DE EDEMA":"SIN PRESENCIA DE EDEMA"}.`;
+ if(val("hallazgo").trim())h+=` ${up(val("hallazgo"))}.`;
+ return h;
 }
 function antro(){
  const c=calculations(),p=[];
@@ -1839,14 +2102,18 @@ function antro(){
  return p.join(", ");
 }
 function weightBasisLabel(g){
- const actual=getWeight();
- if(g.eW!==null&&actual!==null&&Math.abs(g.eW-actual)>0.2)return " PESO DE CÁLCULO";
- return "";
+ const actual=getWeight(),adj=adjustedWeight33(),ideal=idealWeightForGuide();
+ if(g.eW===null)return "";
+ if(adj!==null&&Math.abs(g.eW-adj)<0.15&&actual!==null&&Math.abs(adj-actual)>0.2)return " PESO AJUSTADO";
+ if(ideal!==null&&Math.abs(g.eW-ideal)<0.15&&actual!==null&&Math.abs(ideal-actual)>0.2)return " PESO IDEAL/REFERENCIA";
+ return " PESO ACTUAL/ESTIMADO";
 }
 function proteinBasisLabel(g){
- const actual=getWeight();
- if(g.pW!==null&&actual!==null&&Math.abs(g.pW-actual)>0.2)return " PESO DE CÁLCULO";
- return " PESO";
+ const actual=getWeight(),adj=adjustedWeight33(),ideal=idealWeightForGuide();
+ if(g.pW===null)return " PESO";
+ if(adj!==null&&Math.abs(g.pW-adj)<0.15&&actual!==null&&Math.abs(adj-actual)>0.2)return " PESO AJUSTADO";
+ if(ideal!==null&&Math.abs(g.pW-ideal)<0.15&&actual!==null&&Math.abs(ideal-actual)>0.2)return " PESO IDEAL/REFERENCIA";
+ return " PESO ACTUAL/ESTIMADO";
 }
 function manualSupplementData(){
  const name=up(val("suppName")).trim();
@@ -1879,7 +2146,7 @@ function lowWeightSupplementText(c){
 function req(){
  const c=calculations(),g=c.guide;if(c.kcal===null||c.proG===null)return "";
  const kcalKg=g.kChosen!==null?`${one(g.kChosen)} KCAL/KG${weightBasisLabel(g)}: `:"";
- return `CALORÍAS: ${kcalKg}${Math.round(c.kcal)} KCAL/DÍA. CARBOHIDRATOS ${Math.round(c.cho)}%: ${Math.round(c.choG)} G/DÍA. PROTEÍNA ${Math.round(c.pp)}%: ${one(g.pChosen)} G/KG${proteinBasisLabel(g)} = ${Math.round(c.proG)} G/DÍA. LÍPIDOS ${Math.round(c.lip)}%: ${Math.round(c.lipG)} G/DÍA.${lowWeightSupplementText(c)}`;
+ return `CALORÍAS: ${kcalKg}${Math.round(c.kcal)} KCAL/DÍA. CARBOHIDRATOS ${Math.round(c.cho)}% (4 KCAL/G): ${Math.round(c.choG)} G/DÍA. PROTEÍNA ${Math.round(c.pp)}% (4 KCAL/G): ${one(g.pChosen)} G/KG${proteinBasisLabel(g)} = ${Math.round(c.proG)} G/DÍA. LÍPIDOS ${Math.round(c.lip)}% (9 KCAL/G): ${Math.round(c.lipG)} G/DÍA.${lowWeightSupplementText(c)}`;
 }
 
 function pregnancyGainReference(){
@@ -1941,11 +2208,22 @@ function postpartumAnthro(){
 function maternityReq(){
  const c=calculations(),g=c.guide;if(c.kcal===null||c.proG===null)return "";
  const extra=val("perfil")==="posparto"?" (+250 KCAL LACTANCIA)":"";
- return `CALORÍAS: ${g.kChosen!==null?one(g.kChosen)+" KCAL/KG: ":""}${Math.round(c.kcal)} KCAL/DÍA${extra}. CARBOHIDRATOS ${Math.round(c.cho)}%: ${Math.round(c.choG)} G/DÍA. PROTEÍNA ${Math.round(c.pp)}%: ${one(g.pChosen)} G/KG PESO = ${Math.round(c.proG)} G/DÍA. LÍPIDOS ${Math.round(c.lip)}%: ${Math.round(c.lipG)} G/DÍA.${lowWeightSupplementText(c)}`;
+ return `CALORÍAS: ${g.kChosen!==null?one(g.kChosen)+" KCAL/KG: ":""}${Math.round(c.kcal)} KCAL/DÍA${extra}. CARBOHIDRATOS ${Math.round(c.cho)}% (4 KCAL/G): ${Math.round(c.choG)} G/DÍA. PROTEÍNA ${Math.round(c.pp)}% (4 KCAL/G): ${one(g.pChosen)} G/KG PESO = ${Math.round(c.proG)} G/DÍA. LÍPIDOS ${Math.round(c.lip)}% (9 KCAL/G): ${Math.round(c.lipG)} G/DÍA.${lowWeightSupplementText(c)}`;
 }
 function maternityPlan(){const route=importedRoute(),times=importedTimes();if(route==="NPO")return "NPO";return `${up(val("plan")||val("dieta"))}${route==="SNG"?" POR SNG":""}${times!=="N/A"?` FRACCIONADO EN ${times} TIEMPOS DE COMIDA`:""}`}
-function postpartumDiagnosis(){const c=calculations(),n=nrsResult();return `${c.cl||"ESTADO NUTRICIONAL PENDIENTE"} SEGÚN INDICADOR ANTROPOMÉTRICO IMC, ${n.total>=3?"CON RIESGO NUTRICIONAL":"SIN RIESGO NUTRICIONAL"} SEGÚN CRIBADO.`}
+function postpartumDiagnosis(){
+ const c=calculations();
+ const base=(c.cl||"ESTADO NUTRICIONAL PENDIENTE").replace(/\s*\(ADULTO MAYOR\)\s*/i,"").trim();
+ return `${base} SEGÚN INDICADOR ANTROPOMÉTRICO IMC.`;
+}
 function pregnancyDiagnosis(){const c=calculations(),g=pregnancyGainReference();let t=`${c.preClass||"ESTADO PREGESTACIONAL PENDIENTE"} SEGÚN INDICADOR ANTROPOMÉTRICO IMC PREGESTACIONAL`;if(g.complete)t+=`, ${g.label}`;return t+"."}
+
+function diagnosisByBMI(){
+ const c=calculations();
+ if(!c.cl)return "";
+ const base=c.cl.replace(/\s*\(ADULTO MAYOR\)\s*/i,"").trim();
+ return c.age>=60?`${base} EVIDENCIADO POR IMC ADULTO MAYOR.`:`${base} EVIDENCIADO POR IMC.`;
+}
 function nutritionNote(){
  const p=val("perfil"),tam=`TAMIZAJE NUTRICIONAL: ${screeningText()}`;
  if(p==="posparto")return [
@@ -1972,7 +2250,7 @@ function nutritionNote(){
  ];
  const an=antro();if(an)a.push(`VALORACIÓN ANTROPOMÉTRICA: ${an}`);
  a.push(tam);
- if(c.cl)a.push(`DIAGNÓSTICO NUTRICIONAL: ${c.cl} EVIDENCIADO POR INDICADOR ANTROPOMÉTRICO IMC.`);
+ if(c.cl)a.push(`DIAGNÓSTICO NUTRICIONAL: ${diagnosisByBMI()}`);
  const route=importedRoute(),times=importedTimes();
  let plan=route==="NPO"?"NPO":`${up(val("plan")||val("dieta"))}${route==="SNG"?" POR SNG":""}${times!=="N/A"?` FRACCIONADA EN ${times} TIEMPOS DE COMIDA`:""}`;
  if(val("planObs").trim())plan+=`. ${up(val("planObs"))}`;

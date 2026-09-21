@@ -898,7 +898,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&
 const makeId=p=>`${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,9)}`;
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
 
-const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v29", FALLBACK_KEY="nutri_word_rounds_v29";
+const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v31", FALLBACK_KEY="nutri_word_rounds_v31";
 let db=null,currentRound=null,currentPatientId=null,history=[],loading=false,saveTimer=null;
 
 const simpleFields=["area","ambiente","cama","nombre","edad","cobertura","sexo","perfil","dieta","sourceText","alergia","intolerancia","ultima","bristol","habito","hallazgo","peso","pesoEstimadoDoc","cb","cp","talla","talonRodilla","pesoPregestacional","edadGestacional","reqPerfil","cie10","plan","planObs","kcalKg","extraKcal","choPct","proPct","proKg","lipPct","clinicalProfile","renalSubtype","egfr","icuDay","hasIC","measuredEE","ibdActivity","pancreasType","surgeryScenario","suppName","suppMl","suppKcal","suppProtein","suppServings","acompanante","acompananteDetalle","informante","extremidadesDetalle","mExtSupDetalle"];
@@ -1719,22 +1719,28 @@ function clinicalNutritionRisk(){
 }
 function inferredWeightLossMNA(){
  const u=backgroundClinicalText();
- if(/NO REFIERE (?:P[ÉE]RDIDA|BAJA) DE PESO|SIN P[ÉE]RDIDA DE PESO/.test(u))return {points:3,label:"sin pérdida referida"};
- const kg=u.match(/P[ÉE]RDIDA DE PESO[^0-9]{0,25}([0-9]+(?:[.,][0-9]+)?)\s*KG/);
+ if(/NO REFIERE[^.;]{0,20}P[ÉE]RDIDA DE PESO|SIN P[ÉE]RDIDA DE PESO/.test(u))
+  return {points:3,label:"sin pérdida de peso"};
+
+ const kg=u.match(/P[ÉE]RDIDA DE PESO[^0-9]{0,35}([0-9]+(?:[.,][0-9]+)?)\s*KG/);
  if(kg){
   const n=parseFloat(kg[1].replace(",","."));
-  if(n>3)return {points:0,label:`pérdida referida >3 kg`};
-  if(n>=1)return {points:2,label:`pérdida referida 1–3 kg`};
+  if(n>3)return {points:0,label:">3 kg"};
+  if(n>=1)return {points:2,label:"1–3 kg"};
  }
- if(/P[ÉE]RDIDA DE PESO|BAJA DE PESO|HA BAJADO DE PESO/.test(u))return {points:1,label:"pérdida referida sin cuantificar"};
- return {points:1,label:"pérdida de peso no conocida"};
+
+ if(/P[ÉE]RDIDA DE PESO|HA BAJADO DE PESO|BAJA DE PESO/.test(u))
+  return {points:1,label:"no cuantificada / no sabe"};
+
+ // La opción oficial del MNA cuando no se conoce la pérdida es 1 punto.
+ return {points:1,label:"no sabe"};
 }
 function currentContextText(){
  const area=normalizedUpper(val("area")),diet=normalizedUpper(val("dieta")),dx=activeDiagnosisText();
  return `${area} ${diet} ${dx}`.trim();
 }
 function inferClinicalProfile(){
- const p=val("perfil"),f=diseaseFlags(),active=activeDiagnosisText(),all=backgroundClinicalText();
+ const p=val("perfil"),f=diseaseFlags(),all=backgroundClinicalText(),b=calculationsBase();
  if(p==="embarazada")return "EMBARAZO";
  if(p==="posparto")return "POSPARTO";
  if(f.critical)return "UCI";
@@ -1753,11 +1759,12 @@ function inferClinicalProfile(){
  if(f.respiratory)return "RESPIRATORIO";
  if(f.cardiac)return "CARDIACO";
  if(f.diabetes)return "DIABETES";
+ if(Number.isFinite(b.imc)&&b.imc>=30)return "OBESIDAD";
  if((num(val("edad"))||0)>=60&&f.dementia)return "DEMENCIA";
  if((num(val("edad"))||0)>=60)return "GERIATRIA";
- const b=calculationsBase(),risk=clinicalNutritionRisk();
- if(Number.isFinite(b.imc)&&b.imc>=30)return "OBESIDAD";
- if(risk.malnutritionEvidence||risk.high)return "MALNUTRICION";
+
+ const n=automaticNRS2002();
+ if(n.nut>=3)return "MALNUTRICION";
  return "GENERAL";
 }
 function currentClinicalProfile(){
@@ -1843,72 +1850,121 @@ function metabolicStress(g){
  return "BAJO-MODERADO";
 }
 function modifierState(){
- const b=calculationsBase(),u=backgroundClinicalText(),older=b.age>=60,cx=complicationState(),f=diseaseFlags(),risk=clinicalNutritionRisk();
- const m=older?mnaResult():null;
+ const b=calculationsBase(),older=b.age>=60,cx=complicationState(),f=diseaseFlags();
+ const n=older?null:automaticNRS2002(),m=older?mnaResult():null;
  const intake=currentIntakePercent();
  const obesity=Number.isFinite(b.imc)&&b.imc>=30;
  const under=Number.isFinite(b.imc)&&(older?b.imc<23:b.imc<18.5);
  const muscle=["MODERADA DEPLECIÓN","SEVERA DEPLECIÓN"].includes(radio("masaMuscular"));
  const fatLoss=["MODERADA DEPLECIÓN","SEVERA DEPLECIÓN"].includes(radio("masaGrasa"));
- const nutritionRisk=older?(m.complete&&m.total<=11):risk.risk;
- const malnutrition=under||muscle||(older?(m.complete&&m.total<=7):risk.malnutritionEvidence);
+ const nutritionRisk=older?(m.complete&&m.total<=11):(n&&n.total>=3);
+ const malnutrition=under||muscle||(older?(m.complete&&m.total<=7):(n&&n.nut>=3));
  const wound=f.wound||cx.pressureInjury;
+ const stress=clinicalStressState();
  return {
   obesity,older,under,muscle,fatLoss,nutritionRisk,malnutrition,
   diabetes:f.diabetes,wound,dysphagia:cx.dysphagia,dialysis:f.dialysis,
-  intake,screenScore:older?(m.total??null):risk.score,cx,flags:f,stress:risk.stress
+  intake,screenScore:older?(m.total??null):(n?.total??null),cx,flags:f,stress
  };
 }
 function guideLabel(cp){
  const m={GENERAL:"GENERAL / POLIMÓRBIDO",MALNUTRICION:"DESNUTRICIÓN / ALTO RIESGO",GERIATRIA:"ADULTO MAYOR",DEMENCIA:"DEMENCIA",ONCOLOGIA:"ONCOLOGÍA",CIRUGIA:"CIRUGÍA",TRAUMA:"TRAUMA",UCI:"UCI / CRÍTICO",RENAL:"RENAL",HEPATICO:"HEPÁTICO",PANCREATITIS:"PANCREATITIS",IBD:"EII",NEURO:"NEURO / ACV",DIABETES:"DIABETES",CARDIACO:"CARDIOLOGÍA",RESPIRATORIO:"RESPIRATORIO",INFECCION:"INFECCIÓN/SEPSIS",HERIDAS:"HERIDAS / LPP",OBESIDAD:"OBESIDAD",QUEMADOS:"QUEMADOS",INTESTINAL:"FALLA INTESTINAL",MANUAL:"MANUAL",EMBARAZO:"EMBARAZO",POSPARTO:"POSPARTO"};
  return m[cp]||cp;
 }
-function guidelineEngine(){
- const b=calculationsBase(),mod=modifierState(),cx=mod.cx,cp=currentClinicalProfile(),actual=b.w,ideal=idealWeightForGuide(),adj=adjustedWeight33();
- let eW=actual,pW=actual,kMin=25,kMax=30,kChosen=25,pMin=.8,pMax=1.5,pChosen=1.0,extra=0;
- let source="ESPEN Hospital Nutrition 2021 / ESPEN Polimórbidos 2023",reason=[],diseaseAdvice=[];
 
- // Paciente hospitalizado general: 25/1.0 si realmente está estable;
- // 30/1.2 con enfermedad activa/riesgo; 30/1.5 con alto catabolismo o malnutrición.
+function geriatricProteinTarget(mod){
+ const f=mod.flags||diseaseFlags();
+
+ // Enfermedad renal manda sobre cualquier regla geriátrica.
+ if(f.renal)return null;
+
+ // Adulto mayor estable: ESPEN >=1.0 g/kg/d.
+ if(!mod.nutritionRisk && !mod.malnutrition && mod.stress.level==="BAJO" && !mod.wound)
+  return 1.0;
+
+ // Enfermedad/riesgo nutricional sin catabolismo mayor: 1.2 g/kg/d.
+ if(mod.nutritionRisk || mod.stress.level==="MODERADO")
+  return 1.2;
+
+ // 1.5 se reserva para una indicación fuerte:
+ // depleción muscular, malnutrición manifiesta, heridas o alto catabolismo.
+ if(mod.muscle || mod.malnutrition || mod.wound || mod.stress.level==="ALTO")
+  return 1.5;
+
+ return 1.0;
+}
+function highProteinSafetyNote(g){
+ const age=num(val("edad"))||0,f=diseaseFlags();
+ if(age<60)return "";
+ if(f.renal)return " Perfil renal activo: la proteína se ajusta por función renal/KRT y prevalece sobre la regla geriátrica.";
+ if(g.pChosen>=1.5)return " Aporte proteico alto reservado para catabolismo, depleción, herida o malnutrición; reevaluar función renal, urea/creatinina, hidratación y tolerancia.";
+ if(g.pChosen>=1.2)return " Aporte proteico aumentado por enfermedad/riesgo; reevaluar función renal y evolución clínica.";
+ return "";
+}
+function guidelineEngine(){
+ const b=calculationsBase(),mod=modifierState(),cx=mod.cx,cp=currentClinicalProfile();
+ const actual=b.w,ideal=idealWeightForGuide(),adj=adjustedWeight33();
+ let eW=actual,pW=actual,kMin=25,kMax=30,kChosen=25,pMin=.8,pMax=1.5,pChosen=1.0,extra=0;
+ let source="ESPEN Hospital Nutrition 2021",reason=[],diseaseAdvice=[];
+
+ // Base hospitalaria:
+ // estándar: 25 kcal/kg y 0,8–1,0 g/kg;
+ // hospitalaria/enfermedad-riesgo: 30 kcal/kg y ≥1,2 g/kg.
  if(mod.malnutrition||mod.stress.level==="ALTO"){
-  kChosen=30;pChosen=1.5;reason.push("Malnutrición o estrés metabólico alto: se usa el extremo alto del esquema hospitalario.");
+  kChosen=30;pChosen=1.5;
+  reason.push("Malnutrición o catabolismo alto.");
  }else if(mod.nutritionRisk||mod.stress.level==="MODERADO"){
-  kChosen=30;pChosen=1.2;reason.push("Enfermedad activa o riesgo nutricional: dieta hospitalaria de mayor densidad energética y proteica.");
+  kChosen=30;pChosen=1.2;
+  reason.push("Enfermedad activa o riesgo nutricional.");
  }else{
-  kChosen=25;pChosen=1.0;reason.push("Paciente estable, sin riesgo ni estrés metabólico relevante: requerimiento mínimo de dieta estándar hospitalaria.");
+  kChosen=25;pChosen=1.0;
+  reason.push("Paciente estable sin riesgo nutricional.");
  }
 
  if(cp==="EMBARAZO"){
   kMin=kMax=kChosen=35;pMin=pMax=pChosen=1.5;source="Esquema materno configurado";
-  reason=["Gestación: esquema clínico configurado de 35 kcal/kg y 1,5 g proteína/kg."];
+  reason=["Gestación: esquema materno configurado."];
  }else if(cp==="POSPARTO"){
   kMin=kMax=kChosen=30;pMin=pMax=pChosen=1.5;extra=250;source="Esquema materno configurado";
-  reason=["Posparto/lactancia: 30 kcal/kg +250 kcal y 1,5 g proteína/kg."];
+  reason=["Posparto/lactancia: 30 kcal/kg +250 kcal."];
  }else if(cp==="MALNUTRICION"){
-  kMin=30;kMax=35;kChosen=mod.under?35:30;pMin=1.2;pMax=1.5;pChosen=1.5;source="ESPEN Polimórbidos 2023";
-  reason=["Malnutrición/depleción: 30–35 kcal/kg según contexto y 1,5 g proteína/kg como meta de trabajo si no existe una condición que obligue a otra prescripción."];
+  kMin=30;kMax=30;kChosen=30;pMin=1.2;pMax=1.5;pChosen=1.5;source="ESPEN Polimórbidos 2023";
+  reason=["Malnutrición: 30 kcal/kg y 1,5 g/kg como meta de trabajo, individualizando tolerancia."];
  }else if(cp==="GERIATRIA"||cp==="DEMENCIA"){
   kMin=27;kMax=30;kChosen=30;pMin=1.0;pMax=1.5;
-  pChosen=(mod.malnutrition||mod.stress.level==="ALTO"||mod.wound)?1.5:(mod.nutritionRisk||mod.stress.level==="MODERADO"?1.2:1.0);
+  const gp=geriatricProteinTarget(mod);
+  pChosen=gp===null?1.0:gp;
   source=cp==="DEMENCIA"?"ESPEN Demencia 2024 + Geriatría 2022":"ESPEN Geriatría 2022";
-  if(Number.isFinite(b.imc)&&b.imc<=21){kMin=32;kMax=38;kChosen=32;}
-  reason=[Number.isFinite(b.imc)&&b.imc<=21
-    ?"Adulto mayor con IMC ≤21: se selecciona 32 kcal/kg; proteína se ajusta por enfermedad y estado nutricional."
-    :"Adulto mayor hospitalizado: 30 kcal/kg como orientación; proteína 1,0–1,5 g/kg según enfermedad, riesgo y depleción."];
- }else if(cp==="ONCOLOGIA"){
-  kMin=25;kMax=30;kChosen=(mod.nutritionRisk||mod.malnutrition||mod.intake!==null&&mod.intake<75)?30:27.5;
-  pMin=1.0;pMax=1.5;pChosen=mod.malnutrition||mod.muscle?1.5:1.2;source="ESPEN Cáncer 2021";
-  reason=["Oncología: 25–30 kcal/kg y proteína >1,0 hasta 1,5 g/kg; se eleva con baja ingesta, malnutrición o depleción muscular."];
- }else if(cp==="CIRUGIA"||cp==="TRAUMA"){
-  const s=currentSurgeryScenario();source="ESPEN Cirugía Update 2025";eW=ideal||actual;pW=ideal||actual;
-  if(s==="POSTOP_SIMPLE"){kMin=25;kMax=30;kChosen=mod.nutritionRisk?30:25;pMin=1.2;pMax=1.5;pChosen=mod.malnutrition?1.5:1.2;reason=["Posoperatorio: 25–30 kcal/kg y proteína elevada; se usa peso ideal como referencia."];}
-  if(s==="ABDOMINAL_MAJOR"||s==="ONCOLOGIC"||s==="GI_RESECTION"){kMin=25;kMax=30;kChosen=30;pMin=pMax=pChosen=1.5;reason=["Cirugía mayor/oncogastrointestinal: 30 kcal/kg y 1,5 g proteína/kg de peso ideal."];}
-  if(s==="ORTHOPEDIC"){kMin=25;kMax=30;kChosen=(mod.older||mod.nutritionRisk)?30:25;pMin=1.2;pMax=1.5;pChosen=(mod.malnutrition||mod.older)?1.5:1.2;reason=["Ortopedia/fractura: energía y proteína aumentan con edad, riesgo o depleción."];}
-  if(s==="TRAUMA"){kMin=25;kMax=30;kChosen=30;pMin=1.5;pMax=2.0;pChosen=1.5;reason=["Trauma: 30 kcal/kg y aporte proteico alto; si está crítico se aplica el perfil UCI."];}
-  if(s==="ILEUS_OBSTRUCTION"){kMin=25;kMax=30;kChosen=25;pMin=1.2;pMax=1.5;pChosen=mod.malnutrition?1.5:1.2;reason=["Íleo/obstrucción: la cifra es meta metabólica; la vía debe definirse según seguridad y función gastrointestinal."];}
-  if(s==="FISTULA_LEAK"||s==="STOMA_HIGH_OUTPUT"){kMin=25;kMax=30;kChosen=30;pMin=pMax=pChosen=1.5;reason=["Fístula/fuga/alto débito: 30 kcal/kg y 1,5 g/kg como meta inicial, con ajuste por pérdidas."];}
-  if(s==="OPEN_ABDOMEN"){kMin=25;kMax=30;kChosen=30;pMin=1.5;pMax=2.0;pChosen=1.8;reason=["Abdomen abierto: proteína elevada por pérdidas nitrogenadas."];}
-  if(s==="INFECTION_SEPSIS"){kMin=25;kMax=30;kChosen=30;pMin=1.2;pMax=1.5;pChosen=1.5;reason=["Infección posoperatoria/sepsis no crítica: 30 kcal/kg y 1,5 g/kg."];}
+
+  if(Number.isFinite(b.imc)&&b.imc<=21){
+   kMin=32;kMax=38;kChosen=32;
+  }
+
+  if(pChosen===1.0)
+   reason=[Number.isFinite(b.imc)&&b.imc<=21
+    ?"Adulto mayor con bajo peso: energía aumentada; proteína base 1,0 g/kg si no hay enfermedad/catabolismo que justifique subirla."
+    :"Adulto mayor estable: 30 kcal/kg y 1,0 g proteína/kg como base."];
+  else if(pChosen===1.2)
+   reason=["Adulto mayor con enfermedad o riesgo nutricional: 30 kcal/kg y 1,2 g proteína/kg."];
+  else
+   reason=["Adulto mayor con malnutrición, depleción muscular, herida o alto catabolismo: 1,5 g proteína/kg; usar solo si no existe una condición renal que obligue a otra prescripción."];
+}else if(cp==="ONCOLOGIA"){
+  kMin=25;kMax=30;kChosen=(mod.nutritionRisk||mod.malnutrition||(mod.intake!==null&&mod.intake<75))?30:25;
+  pMin=1.0;pMax=1.5;pChosen=(mod.malnutrition||mod.muscle)?1.5:1.2;source="ESPEN Cáncer 2021";
+  reason=["Oncología: 25–30 kcal/kg; proteína >1,0 y hasta 1,5 g/kg."];
+ }else if(cp==="TRAUMA"){
+  // Corrección importante: trauma NO usa automáticamente peso ideal.
+  eW=mod.obesity?(adj||actual):actual;
+  pW=mod.obesity?(adj||actual):actual;
+  kMin=kMax=kChosen=30;pMin=1.2;pMax=1.5;pChosen=1.5;source="ESPEN Hospital Nutrition + respuesta catabólica al trauma";
+  reason=["Trauma no crítico: 30 kcal/kg y 1,5 g proteína/kg; peso actual/estimado, o ajustado si hay obesidad."];
+ }else if(cp==="CIRUGIA"){
+  const s=currentSurgeryScenario();source="ESPEN Cirugía Update 2025";
+  eW=ideal||actual;pW=ideal||actual;kMin=25;kMax=30;pMin=1.2;pMax=1.5;
+  if(s==="POSTOP_SIMPLE"){kChosen=mod.nutritionRisk?30:25;pChosen=mod.malnutrition?1.5:1.2;}
+  else{kChosen=30;pChosen=1.5;}
+  if(s==="OPEN_ABDOMEN"){pMin=1.5;pMax=2.0;pChosen=1.8;}
+  reason=["Cirugía: 25–30 kcal/kg; en cirugía mayor se usa 30 kcal/kg y proteína elevada. Peso ideal/referencia como base cuando corresponde."];
  }else if(cp==="UCI"){
   source="ESPEN ICU 2023 + ASPEN Critical Care 2022";
   const day=Number(val("icuDay")||1),measured=num(val("measuredEE")),hasIC=val("hasIC")==="SI";
@@ -1917,75 +1973,85 @@ function guidelineEngine(){
    if(b.imc>=50){eW=ideal||actual;kMin=22;kMax=25;kChosen=23.5;}
    else{eW=actual;kMin=11;kMax=14;kChosen=12.5;}
    pW=ideal||adj||actual;pChosen=b.imc>=40?2.5:2.0;pMin=pMax=pChosen;
-   reason=["UCI con obesidad: estrategia hipocalórica e hiperproteica; no se usa el mismo esquema del paciente de sala."];
+   reason=["UCI + obesidad: estrategia hipocalórica hiperproteica."];
   }else if(hasIC&&measured!==null){
-   kMin=kMax=kChosen=null;reason=["Calorimetría indirecta disponible: se usa el gasto energético medido."];
+   kMin=kMax=kChosen=null;reason=["Calorimetría indirecta disponible."];
   }else{
    kMin=12;kMax=25;kChosen=day<=3?20:25;
-   reason=[day<=3?"UCI temprana: se usa una meta prudente dentro del rango 12–25 kcal/kg y se reevalúa.":"UCI después de la fase inicial: se aproxima a 25 kcal/kg si la evolución y tolerancia lo permiten."];
+   reason=[day<=3?"UCI fase temprana: meta prudente dentro del rango ASPEN 12–25 kcal/kg.":"UCI tras fase temprana: aproximación a 25 kcal/kg si la evolución lo permite."];
   }
  }else if(cp==="RENAL"){
   source="ESPEN Renal Hospitalaria 2024";
-  // Si hay edema/ascitis, evitar cargar automáticamente el peso líquido cuando hay talla disponible.
-  if((cx.edema||cx.ascites)&&ideal){eW=ideal;pW=ideal;reason.push("Edema/ascitis: se usa peso de referencia por talla como aproximación para evitar sobreestimar con retención hídrica.");}
+  if((cx.edema||cx.ascites)&&ideal){eW=ideal;pW=ideal;}
   else{eW=actual;pW=actual;}
-  kMin=20;kMax=30;kChosen=mod.stress.level==="ALTO"?25:30;
+  kMin=25;kMax=30;kChosen=mod.stress.level==="ALTO"?25:30;
   const r=val("renalSubtype")||"CKD_STABLE";
-  if(r==="CKD_STABLE"){pMin=.6;pMax=.8;pChosen=.8;reason.push("ERC estable no crítica: 0,6–0,8 g proteína/kg.");}
-  if(r==="DIALYSIS_STABLE"){pMin=pMax=pChosen=1.2;reason.push("Diálisis crónica estable: ≥1,2 g proteína/kg.");}
-  if(r==="AKI_NONCRIT"){pMin=.8;pMax=1.0;pChosen=1.0;reason.push("AKI no crítica: 0,8–1,0 g proteína/kg.");}
-  if(r==="CRIT_NO_KRT"){kChosen=25;pMin=1.0;pMax=1.3;pChosen=1.3;reason.push("Renal crítico sin KRT: proteína hasta 1,3 g/kg.");}
-  if(r==="CRIT_IHD"){kChosen=25;pMin=1.3;pMax=1.5;pChosen=1.5;reason.push("Crítico + KRT intermitente: 1,3–1,5 g proteína/kg.");}
-  if(r==="CRIT_CKRT"){kChosen=25;pMin=1.5;pMax=1.7;pChosen=1.7;reason.push("Crítico + CKRT/PIKRT: 1,5–1,7 g proteína/kg.");}
+  if(r==="CKD_STABLE"){pMin=.6;pMax=.8;pChosen=.8;}
+  if(r==="DIALYSIS_STABLE"){pMin=pMax=pChosen=1.2;}
+  if(r==="AKI_NONCRIT"){pMin=.8;pMax=1.0;pChosen=1.0;}
+  if(r==="CRIT_NO_KRT"){kChosen=25;pMin=1.0;pMax=1.3;pChosen=1.3;}
+  if(r==="CRIT_IHD"){kChosen=25;pMin=1.3;pMax=1.5;pChosen=1.5;}
+  if(r==="CRIT_CKRT"){kChosen=25;pMin=1.5;pMax=1.7;pChosen=1.7;}
+  reason=["Renal: proteína individualizada por ERC/AKI y terapia de reemplazo renal."];
  }else if(cp==="HEPATICO"){
-  kMin=30;kMax=35;kChosen=mod.malnutrition?35:30;pMin=1.2;pMax=1.5;pChosen=(mod.malnutrition||mod.muscle)?1.5:1.2;source="ESPEN Enfermedad Hepática";
-  reason=["Hepatopatía/cirrosis: 30–35 kcal/kg y 1,2–1,5 g proteína/kg, elevando con sarcopenia/malnutrición."];
+  kMin=30;kMax=35;kChosen=mod.malnutrition?35:30;pMin=1.2;pMax=1.5;pChosen=(mod.malnutrition||mod.muscle)?1.5:1.2;source="ESPEN Hepatopatía";
+  reason=["Cirrrosis/hepatopatía: proteína 1,2 g/kg si bien nutrido y 1,5 g/kg con malnutrición/sarcopenia."];
  }else if(cp==="PANCREATITIS"){
-  kMin=25;kMax=30;kChosen=(mod.nutritionRisk||mod.malnutrition)?30:25;pMin=1.2;pMax=1.5;pChosen=mod.malnutrition?1.5:1.2;source="ESPEN Pancreatitis 2024 + Hospital Nutrition";
-  reason=["Pancreatitis: meta inicial individualizada dentro de 25–30 kcal/kg; proteína 1,2–1,5 g/kg según estado nutricional y estrés."];
+  kMin=25;kMax=30;kChosen=(mod.nutritionRisk||mod.stress.level!=="BAJO")?30:25;
+  pMin=1.2;pMax=1.5;pChosen=mod.malnutrition?1.5:1.2;source="ESPEN Pancreatitis 2024 + Hospital Nutrition";
+  reason=["Pancreatitis: 25–30 kcal/kg y 1,2–1,5 g proteína/kg según estado nutricional."];
  }else if(cp==="IBD"){
-  kMin=30;kMax=35;kChosen=mod.malnutrition?35:30;const active=(val("ibdActivity")||"ACTIVA")==="ACTIVA";
+  kMin=30;kMax=35;kChosen=mod.malnutrition?35:30;
+  const active=(val("ibdActivity")||"ACTIVA")==="ACTIVA";
   pMin=active?1.2:1.0;pMax=active?1.5:1.0;pChosen=active?(mod.malnutrition?1.5:1.2):1.0;source="ESPEN EII 2023";
-  reason=[active?"EII activa: 30–35 kcal/kg y 1,2–1,5 g proteína/kg.":"EII en remisión: energía similar a población sana y proteína alrededor de 1 g/kg."];
+  reason=[active?"EII activa: 30–35 kcal/kg y 1,2–1,5 g proteína/kg.":"EII en remisión: 30 kcal/kg y ~1 g proteína/kg."];
  }else if(cp==="NEURO"){
-  kMin=25;kMax=30;kChosen=mod.nutritionRisk?30:27.5;pMin=1.0;pMax=1.5;pChosen=mod.malnutrition?1.5:(mod.stress.level==="MODERADO"?1.2:1.0);source="ESPEN Neurología + Hospital Nutrition";
-  reason=["Neurología/ACV: energía según riesgo y enfermedad; deglución/tolerancia determinan la vía."];
+  kMin=25;kMax=30;kChosen=(mod.nutritionRisk||mod.stress.level!=="BAJO")?30:25;
+  pMin=1.0;pMax=1.5;pChosen=mod.malnutrition?1.5:(mod.stress.level!=="BAJO"?1.2:1.0);source="ESPEN Hospital Nutrition";
+  reason=["Neurología: energía/proteína según estrés y riesgo; la vía depende de seguridad deglutoria."];
  }else if(cp==="DIABETES"){
-  kMin=25;kMax=30;kChosen=(mod.nutritionRisk||mod.stress.level!=="BAJO")?30:25;pMin=1.0;pMax=1.5;pChosen=mod.malnutrition?1.5:(mod.stress.level!=="BAJO"?1.2:1.0);source="ADA Hospital + ESPEN Hospital Nutrition";
-  reason=["Diabetes: energía según estado clínico; proteína según estrés y estado nutricional, salvo que enfermedad renal obligue a otra prescripción."];
+  kMin=25;kMax=30;kChosen=(mod.nutritionRisk||mod.stress.level!=="BAJO")?30:25;
+  pMin=1.0;pMax=1.5;pChosen=mod.malnutrition?1.5:(mod.stress.level!=="BAJO"?1.2:1.0);source="ESPEN Hospital Nutrition + ADA";
+  reason=["Diabetes: energía según estado clínico; macronutrientes individualizados. Si hay enfermedad renal, manda el perfil renal."];
  }else if(cp==="CARDIACO"){
-  kMin=25;kMax=30;kChosen=(mod.older||mod.nutritionRisk||mod.stress.level!=="BAJO")?30:25;pMin=1.0;pMax=1.5;pChosen=mod.malnutrition?1.5:(mod.stress.level!=="BAJO"?1.2:1.0);source="ESPEN Hospital Nutrition / Polimórbidos";
-  reason=["Cardiología: 25 kcal/kg si estable; 30 kcal/kg y mayor proteína si hay enfermedad activa, adulto mayor o riesgo nutricional."];
+  kMin=25;kMax=30;kChosen=(mod.older||mod.nutritionRisk||mod.stress.level!=="BAJO")?30:25;
+  pMin=1.0;pMax=1.5;pChosen=mod.malnutrition?1.5:(mod.stress.level!=="BAJO"?1.2:1.0);source="ESPEN Hospital Nutrition / Polimórbidos";
+  reason=["Cardiología: 25 kcal/kg si estable; 30 kcal/kg si hay enfermedad activa, riesgo o adulto mayor."];
  }else if(cp==="RESPIRATORIO"){
-  kMin=25;kMax=30;kChosen=(mod.nutritionRisk||mod.stress.level!=="BAJO")?30:25;pMin=1.0;pMax=1.5;pChosen=mod.malnutrition?1.5:1.2;source="ESPEN Hospital Nutrition / Polimórbidos";
+  kMin=25;kMax=30;kChosen=(mod.nutritionRisk||mod.stress.level!=="BAJO")?30:25;
+  pMin=1.0;pMax=1.5;pChosen=mod.malnutrition?1.5:1.2;source="ESPEN Hospital Nutrition / Polimórbidos";
   reason=["Respiratorio: evitar sobrealimentación; proteína aumenta con enfermedad/riesgo."];
  }else if(cp==="INFECCION"){
-  kMin=25;kMax=30;kChosen=30;pMin=1.2;pMax=1.5;pChosen=(mod.malnutrition||mod.stress.level==="ALTO")?1.5:1.2;source="ESPEN Hospital Nutrition / Polimórbidos";
-  reason=["Infección activa: 30 kcal/kg y 1,2–1,5 g proteína/kg según catabolismo y estado nutricional."];
+  kMin=kMax=kChosen=30;pMin=1.2;pMax=1.5;pChosen=(mod.malnutrition||mod.stress.level==="ALTO")?1.5:1.2;source="ESPEN Hospital Nutrition / Polimórbidos";
+  reason=["Infección activa: 30 kcal/kg; proteína 1,2–1,5 g/kg según catabolismo."];
  }else if(cp==="HERIDAS"){
-  kMin=30;kMax=35;kChosen=mod.malnutrition?35:30;pMin=1.2;pMax=1.5;pChosen=1.5;source="ESPEN Hospital Nutrition / Polimórbidos";
-  reason=["Heridas/LPP: energía y proteína elevadas para cubrir reparación tisular."];
+  kMin=30;kMax=35;kChosen=mod.malnutrition?35:30;pMin=1.2;pMax=1.5;pChosen=1.5;source="ESPEN Hospital Nutrition";
+  reason=["Heridas/LPP: energía y proteína elevadas para reparación tisular."];
  }else if(cp==="OBESIDAD"){
-  source="ESPEN/UEG Obesidad 2023";eW=adj||actual;pW=adj||actual;kMin=kMax=kChosen=25;
-  if(mod.muscle||mod.malnutrition){pMin=1.2;pMax=1.5;pChosen=1.5;reason=["Obesidad con depleción/malnutrición: 25 kcal/kg de peso ajustado y proteína 1,5 g/kg de peso ajustado."];}
-  else if(mod.nutritionRisk||mod.stress.level!=="BAJO"){pMin=1.0;pMax=1.5;pChosen=1.2;reason=["Obesidad hospitalizada con enfermedad/riesgo: 25 kcal/kg de peso ajustado y 1,2 g proteína/kg."];}
-  else{pMin=.8;pMax=1.0;pChosen=1.0;reason=["Obesidad estable no crítica: 25 kcal/kg y 1,0 g proteína/kg de peso ajustado."];}
+  source="ESPEN/UEG Obesidad";eW=adj||actual;pW=adj||actual;kMin=kMax=kChosen=25;
+  if(mod.malnutrition||mod.muscle){pMin=1.2;pMax=1.5;pChosen=1.5;}
+  else if(mod.nutritionRisk||mod.stress.level!=="BAJO"){pMin=1.0;pMax=1.5;pChosen=1.2;}
+  else{pMin=.8;pMax=1.0;pChosen=1.0;}
+  reason=["Obesidad no crítica: cálculo con peso ajustado; proteína aumenta si hay enfermedad, sarcopenia o malnutrición."];
  }else if(cp==="QUEMADOS"){
-  kMin=30;kMax=35;kChosen=35;pMin=1.5;pMax=2.0;pChosen=2.0;source="ASPEN/ESPEN Critical Care";
-  reason=["Quemaduras: alto catabolismo; requerimiento debe reevaluarse estrechamente y calorimetría es preferible cuando está disponible."];
+  kMin=30;kMax=35;kChosen=35;pMin=1.5;pMax=2.0;pChosen=2.0;source="Principios ESPEN/ASPEN críticos";
+  reason=["Quemaduras: alto catabolismo; calorimetría es preferible si está disponible."];
  }else if(cp==="INTESTINAL"){
   kMin=25;kMax=30;kChosen=30;pMin=1.2;pMax=1.5;pChosen=1.5;source="ESPEN Falla Intestinal 2023";
-  reason=["Falla intestinal/malabsorción: 30 kcal/kg y proteína alta como meta inicial; ajustar según absorción y pérdidas."];
+  reason=["Falla intestinal/malabsorción: meta inicial alta en proteína, individualizando pérdidas y absorción."];
  }else if(cp==="MANUAL"){
-  kMin=kMax=kChosen=num(val("kcalKg"));pMin=pMax=pChosen=num(val("proKg"));extra=num(val("extraKcal"))||0;source="Ajuste manual";reason=["Valores definidos manualmente por el profesional."];
+  kMin=kMax=kChosen=num(val("kcalKg"));pMin=pMax=pChosen=num(val("proKg"));extra=num(val("extraKcal"))||0;
+  source="Ajuste manual";reason=["Valores definidos manualmente por el profesional."];
  }
 
- // Obesidad coexistente: usar peso ajustado si la guía primaria no exige otro peso de referencia.
- if(mod.obesity&&!["UCI","RENAL","EMBARAZO","POSPARTO","OBESIDAD","CIRUGIA","TRAUMA"].includes(cp)){
-  eW=adj||eW;pW=adj||pW;reason.push("Obesidad concomitante: cálculo con peso ajustado para evitar sobreestimación.");
+ // Obesidad concomitante en perfiles no críticos/no renales: usar peso ajustado
+ // salvo cirugía, donde ya se usa peso ideal, y UCI, que tiene regla propia.
+ if(mod.obesity&&!["UCI","RENAL","EMBARAZO","POSPARTO","OBESIDAD","CIRUGIA"].includes(cp)){
+  eW=adj||eW;pW=adj||pW;
  }
 
- if(eW===null)eW=actual;if(pW===null)pW=actual;
+ if(eW===null)eW=actual;
+ if(pW===null)pW=actual;
 
  let estimatedKcal=null,goalKcal=null;
  if(cp==="UCI"&&val("hasIC")==="SI"&&num(val("measuredEE"))!==null){
@@ -2030,7 +2096,7 @@ function updateClinicalUI(){
  $("totalProtein").textContent=c.proG!==null?`${one(c.proG)} g/d · ${Math.round(c.pp)}%`:"—";
  $("totalCarbs").textContent=c.choG!==null?`${one(c.choG)} g/d · ${Math.round(c.cho)}%`:"—";
  $("totalFat").textContent=c.lipG!==null?`${one(c.lipG)} g/d · ${Math.round(c.lip)}%`:"—";
- $("energySanity").textContent=requirementSanity();
+ $("energySanity").textContent=requirementSanity()+highProteinSafetyNote(c.guide);
  $("clinicalReasonText").textContent=g.reason.join(" ");
 
  if($("surgeryScenarioHint")&&(g.cp==="CIRUGIA"||g.cp==="TRAUMA")){
@@ -2115,65 +2181,146 @@ function mnaAutoNeuro(){
 }
 function mnaResult(){
  const c=calculationsBase(),route=importedRoute(),intake=currentIntakePercent(),app=radio("apetito");
- let a=2;
- if(app==="AUSENTE"||(route!=="NPO"&&intake!==null&&intake<=25)||radio("viaoral")==="NO TOLERA")a=0;
- else if(app==="DISMINUIDO"||(route!=="NPO"&&intake!==null&&intake<=75)||radio("masticacion")==="CON DIFICULTAD"||radio("deglucion")==="CON DIFICULTAD"||chk("aVomito")||chk("aDiarrea"))a=1;
 
+ // A. Disminución de ingesta en los últimos 3 meses por apetito,
+ // digestivo, masticación o deglución. Reutiliza lo ya interrogado.
+ let a=2;
+ const impactGI=chk("aVomito")||chk("aDiarrea")||chk("aNausea");
+ const oralProblem=radio("masticacion")==="CON DIFICULTAD"||radio("deglucion")==="CON DIFICULTAD";
+ if(app==="AUSENTE"||(route!=="NPO"&&intake!==null&&intake<=25)||(radio("viaoral")==="NO TOLERA"&&route!=="NPO"))a=0;
+ else if(app==="DISMINUIDO"||impactGI||oralProblem||(route!=="NPO"&&intake!==null&&intake<100))a=1;
+
+ // B. Pérdida de peso 3 meses.
  const loss=inferredWeightLossMNA(),b=loss.points;
 
+ // C. Movilidad.
  const mob=radio("deambula");
  const cMob=mob==="NO DEAMBULA"?0:mob==="CON ASISTENCIA"?1:2;
 
- const d=clinicalStressState().score>0?0:2;
+ // D. Enfermedad aguda / estrés en 3 meses.
+ // Un diagnóstico activo de hospitalización cuenta como "sí".
+ const active=activeDiagnosisText();
+ const d=(active&&active.trim().length>5)?0:2;
 
+ // E. Problema neuropsicológico.
  const neuro=mnaAutoNeuro();
  const e=neuro==="SEVERE"?0:neuro==="MILD"?1:2;
 
+ // F. IMC; si no existe, CP.
  let f=null,anthro="";
- if(Number.isFinite(c.imc)){f=c.imc<19?0:c.imc<21?1:c.imc<23?2:3;anthro=`IMC ${one(c.imc)}`;}
- else{const calf=num(val("cp"));if(calf!==null){f=calf<31?0:3;anthro=`CP ${one(calf)} cm`;}}
- if(f===null)return {complete:false,total:null,label:"PENDIENTE",reason:"Falta IMC o perímetro de pantorrilla.",parts:{a,b,c:cMob,d,e,f},loss};
+ if(Number.isFinite(c.imc)){
+  f=c.imc<19?0:c.imc<21?1:c.imc<23?2:3;
+  anthro=`IMC ${one(c.imc)}`;
+ }else{
+  const calf=num(val("cp"));
+  if(calf!==null){f=calf<31?0:3;anthro=`CP ${one(calf)} cm`;}
+ }
+ if(f===null)
+  return {complete:false,total:null,label:"PENDIENTE",reason:"Falta IMC o perímetro de pantorrilla.",parts:{a,b,c:cMob,d,e,f},loss};
 
  const total=a+b+cMob+d+e+f;
  const label=total>=12?"ESTADO NUTRICIONAL NORMAL":total>=8?"RIESGO DE MALNUTRICIÓN":"MALNUTRICIÓN";
  return {complete:true,total,label,anthro,parts:{a,b,c:cMob,d,e,f},loss,neuro};
 }
 
-function automaticNRS2002(){
- const b=calculationsBase(),intake=currentIntakePercent(),route=importedRoute(),active=activeDiagnosisText(),area=normalizedUpper(val("area"));
- let nut=0,nutReason=[];
 
- // Estado nutricional: usar lo ya obtenido en entrevista/antropometría.
+function documentedWeightLossText(){
+ return backgroundClinicalText();
+}
+function nrsWeightLossScore(){
+ const u=documentedWeightLossText();
+
+ // Sólo puntúa pérdida si está realmente documentada.
+ // Si el paciente no sabe/no consta, no se inventa una pérdida.
+ if(/P[ÉE]RDIDA[^.;]{0,45}(?:>|MAYOR A|MAS DE|MÁS DE)\s*15\s*%[^.;]{0,35}3\s*MESES/.test(u))
+  return {score:3,label:">15% en 3 meses"};
+ if(/P[ÉE]RDIDA[^.;]{0,45}(?:>|MAYOR A|MAS DE|MÁS DE)\s*5\s*%[^.;]{0,35}1\s*MES/.test(u))
+  return {score:3,label:">5% en 1 mes"};
+ if(/P[ÉE]RDIDA[^.;]{0,45}(?:>|MAYOR A|MAS DE|MÁS DE)\s*5\s*%[^.;]{0,35}2\s*MESES/.test(u))
+  return {score:2,label:">5% en 2 meses"};
+ if(/P[ÉE]RDIDA[^.;]{0,45}(?:>|MAYOR A|MAS DE|MÁS DE)\s*5\s*%[^.;]{0,35}3\s*MESES/.test(u))
+  return {score:1,label:">5% en 3 meses"};
+
+ if(/NO REFIERE[^.;]{0,20}P[ÉE]RDIDA DE PESO|SIN P[ÉE]RDIDA DE PESO/.test(u))
+  return {score:0,label:"sin pérdida referida"};
+ return {score:0,label:"pérdida no documentada"};
+}
+function nrsWeeklyIntakePercent(){
+ // La ronda ya pregunta porcentaje de ingesta. Si el documento anterior trae
+ // explícitamente una ingesta semanal, esa información tiene prioridad.
+ const u=backgroundClinicalText();
+ const m=u.match(/(?:INGESTA|CONSUMO)[^.;]{0,50}(?:SEMANA|SEMANAL)[^0-9]{0,20}(100|75|50|25|0)\s*%/);
+ if(m)return Number(m[1]);
+ return currentIntakePercent();
+}
+function nrsImpairedGeneralCondition(){
+ return radio("deambula")==="NO DEAMBULA" ||
+        radio("apetito")==="AUSENTE" ||
+        radio("viaoral")==="NO TOLERA" ||
+        ["MODERADA DEPLECIÓN","SEVERA DEPLECIÓN"].includes(radio("masaMuscular"));
+}
+function nrsNutritionalScoreExact(){
+ const b=calculationsBase(),route=importedRoute(),intake=nrsWeeklyIntakePercent(),loss=nrsWeightLossScore();
+ let score=loss.score,reasons=[];
+ if(loss.score>0)reasons.push(loss.label);
+
+ // Hoja hospitalaria enviada:
+ // 1 = 50–75%; 2 = 25–50%; 3 = 0–25%.
+ // NPO por orden médica NO se toma como disminución de ingesta previa.
  if(route!=="NPO"&&intake!==null){
-  if(intake<=25){nut=3;nutReason.push("ingesta 0–25%");}
-  else if(intake<=50){nut=Math.max(nut,2);nutReason.push("ingesta 25–50%");}
-  else if(intake<75){nut=Math.max(nut,1);nutReason.push("ingesta 50–75%");}
- }
- const impaired=radio("apetito")==="AUSENTE"||radio("deambula")==="NO DEAMBULA"||
-                radio("viaoral")==="NO TOLERA"||
-                ["MODERADA DEPLECIÓN","SEVERA DEPLECIÓN"].includes(radio("masaMuscular"));
- if(Number.isFinite(b.imc)){
-  if(b.imc<18.5&&impaired){nut=Math.max(nut,3);nutReason.push("IMC <18,5 con deterioro clínico");}
-  else if(b.imc<=20.5&&impaired){nut=Math.max(nut,2);nutReason.push("IMC 18,5–20,5 con deterioro clínico");}
+  if(intake<=25){score=Math.max(score,3);reasons.push("ingesta 0–25%");}
+  else if(intake<=50){score=Math.max(score,2);reasons.push("ingesta 25–50%");}
+  else if(intake<100 && intake<=75){score=Math.max(score,1);reasons.push("ingesta 50–75%");}
  }
 
- // Gravedad de enfermedad: prototipos NRS-2002 a partir del diagnóstico ACTUAL.
- let dis=0,disReason="sin prototipo de mayor estrés";
- if(/\bUCI\b|\bICU\b/.test(area)||
-    /TCE SEVERO|TRAUMA CRANEOENCEFALICO SEVERO|TRAUMA CRANEOENCEFÁLICO SEVERO|TRANSPLANTE DE MEDULA|TRASPLANTE DE MÉDULA/.test(active)){
-   dis=3;disReason="enfermedad severa / UCI";
- }else if(/CIRUGIA ABDOMINAL MAYOR|CIRUGÍA ABDOMINAL MAYOR|LAPAROTOMIA|LAPAROTOMÍA|ACV|ICTUS|ACCIDENTE CEREBROVASCULAR|NEUMONIA SEVERA|NEUMONÍA SEVERA|LEUCEMIA|LINFOMA|SEPSIS/.test(active)){
-   dis=2;disReason="enfermedad de estrés moderado";
- }else if(/FRACTURA DE CADERA|HEMODIAL|CIRROSIS|EPOC|DIABETES|ONCOLOG|CANCER|CÁNCER/.test(active)){
-   dis=1;disReason="enfermedad crónica con complicación";
+ if(Number.isFinite(b.imc)&&nrsImpairedGeneralCondition()){
+  if(b.imc<18.5){score=Math.max(score,3);reasons.push("IMC <18,5 + alteración del estado general");}
+  else if(b.imc<=20.5){score=Math.max(score,2);reasons.push("IMC 18,5–20,5 + alteración del estado general");}
  }
+ return {score:Math.min(3,score),reasons,intake,loss};
+}
+function nrsDiseaseScoreExact(){
+ const a=activeDiagnosisText(),all=backgroundClinicalText(),area=normalizedUpper(val("area"));
 
- const age=num(val("edad"))||0,agePt=age>=70?1:0;
- const total=Math.min(7,nut+dis+agePt);
+ // Grado 3: exactamente los prototipos de la hoja; UCI requiere APACHE >10
+ // cuando está documentado.
+ const apache=all.match(/APACHE\s*(?:II)?\s*[:=]?\s*(\d+)/);
+ const apacheN=apache?Number(apache[1]):null;
+ if(/TRAUMATISMO CRANEOENCEFALICO|TRAUMATISMO CRANEOENCEFÁLICO|TCE SEVERO|TRASPLANTE DE MEDULA OSEA|TRASPLANTE DE MÉDULA ÓSEA|TRANSPLANTE DE MEDULA OSEA/.test(a))
+  return {score:3,label:"enfermedad grave"};
+ if((/\bUCI\b|\bICU\b/.test(area))&&apacheN!==null&&apacheN>10)
+  return {score:3,label:`UCI, APACHE II ${apacheN}`};
+
+ // Grado 2: cirugía abdominal mayor, ACV, infección severa,
+ // neoplasia hematológica. Trauma mayor no craneal se maneja como
+ // prototipo de estrés moderado, no como TCE.
+ if(/CIRUGIA ABDOMINAL MAYOR|CIRUGÍA ABDOMINAL MAYOR|LAPAROTOMIA|LAPAROTOMÍA|ACV|ICTUS|ACCIDENTE CEREBROVASCULAR|LEUCEMIA|LINFOMA|NEOPLASIA HEMATOLOGICA|NEOPLASIA HEMATOLÓGICA/.test(a))
+  return {score:2,label:"enfermedad moderada"};
+ if(/SEPSIS|SHOCK SEPTICO|SHOCK SÉPTICO|CHOQUE SEPTICO|CHOQUE SÉPTICO|ENDOCARDITIS|NEUMONIA SEVERA|NEUMONÍA SEVERA|INFECCION SEVERA|INFECCIÓN SEVERA/.test(a))
+  return {score:2,label:"infección severa"};
+ if(/POLITRAUMA|HEMOTORAX TRAUMATICO|HEMOTÓRAX TRAUMÁTICO|DISPARO DE OTRAS ARMAS DE FUEGO|TRAUMATISMO DE LA VENA|TRAUMA MAYOR/.test(a))
+  return {score:2,label:"trauma mayor no craneal"};
+ if(/\bUCI\b|\bICU\b/.test(area))
+  return {score:2,label:"UCI sin APACHE >10 documentado"};
+
+ // Grado 1: fractura de cadera; crónicos con complicación aguda.
+ if(/FRACTURA DE CADERA|HEMODIAL|DIALISIS|DIÁLISIS|CIRROSIS|EPOC|DIABETES|ONCOLOG|CANCER|CÁNCER/.test(all))
+  return {score:1,label:"enfermedad crónica con complicación / prototipo NRS"};
+
+ return {score:0,label:"requerimientos sin aumento NRS documentado"};
+}
+function automaticNRS2002(){
+ const b=calculationsBase(),nut=nrsNutritionalScoreExact(),dis=nrsDiseaseScoreExact();
+ const agePt=(b.age>=70)?1:0;
+ const total=nut.score+dis.score+agePt;
+ const initialPositive=(Number.isFinite(b.imc)&&b.imc<20.5) ||
+                       nut.loss.score>0 ||
+                       (nut.intake!==null&&nut.intake<100) ||
+                       dis.score>=2;
  return {
-  nut,dis,agePt,total,
+  nut:nut.score,dis:dis.score,agePt,total,initialPositive,
   risk:total>=3?"CON RIESGO NUTRICIONAL":"SIN RIESGO NUTRICIONAL",
-  nutReason,disReason
+  nutReason:nut.reasons,disReason:dis.label
  };
 }
 function screeningText(){
@@ -2200,7 +2347,7 @@ function updateScreeningUI(){
   if($("screenMnaTotal"))$("screenMnaTotal").textContent=m.complete?`${m.total}/14`:"—";
   if($("screenMnaResult"))$("screenMnaResult").textContent=m.label;
   if($("screenReasonText"))$("screenReasonText").textContent=m.complete
-   ?`MNA-SF automático: ingesta ${m.parts.a} + pérdida de peso ${m.parts.b} (${m.loss.label}) + movilidad ${m.parts.c} + enfermedad/estrés ${m.parts.d} + neuropsicológico ${m.parts.e} + antropometría ${m.parts.f} = ${m.total}/14.`
+   ?`MNA-SF: A ${m.parts.a} + B ${m.parts.b} + C ${m.parts.c} + D ${m.parts.d} + E ${m.parts.e} + F ${m.parts.f} = ${m.total}/14. Pérdida de peso: ${m.loss.label}.`
    :m.reason;
   return;
  }
@@ -2209,26 +2356,38 @@ function updateScreeningUI(){
  if($("adultRiskResult"))$("adultRiskResult").textContent=`NRS-2002: ${n.total} PUNTOS`;
  if($("adultStressResult"))$("adultStressResult").textContent=n.risk;
  if($("screenReasonText"))$("screenReasonText").textContent=
-  `NRS-2002 automático: estado nutricional ${n.nut} + gravedad de enfermedad ${n.dis}${n.agePt?` + edad ≥70 (${n.agePt})`:""} = ${n.total} puntos.`;
+  `NRS-2002: estado nutricional ${n.nut} + gravedad de enfermedad ${n.dis}${n.agePt?` + edad ≥70 (${n.agePt})`:""} = ${n.total} puntos. ${n.disReason}.`;
 }
 function macroTargets(kcal,proteinG,profile,dietText){
- if(kcal===null||proteinG===null||kcal<=0)return {choPct:null,proPct:null,lipPct:null,choG:null,lipG:null};
- const u=normalizedUpper(dietText||""),cp=currentClinicalProfile(),mod=modifierState();
- let choPct=55;
+ if(kcal===null||proteinG===null||kcal<=0)
+  return {choPct:null,proPct:null,lipPct:null,choG:null,lipG:null};
 
+ const u=normalizedUpper(dietText||""),cp=currentClinicalProfile(),mod=modifierState();
+ const proPct=(proteinG*4/kcal)*100;
+
+ // Distribución de trabajo:
+ // - hospital/estrés: CHO 50%
+ // - hipoglucida/diabetes: CHO 45%
+ // - paciente estable estándar: CHO 55%
+ // La proteína NO se inventa por porcentaje: viene primero de g/kg.
+ let choPct=55;
  if(profile==="embarazada")choPct=58;
  else if(profile==="posparto")choPct=55;
  else if(u.includes("HIPOGLUCIDA")||u.includes("DIABET")||cp==="DIABETES")choPct=45;
- else if(cp!=="GENERAL"||mod.nutritionRisk||mod.stress.level!=="BAJO"||u.includes("HIPERPROTEICA"))choPct=48;
+ else if(cp!=="GENERAL"||mod.nutritionRisk||mod.stress.level!=="BAJO"||u.includes("HIPERPROTEICA"))choPct=50;
 
- const proPct=(proteinG*4/kcal)*100;
  let lipPct=100-choPct-proPct;
 
- // Evitar que una proteína alta deje un porcentaje lipídico irrealmente bajo.
- if(lipPct<20){
-  lipPct=20;
-  choPct=Math.max(30,100-proPct-lipPct);
+ // Mantener una fracción lipídica razonable sin romper la suma 100%.
+ if(lipPct<25){
+  lipPct=25;
+  choPct=100-proPct-lipPct;
  }
+ if(lipPct>40){
+  lipPct=40;
+  choPct=100-proPct-lipPct;
+ }
+
  const choG=kcal*choPct/100/4;
  const lipG=kcal*lipPct/100/9;
  return {choPct,proPct,lipPct,choG,lipG};

@@ -735,6 +735,15 @@ img,svg,table{
    <div id="modifierTags" class="chips" style="margin-top:5px"></div>
   </div>
 
+  <div id="cie10NutritionBox" class="sourceBox" style="margin-top:8px">
+   <div class="srcTitle">CIE-10 nutricional automático</div>
+   <div class="metrics" style="margin-top:6px">
+    <div class="metric"><span>Código</span><b id="cie10NutritionCode">—</b></div>
+    <div class="metric"><span>Diagnóstico</span><b id="cie10NutritionTitle">SIN CÓDIGO AUTOMÁTICO</b></div>
+   </div>
+   <div id="cie10NutritionReason" class="note" style="margin-top:6px"></div>
+  </div>
+
   <div id="surgeryClinicalBox" class="q hidden" style="margin-top:8px">
    <div class="qt">Escenario quirúrgico / trauma</div>
    <select id="surgeryScenario" onchange="calculateAll()">
@@ -847,7 +856,7 @@ img,svg,table{
    <div id="dietProgressionSuggestion" class="sourceText" style="min-height:auto;max-height:none">—</div>
   </div>
 
-  <div class="note" style="margin-top:7px"><b>Base documental revisada:</b> 21/09/2026. ESPEN Scientific Guidelines (actualizado 30/08/2026), Surgery Update 2025, Dementia 2024, Kidney/Pancreatitis practical 2024, Polymorbid/IBD/Intestinal Failure 2023, Obesity 2022, Geriatrics 2022, Hospital/Cancer 2021, Liver 2019, ASPEN Critical Care 2022, GLIM 2025.</div>
+  <div class="note" style="margin-top:7px"><b>Base documental revisada:</b> 21/09/2026. ESPEN Scientific Guidelines (actualizado 30/08/2026), Surgery Update 2025, Dementia 2024, Kidney/Pancreatitis practical 2024, Polymorbid/IBD/Intestinal Failure 2023, Obesity 2022, Geriatrics 2022, Hospital/Cancer 2021, Liver 2019, ASPEN Critical Care 2022, GLIM 2025. CIE-10 OMS 2019 para códigos nutricionales E40-E46, E50-E64 y E65-E68.</div>
   <details style="margin-top:8px"><summary>Guías integradas</summary>
    <div class="note" style="margin-top:7px;line-height:1.45">
     ESPEN Nutrición hospitalaria 2021 · ESPEN Cirugía 2025 · ESPEN Renal hospitalaria práctica 2024 · ESPEN Pancreatitis práctica 2024 · ESPEN Demencia 2024 ·
@@ -921,7 +930,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&
 const makeId=p=>`${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,9)}`;
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
 
-const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v38", FALLBACK_KEY="nutri_word_rounds_v38";
+const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v40", FALLBACK_KEY="nutri_word_rounds_v40";
 let db=null,currentRound=null,currentPatientId=null,history=[],loading=false,saveTimer=null;
 
 const simpleFields=["area","ambiente","cama","nombre","edad","cobertura","sexo","perfil","dieta","sourceText","alergia","intolerancia","ultima","bristol","habito","hallazgo","peso","pesoEstimadoDoc","cb","cp","talla","talonRodilla","pesoPregestacional","edadGestacional","reqPerfil","cie10","plan","planObs","kcalKg","extraKcal","choPct","proPct","proKg","lipPct","clinicalProfile","renalSubtype","egfr","icuDay","hasIC","measuredEE","ibdActivity","pancreasType","surgeryScenario","suppName","suppMl","suppKcal","suppProtein","suppServings","acompanante","acompananteDetalle","informante","extremidadesDetalle","mExtSupDetalle"];
@@ -2569,6 +2578,10 @@ function updateClinicalUI(){
  const g=guidelineEngine();
  $("detectedClinicalProfile").textContent=guideLabel(g.cp);
  $("guidelineSource").textContent=`Base: ${g.source}`;
+ const cie=automaticNutritionICD10();
+ if($("cie10NutritionCode"))$("cie10NutritionCode").textContent=cie.code||"—";
+ if($("cie10NutritionTitle"))$("cie10NutritionTitle").textContent=cie.title;
+ if($("cie10NutritionReason"))$("cie10NutritionReason").textContent=cie.reason;
  $("guideKcal").textContent=g.goalKcal!==null?`${Math.round(g.goalKcal)} kcal/d · ${g.kChosen!==null?one(g.kChosen)+" kcal/kg":"medido"}`:"—";
  $("guideProtein").textContent=g.proteinG!==null?`${one(g.proteinG)} g/d · ${one(g.pChosen)} g/kg`:"—";
  $("guideEnergyWeight").textContent=g.eW!==null?`${one(g.eW)} kg`:"—";
@@ -3307,6 +3320,79 @@ function postpartumDiagnosis(){
 }
 function pregnancyDiagnosis(){const c=calculations(),g=pregnancyGainReference();let t=`${c.preClass||"ESTADO PREGESTACIONAL PENDIENTE"} SEGÚN INDICADOR ANTROPOMÉTRICO IMC PREGESTACIONAL`;if(g.complete)t+=`, ${g.label}`;return t+"."}
 
+
+function explicitNutritionalDeficiencyICD10(){
+ const u=backgroundClinicalText();
+
+ // E40-E46: no inferir síndromes clásicos solo por edema o bajo peso.
+ if(/KWASHIORKOR\s+MAR[ÁA]SMICO|MARASMIC KWASHIORKOR/.test(u))
+  return {code:"E42",title:"KWASHIORKOR MARÁSMICO",reason:"El diagnóstico está documentado explícitamente; no se infiere solo por edema + pérdida de peso."};
+ if(/\bKWASHIORKOR\b/.test(u))
+  return {code:"E40",title:"KWASHIORKOR",reason:"Kwashiorkor documentado explícitamente."};
+ if(/MARASMO NUTRICIONAL|NUTRITIONAL MARASMUS/.test(u))
+  return {code:"E41",title:"MARASMO NUTRICIONAL",reason:"Marasmo nutricional documentado explícitamente."};
+ if(/RETARDO DEL DESARROLLO (?:DEBIDO|SECUNDARIO) A (?:LA )?DESNUTRICI[ÓO]N|TALLA BAJA NUTRICIONAL|NUTRITIONAL STUNTING|RETRASO DEL CRECIMIENTO POR DESNUTRICI[ÓO]N/.test(u))
+  return {code:"E45",title:"RETARDO DEL DESARROLLO POSTERIOR A DESNUTRICIÓN PROTEICO-ENERGÉTICA",reason:"E45 se reserva para talla baja/stunting o retardo físico atribuible a desnutrición, no para talla baja aislada."};
+ if(/DESNUTRICI[ÓO]N (?:PROTEICO[- ](?:CAL[ÓO]RICA|ENERG[ÉE]TICA) )?LEVE/.test(u))
+  return {code:"E44.1",title:"DESNUTRICIÓN PROTEICO-ENERGÉTICA LEVE",reason:"Grado leve documentado explícitamente."};
+
+ // Otras deficiencias nutricionales: solo si están documentadas.
+ if(/RAQUITISMO ACTIVO/.test(u))
+  return {code:"E55.0",title:"RAQUITISMO ACTIVO",reason:"Manifestación específica de deficiencia de vitamina D documentada."};
+ if(/DEFICIENCIA DE VITAMINA D|HIPOVITAMINOSIS D|AVITAMINOSIS D/.test(u))
+  return {code:"E55.9",title:"DEFICIENCIA DE VITAMINA D, NO ESPECIFICADA",reason:"Deficiencia de vitamina D documentada sin manifestación más específica."};
+ if(/DEFICIENCIA DE VITAMINA A[^.;]*(CEGUERA NOCTURNA|NICTALOP)/.test(u))
+  return {code:"E50.5",title:"DEFICIENCIA DE VITAMINA A CON CEGUERA NOCTURNA",reason:"Deficiencia de vitamina A con manifestación específica documentada."};
+ if(/DEFICIENCIA DE VITAMINA A|HIPOVITAMINOSIS A|AVITAMINOSIS A/.test(u))
+  return {code:"E50.9",title:"DEFICIENCIA DE VITAMINA A, NO ESPECIFICADA",reason:"Deficiencia de vitamina A documentada sin manifestación específica."};
+ if(/DEFICIENCIA NUTRICIONAL NO ESPECIFICADA/.test(u))
+  return {code:"E63.9",title:"DEFICIENCIA NUTRICIONAL, NO ESPECIFICADA",reason:"La deficiencia nutricional no especificada está documentada literalmente."};
+ return null;
+}
+function obesityICD10FromClinicalData(){
+ const c=calculations(),u=backgroundClinicalText(),profile=val("perfil");
+ if(profile==="embarazada"||profile==="posparto")return null;
+ if(!Number.isFinite(c.imc))return null;
+
+ if(c.imc>=30){
+  if(/OBESIDAD[^.;]*(INDUCIDA|SECUNDARIA)[^.;]*(MEDICAMENTO|F[ÁA]RMACO)|OBESIDAD INDUCIDA POR (?:MEDICAMENTOS|F[ÁA]RMACOS)/.test(u))
+   return {code:"E66.1",title:"OBESIDAD INDUCIDA POR MEDICAMENTOS",reason:"La causa farmacológica está documentada; el IMC confirma obesidad."};
+  if(/OBESIDAD[^.;]*(HIPOVENTILACI[ÓO]N ALVEOLAR|S[ÍI]NDROME DE HIPOVENTILACI[ÓO]N)/.test(u))
+   return {code:"E66.2",title:"OBESIDAD CON HIPOVENTILACIÓN ALVEOLAR",reason:"Obesidad e hipoventilación alveolar están documentadas."};
+  if(/OBESIDAD POR EXCESO DE CALOR[ÍI]AS|OBESIDAD EX[ÓO]GENA POR EXCESO CAL[ÓO]RICO/.test(u))
+   return {code:"E66.0",title:"OBESIDAD POR EXCESO DE CALORÍAS",reason:"La etiología por exceso calórico está documentada; no se asigna E66.0 solo por el IMC."};
+  return {code:"E66.9",title:"OBESIDAD, NO ESPECIFICADA",reason:`IMC ${one(c.imc)} kg/m² confirma obesidad, pero la etiología no está documentada; por eso no se asume exceso calórico.`};
+ }
+ if(c.imc>=25&&c.imc<30)
+  return {code:"E66.3",title:"SOBREPESO",reason:`IMC ${one(c.imc)} kg/m² compatible con sobrepeso.`};
+ return null;
+}
+function automaticNutritionICD10(){
+ // Primero respetar diagnósticos nutricionales específicos documentados.
+ const explicit=explicitNutritionalDeficiencyICD10();
+ if(explicit)return explicit;
+
+ // Si GLIM confirma malnutrición, la severidad GLIM decide el código.
+ const g=glimAssessment();
+ if(g.applied&&g.positive){
+  if(g.severity==="SEVERA")
+   return {code:"E43",title:"DESNUTRICIÓN PROTEICO-ENERGÉTICA SEVERA, NO ESPECIFICADA",reason:"GLIM confirma malnutrición severa. Se usa E43; no se inventa kwashiorkor ni marasmo."};
+  if(g.severity==="MODERADA")
+   return {code:"E44.0",title:"DESNUTRICIÓN PROTEICO-ENERGÉTICA MODERADA",reason:"GLIM confirma malnutrición moderada."};
+  return {code:"E46",title:"DESNUTRICIÓN PROTEICO-ENERGÉTICA, NO ESPECIFICADA",reason:"GLIM confirma malnutrición, pero los datos no permiten graduar severidad de forma segura."};
+ }
+
+ // Obesidad/sobrepeso se codifican por antropometría, sin asumir etiología.
+ const obesity=obesityICD10FromClinicalData();
+ if(obesity)return obesity;
+
+ return {code:"",title:"SIN CÓDIGO CIE-10 NUTRICIONAL AUTOMÁTICO",reason:"No hay un diagnóstico nutricional codificable con suficiente evidencia. Normopeso o bajo peso aislado no se convierten automáticamente en desnutrición."};
+}
+function diagnosisWithICD10(baseDiagnosis){
+ const d=automaticNutritionICD10();
+ if(!d.code)return baseDiagnosis;
+ return `${String(baseDiagnosis||"").replace(/[.]+$/g,"")}. CIE-10: ${d.code} - ${d.title}.`;
+}
 function diagnosisByBMI(){
  const c=calculations(),g=glimAssessment();
  if(g.applied&&g.positive){
@@ -3314,8 +3400,8 @@ function diagnosisByBMI(){
   return `MALNUTRICIÓN${sev} SEGÚN CRITERIOS GLIM, EVIDENCIADA POR ${g.phenotypes.join(", ")}; ASOCIADA A ${g.etiologies.join(", ")}.`;
  }
  if(!c.cl)return "";
- const base=c.cl.replace(/\s*\(ADULTO MAYOR\)\s*/i,"").trim();
- return c.age>=60?`${base} EVIDENCIADO POR IMC ADULTO MAYOR.`:`${base} EVIDENCIADO POR INDICADOR ANTROPOMÉTRICO IMC.`;
+ const clean=c.cl.replace(/\s*\(ADULTO MAYOR\)\s*/i,"").trim();
+ return c.age>=60?`${clean} EVIDENCIADO POR IMC ADULTO MAYOR.`:`${clean} EVIDENCIADO POR INDICADOR ANTROPOMÉTRICO IMC.`;
 }
 
 
@@ -3378,6 +3464,33 @@ function currentDietPlanText(){
  if(val("planObs").trim())out+=`. ${up(val("planObs"))}`;
  return out;
 }
+
+function maternityDiagnosisWithICD10(baseDiagnosis){
+ const explicit=explicitNutritionalDeficiencyICD10();
+ if(explicit)return `${String(baseDiagnosis||"").replace(/[.]+$/g,"")}. CIE-10: ${explicit.code} - ${explicit.title}.`;
+ const g=glimAssessment();
+ if(g.applied&&g.positive){
+  const d=g.severity==="SEVERA"?{code:"E43",title:"DESNUTRICIÓN PROTEICO-ENERGÉTICA SEVERA, NO ESPECIFICADA"}:
+          g.severity==="MODERADA"?{code:"E44.0",title:"DESNUTRICIÓN PROTEICO-ENERGÉTICA MODERADA"}:
+          {code:"E46",title:"DESNUTRICIÓN PROTEICO-ENERGÉTICA, NO ESPECIFICADA"};
+  return `${String(baseDiagnosis||"").replace(/[.]+$/g,"")}. CIE-10: ${d.code} - ${d.title}.`;
+ }
+ return baseDiagnosis;
+}
+
+function primaryNutritionICD10Line(){
+ const d=automaticNutritionICD10();
+ return d&&d.code?`CIE10: ${d.code} - ${d.title}.`:"";
+}
+function dietaryCounselingICD10Line(){
+ return "CIE10: Z71.3 - VIGILANCIA Y ASESORAMIENTO DE LA DIETA.";
+}
+function appendICD10Lines(arr){
+ const primary=primaryNutritionICD10Line();
+ if(primary)arr.push(primary);
+ arr.push(dietaryCounselingICD10Line());
+ return arr;
+}
 function canonicalNormalNote(){
  const c=calculations(),a=[];
  a.push(`EXAMEN FÍSICO: ${exam()}`);
@@ -3385,31 +3498,36 @@ function canonicalNormalNote(){
  const an=antro();if(an)a.push(`VALORACIÓN ANTROPOMÉTRICA: ${an}`);
  a.push(`TAMIZAJE NUTRICIONAL: ${screeningText()}`);
  if(c.cl)a.push(`DIAGNÓSTICO NUTRICIONAL: ${diagnosisByBMI()}`);
+ appendICD10Lines(a);
  const r=req();if(r)a.push(`REQUERIMIENTO NUTRICIONAL: ${r}`);
  a.push(`PLAN DIETOTERAPÉUTICO: ${currentDietPlanText()}.`);
  return a;
 }
 function canonicalPregnancyNote(){
- return [
+ const a=[
   `EXAMEN FÍSICO: ${maternityExam()}`,
   `VALORACIÓN NUTRICIONAL: ${pregnancyValuation()}`,
   `VALORACIÓN ANTROPOMÉTRICA: ${pregnancyAnthro()}`,
   `TAMIZAJE NUTRICIONAL: ${screeningText()}`,
-  `DIAGNÓSTICO NUTRICIONAL: ${pregnancyDiagnosis()}`,
-  `REQUERIMIENTO NUTRICIONAL: ${maternityReq()}`,
-  `PLAN DIETOTERAPÉUTICO: ${currentDietPlanText()}.`
+  `DIAGNÓSTICO NUTRICIONAL: ${pregnancyDiagnosis()}`
  ];
+ appendICD10Lines(a);
+ a.push(`REQUERIMIENTO NUTRICIONAL: ${maternityReq()}`);
+ a.push(`PLAN DIETOTERAPÉUTICO: ${currentDietPlanText()}.`);
+ return a;
 }
 function canonicalPostpartumNote(){
- return [
+ const a=[
   `EXAMEN FÍSICO: ${maternityExam()}`,
   `VALORACIÓN NUTRICIONAL: ${postpartumValuation()}`,
   `VALORACIÓN ANTROPOMÉTRICA: ${postpartumAnthro()}`,
   `TAMIZAJE NUTRICIONAL: ${screeningText()}`,
-  `DIAGNÓSTICO NUTRICIONAL: ${postpartumDiagnosis()}`,
-  `REQUERIMIENTO NUTRICIONAL: ${maternityReq()}`,
-  `PLAN DIETOTERAPÉUTICO: ${currentDietPlanText()}.`
+  `DIAGNÓSTICO NUTRICIONAL: ${postpartumDiagnosis()}`
  ];
+ appendICD10Lines(a);
+ a.push(`REQUERIMIENTO NUTRICIONAL: ${maternityReq()}`);
+ a.push(`PLAN DIETOTERAPÉUTICO: ${currentDietPlanText()}.`);
+ return a;
 }
 
 function clinicalSpellingFix(s){

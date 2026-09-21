@@ -895,7 +895,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&
 const makeId=p=>`${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,9)}`;
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
 
-const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v32", FALLBACK_KEY="nutri_word_rounds_v32";
+const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v33", FALLBACK_KEY="nutri_word_rounds_v33";
 let db=null,currentRound=null,currentPatientId=null,history=[],loading=false,saveTimer=null;
 
 const simpleFields=["area","ambiente","cama","nombre","edad","cobertura","sexo","perfil","dieta","sourceText","alergia","intolerancia","ultima","bristol","habito","hallazgo","peso","pesoEstimadoDoc","cb","cp","talla","talonRodilla","pesoPregestacional","edadGestacional","reqPerfil","cie10","plan","planObs","kcalKg","extraKcal","choPct","proPct","proKg","lipPct","clinicalProfile","renalSubtype","egfr","icuDay","hasIC","measuredEE","ibdActivity","pancreasType","surgeryScenario","suppName","suppMl","suppKcal","suppProtein","suppServings","acompanante","acompananteDetalle","informante","extremidadesDetalle","mExtSupDetalle"];
@@ -1295,6 +1295,103 @@ function previousNutritionSection(){
   ]
  );
 }
+
+function cleanLegacyHallazgo(value){
+ let s=normalizedUpper(value||"").trim();
+ if(!s)return "";
+
+ // Si una versión vieja guardó "EDEMA A NIVEL X, REGIÓN CLAVICULAR..., ABDOMEN..."
+ // conservar solo el hallazgo localizado.
+ const edema=s.match(/EDEMA\s+(?:A NIVEL|EN)\s+([^,.;]+)/);
+ if(edema)return `EDEMA A NIVEL ${edema[1].trim()}`;
+
+ // Quitar fragmentos estructurados que pertenecen a otros campos del examen.
+ s=s
+  .replace(/REGI[ÓO]N CLAVICULAR(?:\s+Y\s+ACROMI[ÓO]N)?[^.;]*/g,"")
+  .replace(/ABDOMEN\s*:[^.;]*/g,"")
+  .replace(/M[ÚU]SCULO(?:S)? TEMPORALES?[^.;]*/g,"")
+  .replace(/PIEZAS DENTALES[^.;]*/g,"")
+  .replace(/MUCOSA ORAL[^.;]*/g,"")
+  .replace(/\s+/g," ")
+  .replace(/^[,;.\s]+|[,;.\s]+$/g,"")
+  .trim();
+ return s;
+}
+function migrateLegacyPatientState(p){
+ if(!p)return p;
+ p=repairPatient(p);
+ p.state=p.state||{};
+
+ if(p.state.hallazgo){
+  p.state.hallazgo=cleanLegacyHallazgo(p.state.hallazgo);
+ }
+
+ // Migración de formatos antiguos de plan.
+ // La dieta actual del encabezado siempre vuelve a ser la base.
+ const currentDiet=validDietText(p.dieta)||dietFromOriginalHeader(p.originalHeader)||validDietText(p.state.dieta);
+ if(currentDiet){
+  p.dieta=currentDiet;
+  p.state.dieta=currentDiet;
+  if(!p.state.plan || /^(?:NPO|DIETA|ALIMENTACI)/i.test(String(p.state.plan))){
+   p.state.plan=currentDiet;
+  }
+ }
+
+ // Nunca confiar en notas antiguas guardadas con GET/formato viejo.
+ p.note=[];
+ p._needsNoteRebuild=true;
+ return p;
+}
+function rebuildPatientNoteFromState(p){
+ if(!p)return [];
+ const prevPatient=currentPatientId;
+ const prevLoading=loading;
+
+ // Guardar estado DOM actual si estamos parados en otro paciente.
+ let domBackup=null;
+ if(prevPatient && currentRound?.patients?.some(x=>x.id===prevPatient)){
+  try{domBackup=captureState();}catch(e){}
+ }
+
+ loading=true;
+ try{
+  p=migrateLegacyPatientState(p);
+  restoreState(p.state||{});
+  // El encabezado/importación manda para estos datos.
+  if($("area"))$("area").value=p.area||"";
+  if($("ambiente"))$("ambiente").value=p.ambiente||"";
+  if($("cama"))$("cama").value=p.cama||"";
+  if($("nombre"))$("nombre").value=p.nombre||"";
+  if($("edad"))$("edad").value=p.edad||"";
+  if($("cobertura"))$("cobertura").value=p.cobertura||"";
+  if($("dieta"))$("dieta").value=patientDietText(p);
+  if($("sourceText"))$("sourceText").value=p.sourceText||p.state?.sourceText||"";
+
+  // Limpiar también el DOM por si el estado viejo contaminó hallazgo.
+  if($("hallazgo"))$("hallazgo").value=cleanLegacyHallazgo(val("hallazgo"));
+
+  calculateAll();
+  const note=nutritionNote();
+  p.note=note;
+  p.state=captureState();
+  p.state._migratedV33=true;
+  p._needsNoteRebuild=false;
+  return note;
+ }finally{
+  // Restaurar al paciente que el usuario estaba editando.
+  if(prevPatient && domBackup){
+   try{restoreState(domBackup);}catch(e){}
+  }
+  loading=prevLoading;
+ }
+}
+function rebuildAllPatientNotes(){
+ if(!currentRound?.patients)return;
+ currentRound.patients=currentRound.patients.map(p=>migrateLegacyPatientState(p));
+ for(const p of currentRound.patients){
+  try{rebuildPatientNoteFromState(p);}catch(e){console.warn("No se pudo regenerar nota",p?.nombre,e);}
+ }
+}
 function autofillPreviousAssessment(){
  const u=previousAssessmentUpper();
  if(!u)return;
@@ -1438,21 +1535,38 @@ function autofillPreviousAssessment(){
 }
 function openPatient(id){
  if(currentPatientId&&currentPatientId!==id)syncWorkingPatient();
- let p=currentRound?.patients.find(x=>x.id===id);if(!p)return;p=repairPatient(p);
+ let p=currentRound?.patients.find(x=>x.id===id);if(!p)return;
+ p=migrateLegacyPatientState(p);
+ const idx=currentRound.patients.findIndex(x=>x.id===id);
+ if(idx>=0)currentRound.patients[idx]=p;
+
  currentPatientId=id;
  restoreState(p.state);
  $("noPatient").classList.add("hidden");$("patientForm").classList.remove("hidden");$("clinicalSections").classList.remove("hidden");
 
- if(!p.touched&&!p.state?._autofilledFromPrevious){
+ // Si nunca se había autorrellenado desde la valoración anterior, hacerlo ahora.
+ if(!p.state?._autofilledFromPrevious){
   loading=true;
   try{autofillPreviousAssessment();}
   finally{loading=false;}
-  const ns=captureState();
-  ns._autofilledFromPrevious=true;
-  p.state=ns;
-  p.note=nutritionNote();
  }
- renderRound();calculateAll();updatePreview();if($("preview"))$("preview").scrollTop=0;window.scrollTo({top:0,behavior:"smooth"});
+
+ // Limpiar datos heredados de versiones viejas.
+ if($("hallazgo"))$("hallazgo").value=cleanLegacyHallazgo(val("hallazgo"));
+
+ // La dieta del encabezado actual manda siempre.
+ if($("dieta"))$("dieta").value=patientDietText(p);
+ if($("plan"))$("plan").value=patientDietText(p);
+
+ calculateAll();
+ p.state=captureState();
+ p.state._autofilledFromPrevious=true;
+ p.state._migratedV33=true;
+ p.note=nutritionNote();
+
+ renderRound();updatePreview();
+ if($("preview"))$("preview").scrollTop=0;
+ window.scrollTo({top:0,behavior:"smooth"});
 }
 function captureState(){const s={};simpleFields.forEach(id=>s[id]=val(id));radios.forEach(n=>s["r_"+n]=radio(n));checks.forEach(id=>s[id]=chk(id));return s}
 function restoreState(s){
@@ -1475,8 +1589,21 @@ function restoreState(s){
  }finally{loading=false}
 }
 async function saveCurrentPatient(completed=false,show=true){
- if(!currentRound||!currentPatientId)return false;if(!val("nombre").trim()){flash("Falta el nombre");return false}
- syncWorkingPatient();const p=currentRound.patients.find(x=>x.id===currentPatientId);p.completed=completed||p.completed;p.note=nutritionNote();p.state=captureState();p.updatedAt=Date.now();await persistRound();renderRound();if(show)flash(p.completed?"Paciente completado":"Borrador guardado");return true;
+ if(!currentRound||!currentPatientId)return false;
+ if(!val("nombre").trim()){flash("Falta el nombre");return false}
+ syncWorkingPatient();
+ const p=currentRound.patients.find(x=>x.id===currentPatientId);
+ if(!p)return false;
+ p.completed=completed||p.completed;
+ if($("hallazgo"))$("hallazgo").value=cleanLegacyHallazgo(val("hallazgo"));
+ p.state=captureState();
+ p.state._migratedV33=true;
+ p.note=nutritionNote();
+ p.updatedAt=Date.now();
+ await persistRound();
+ renderRound();
+ if(show)flash(p.completed?"Paciente completado":"Borrador guardado");
+ return true;
 }
 async function completeAndNext(){
  if(!(await saveCurrentPatient(true,false)))return;
@@ -2801,7 +2928,15 @@ function nutritionNote(){
  if(p==="posparto")return canonicalPostpartumNote();
  return canonicalNormalNote();
 }
-function updatePreview(){if(!loading)updateNpoVisibility();if(!$("clinicalSections").classList.contains("hidden"))$("preview").textContent=nutritionNote().join("\n\n");if(!loading)scheduleSave()}
+function updatePreview(){
+ if(!$("preview"))return;
+ if(!currentPatientId){$("preview").textContent="";return}
+ if($("hallazgo"))$("hallazgo").value=cleanLegacyHallazgo(val("hallazgo"));
+ const n=nutritionNote();
+ $("preview").textContent=n.join("\n\n");
+ const p=currentRound?.patients.find(x=>x.id===currentPatientId);
+ if(p){p.note=n;p.state=captureState();p.state._migratedV33=true;}
+}
 
 /* Documento final */
 function currentHeader(p){p=repairPatient(p);const s=p.state||{},diet=patientDietText(p);return `${up(safeTextValue(s.area)||safeTextValue(p.area))} AMB ${up(safeTextValue(s.ambiente)||safeTextValue(p.ambiente))} C${up(safeTextValue(s.cama)||safeTextValue(p.cama))}   ${up(safeTextValue(s.nombre)||safeTextValue(p.nombre))} ${safeTextValue(s.edad)||safeTextValue(p.edad)} ${up(safeTextValue(s.cobertura)||safeTextValue(p.cobertura))} ${up(diet)}`}
@@ -2813,14 +2948,20 @@ function sourceBeforeExistingAssessment(src){
 }
 
 function patientFullLines(p,includePendingNote=true){
- const lines=[currentHeader(p)],hasNote=(p.completed||includePendingNote)&&p.note?.length;
+ p=migrateLegacyPatientState(p);
+ let note=[];
+ if(p.completed||includePendingNote){
+  try{note=rebuildPatientNoteFromState(p);}catch(e){note=p.note||[];}
+ }
+ const lines=[currentHeader(p)];
  const raw=(p.state?.sourceText??p.sourceText??"").trim();
- const src=hasNote?sourceBeforeExistingAssessment(raw):raw;
+ const src=note.length?sourceBeforeExistingAssessment(raw):raw;
  if(src)lines.push(...src.split(/\n\s*\n/).map(x=>x.trim()).filter(Boolean));
- if(hasNote)lines.push(...p.note);
+ if(note.length)lines.push(...note);
  return lines;
 }
-async function finishRound(){syncWorkingPatient();await persistRound();if(!currentRound?.patients?.length){flash("No hay pacientes");return}const pend=currentRound.patients.filter(x=>!x.completed).length;$("finalTitle").textContent=`${currentRound.fileName||"Ronda"} · ${currentRound.date}`;$("finalSub").textContent=`${currentRound.patients.length} pacientes · ${currentRound.patients.length-pend} completados`;$("pendingWarning").classList.toggle("hidden",pend===0);$("pendingWarning").textContent=pend?`${pend} paciente(s) siguen pendientes. En el Word final se conservará su texto original; la valoración nutricional solo se añade a los pacientes que hayas completado.`:"";const c=$("finalContent");c.innerHTML="";
+async function finishRound(){
+ rebuildAllPatientNotes();syncWorkingPatient();await persistRound();if(!currentRound?.patients?.length){flash("No hay pacientes");return}const pend=currentRound.patients.filter(x=>!x.completed).length;$("finalTitle").textContent=`${currentRound.fileName||"Ronda"} · ${currentRound.date}`;$("finalSub").textContent=`${currentRound.patients.length} pacientes · ${currentRound.patients.length-pend} completados`;$("pendingWarning").classList.toggle("hidden",pend===0);$("pendingWarning").textContent=pend?`${pend} paciente(s) siguen pendientes. En el Word final se conservará su texto original; la valoración nutricional solo se añade a los pacientes que hayas completado.`:"";const c=$("finalContent");c.innerHTML="";
  if(currentRound.prefix?.length){const pre=document.createElement("div");pre.className="finalP";pre.innerHTML=currentRound.prefix.map(x=>`<p><strong>${esc(x)}</strong></p>`).join("");c.appendChild(pre)}
  let lastSection=null;currentRound.patients.forEach((p,i)=>{if(p.section&&p.section!==lastSection){const h=document.createElement("div");h.innerHTML=`<div style="font:700 10pt Calibri,Arial;margin:12px 0 8px">${esc(p.section)}</div>`;c.appendChild(h);lastSection=p.section}const sec=document.createElement("div");sec.className="finalP";sec.innerHTML=patientFullLines(p,false).map((x,j)=>`<p>${j===0?`<strong>${esc(x)}</strong>`:esc(x)}</p>`).join("");c.appendChild(sec)});$("finalModal").style.display="flex"}
 function closeFinal(){$("finalModal").style.display="none"}
@@ -3016,4 +3157,25 @@ boot();
 <style>
 .bottom{position:static!important;bottom:auto!important;margin-top:10px}
 .preview{display:block!important;overflow:visible!important;max-height:none!important}
+</style>
+
+<style id="v33NoOverlay">
+#actions,.actions,.bottom,.stickyActions,.footerActions,
+buttonBar,.saveBar,[class*="sticky"][class*="action"]{
+ position:static!important;
+ top:auto!important;
+ bottom:auto!important;
+ inset:auto!important;
+ transform:none!important;
+ z-index:auto!important;
+}
+#preview,.preview{
+ max-height:none!important;
+ overflow:visible!important;
+ height:auto!important;
+ padding-bottom:18px!important;
+}
+#patientForm,#clinicalSections,.card{
+ overflow:visible!important;
+}
 </style>

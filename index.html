@@ -756,7 +756,7 @@ img,svg,table{
 
   <div id="renalClinicalBox" class="q hidden" style="margin-top:8px">
    <div class="qt">Situación renal</div>
-   <select id="renalSubtype" onchange="calculateAll()">
+   <select id="renalSubtype" onchange="this.dataset.manual='1';calculateAll()">
     <option value="CKD_STABLE">ERC estable, sin enfermedad aguda/crítica y sin KRT</option>
     <option value="DIALYSIS_STABLE">Hemodiálisis / diálisis crónica estable</option>
     <option value="AKI_NONCRIT">AKI o AKI sobre ERC, no crítico</option>
@@ -764,6 +764,7 @@ img,svg,table{
     <option value="CRIT_IHD">Crítico + KRT intermitente</option>
     <option value="CRIT_CKRT">Crítico + CKRT / PIKRT</option>
    </select>
+   <div id="renalAutoHint" class="note" style="margin-top:6px"></div>
    <div style="margin-top:7px"><label class="label">eGFR si se conoce</label><input id="egfr" type="number" step="0.1" placeholder="ml/min/1.73 m²" oninput="calculateAll()"></div>
   </div>
 
@@ -809,6 +810,16 @@ img,svg,table{
   <div class="sourceBox" style="margin-top:8px">
    <div class="srcTitle">Por qué calculó eso</div>
    <div id="clinicalReasonText" class="sourceText" style="min-height:auto;max-height:none"></div>
+   <div class="grid2" style="margin-top:8px">
+    <div class="q"><div class="qt">Energía</div><div id="whyEnergy" class="note"></div></div>
+    <div class="q"><div class="qt">Proteína</div><div id="whyProtein" class="note"></div></div>
+    <div class="q"><div class="qt">Carbohidratos</div><div id="whyCarbs" class="note"></div></div>
+    <div class="q"><div class="qt">Seguridad renal</div><div id="renalSafety" class="note"></div></div>
+   </div>
+   <div class="q" style="margin-top:8px">
+    <div class="qt">Guías que está usando en este paciente</div>
+    <div id="appliedGuides" class="note"></div>
+   </div>
   </div>
 
   <div id="manualFormulaBox" class="q" style="margin-top:8px">
@@ -836,7 +847,7 @@ img,svg,table{
    <div id="dietProgressionSuggestion" class="sourceText" style="min-height:auto;max-height:none">—</div>
   </div>
 
-  <div class="note" style="margin-top:7px"><b>Base documental revisada:</b> 21/09/2026. NRS-2002 según formulario aportado; MNA-SF según formulario aportado; GLIM actualizado 2025; ESPEN Scientific Guidelines revisado 30/08/2026.</div>
+  <div class="note" style="margin-top:7px"><b>Base documental revisada:</b> 21/09/2026. ESPEN Scientific Guidelines (actualizado 30/08/2026), Surgery Update 2025, Dementia 2024, Kidney/Pancreatitis practical 2024, Polymorbid/IBD/Intestinal Failure 2023, Obesity 2022, Geriatrics 2022, Hospital/Cancer 2021, Liver 2019, ASPEN Critical Care 2022, GLIM 2025.</div>
   <details style="margin-top:8px"><summary>Guías integradas</summary>
    <div class="note" style="margin-top:7px;line-height:1.45">
     ESPEN Nutrición hospitalaria 2021 · ESPEN Cirugía 2025 · ESPEN Renal hospitalaria práctica 2024 · ESPEN Pancreatitis práctica 2024 · ESPEN Demencia 2024 ·
@@ -910,7 +921,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&
 const makeId=p=>`${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,9)}`;
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
 
-const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v36", FALLBACK_KEY="nutri_word_rounds_v36";
+const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v37", FALLBACK_KEY="nutri_word_rounds_v37";
 let db=null,currentRound=null,currentPatientId=null,history=[],loading=false,saveTimer=null;
 
 const simpleFields=["area","ambiente","cama","nombre","edad","cobertura","sexo","perfil","dieta","sourceText","alergia","intolerancia","ultima","bristol","habito","hallazgo","peso","pesoEstimadoDoc","cb","cp","talla","talonRodilla","pesoPregestacional","edadGestacional","reqPerfil","cie10","plan","planObs","kcalKg","extraKcal","choPct","proPct","proKg","lipPct","clinicalProfile","renalSubtype","egfr","icuDay","hasIC","measuredEE","ibdActivity","pancreasType","surgeryScenario","suppName","suppMl","suppKcal","suppProtein","suppServings","acompanante","acompananteDetalle","informante","extremidadesDetalle","mExtSupDetalle"];
@@ -1562,6 +1573,11 @@ function autofillPreviousAssessment(){
  }
 
  applyPreviousAnthropometry();
+
+ // Función renal si viene en el documento.
+ const egfrDoc=parsedEgfr();
+ if(egfrDoc!==null&&$("egfr")&&!val("egfr"))$("egfr").value=one(egfrDoc);
+
  updateBowelHabit();
  toggleAlergia(false);toggleIntolerancia(false);
  toggleWeightMode(false);toggleHeightMode(false);
@@ -1879,11 +1895,58 @@ function activeDiagnosisText(){
 function backgroundClinicalText(){
  return normalizedUpper(`${val("sourceText")} ${val("dieta")} ${val("area")} ${val("plan")}`);
 }
+
+function parsedEgfr(){
+ const manual=num(val("egfr"));
+ if(manual!==null&&manual>0)return manual;
+ const u=backgroundClinicalText();
+ const patterns=[
+  /\bEGFR\s*[:=]?\s*([0-9]+(?:[.,][0-9]+)?)/,
+  /\bTFG\s*[:=]?\s*([0-9]+(?:[.,][0-9]+)?)/,
+  /FILTRADO GLOMERULAR\s*[:=]?\s*([0-9]+(?:[.,][0-9]+)?)/,
+  /\bGFR\s*[:=]?\s*([0-9]+(?:[.,][0-9]+)?)/
+ ];
+ for(const rx of patterns){
+  const m=u.match(rx);
+  if(m){
+   const n=parseFloat(m[1].replace(",","."));
+   if(Number.isFinite(n)&&n>0)return n;
+  }
+ }
+ return null;
+}
+function renalFunctionContext(){
+ const u=backgroundClinicalText(),active=activeDiagnosisText(),area=normalizedUpper(val("area")),egfr=parsedEgfr();
+ const dialysis=/HEMODIAL|DIALISIS|DIÁLISIS|\bKRT\b|CKRT|PIKRT/.test(u);
+ const ckrt=/CKRT|PIKRT|CRRT|TERAPIA CONTINUA/.test(u);
+ const aki=/\bAKI\b|LESI[ÓO]N RENAL AGUDA|FALLA RENAL AGUDA|INSUFICIENCIA RENAL AGUDA/.test(active);
+ const ckd=/ENFERMEDAD RENAL CR[ÓO]NICA|INSUFICIENCIA RENAL CR[ÓO]NICA|\bERC\b|\bCKD\b|N18\.?/.test(u);
+ const critical=/\bUCI\b|\bICU\b/.test(area)||diseaseFlagsBaseCritical();
+ const impaired=(egfr!==null&&egfr<60)||aki||ckd||dialysis;
+ return {egfr,dialysis,ckrt,aki,ckd,critical,impaired};
+}
+function diseaseFlagsBaseCritical(){
+ const active=activeDiagnosisText(),area=normalizedUpper(val("area"));
+ return /\bUCI\b|\bICU\b/.test(area)||/VENTILACION MECANICA ACTUAL|VENTILACIÓN MECÁNICA ACTUAL|CHOQUE SEPTICO|CHOQUE SÉPTICO|SHOCK SEPTICO|SHOCK SÉPTICO/.test(active);
+}
+function autoRenalSubtype(){
+ const r=renalFunctionContext();
+ if(r.critical&&r.dialysis)return r.ckrt?"CRIT_CKRT":"CRIT_IHD";
+ if(r.critical&&!r.dialysis)return "CRIT_NO_KRT";
+ if(r.aki&&!r.critical)return "AKI_NONCRIT";
+ if(r.dialysis)return "DIALYSIS_STABLE";
+ return "CKD_STABLE";
+}
+function resolvedRenalSubtype(){
+ const el=$("renalSubtype");
+ if(el?.dataset?.manual==="1")return val("renalSubtype")||autoRenalSubtype();
+ return autoRenalSubtype();
+}
 function diseaseFlags(){
- const all=backgroundClinicalText(),active=activeDiagnosisText(),area=normalizedUpper(val("area"));
+ const all=backgroundClinicalText(),active=activeDiagnosisText(),area=normalizedUpper(val("area")),egfr=parsedEgfr();
  return {
-  renal:/ENFERMEDAD RENAL|INSUFICIENCIA RENAL|\bERC\b|\bCKD\b|\bAKI\b|N18\.?|HEMODIAL|DIALISIS|DIÁLISIS/.test(all),
-  dialysis:/HEMODIAL|DIALISIS|DIÁLISIS|\bKRT\b|CKRT|PIKRT/.test(all),
+  renal:/ENFERMEDAD RENAL|INSUFICIENCIA RENAL|\bERC\b|\bCKD\b|\bAKI\b|N18\.?|HEMODIAL|DIALISIS|DIÁLISIS|LESI[ÓO]N RENAL AGUDA/.test(all)||(egfr!==null&&egfr<60),
+  dialysis:/HEMODIAL|DIALISIS|DIÁLISIS|\bKRT\b|CKRT|PIKRT|CRRT/.test(all),
   hepatic:/CIRROSIS|HEPATOPAT|INSUFICIENCIA HEPATICA|INSUFICIENCIA HEPÁTICA|TRASPLANTE HEPATICO|TRANSPLANTE HEPATICO|SINDROME COLESTASICO|SÍNDROME COLESTÁSICO/.test(all),
   pancreas:/PANCREATIT/.test(active),
   ibd:/CROHN|COLITIS ULCEROSA|ENFERMEDAD INFLAMATORIA INTESTINAL|\bEII\b/.test(all),
@@ -1903,7 +1966,7 @@ function diseaseFlags(){
   burn:/QUEMAD/.test(active),
   surgery:/POSTOPERATOR|POSTQUIR|ANASTOMOS|LAPAROTOM|COLECTOM|GASTRECTOM|RESECCION INTESTINAL|RESECCIÓN INTESTINAL|DEHISCENCIA|FISTULA|FÍSTULA/.test(active),
   trauma:/POLITRAUMA|TRAUMA ACTUAL|FRACTURA ACTUAL|HEMOTORAX TRAUMATICO|HEMOTÓRAX TRAUMÁTICO|DISPARO DE OTRAS ARMAS DE FUEGO|TRAUMATISMO DE LA VENA|TRAUMATISMO/.test(active),
-  critical:/\bUCI\b|\bICU\b/.test(area)||/VENTILACION MECANICA ACTUAL|VENTILACIÓN MECÁNICA ACTUAL|CHOQUE SEPTICO|CHOQUE SÉPTICO|SHOCK SEPTICO|SHOCK SÉPTICO/.test(active)
+  critical:diseaseFlagsBaseCritical()
  };
 }
 function clinicalStressState(){
@@ -2120,12 +2183,22 @@ function guideLabel(cp){
 
 
 function highProteinSafetyNote(g){
- const age=num(val("edad"))||0,f=diseaseFlags();
+ const age=num(val("edad"))||0,renal=renalFunctionContext();
  if(age<60)return "";
- if(f.renal)return " Perfil renal activo: la proteína se ajusta por función renal/KRT y prevalece sobre la regla geriátrica.";
- if(g.pChosen>=1.5)return " Aporte proteico alto reservado para catabolismo, depleción, herida o malnutrición; reevaluar función renal, urea/creatinina, hidratación y tolerancia.";
- if(g.pChosen>=1.2)return " Aporte proteico aumentado por enfermedad/riesgo; reevaluar función renal y evolución clínica.";
- return "";
+
+ if(renal.impaired){
+  const eg=renal.egfr!==null?` eGFR ${one(renal.egfr)} ml/min/1,73 m².`:"";
+  if(renal.dialysis)return ` Perfil renal/KRT activo.${eg} La proteína se rige por el escenario renal y no por la edad.`;
+  if(renal.egfr!==null&&renal.egfr<30)return ` Función renal severamente reducida.${eg} Sin KRT, evitar un objetivo proteico alto automático; usar la pauta renal específica.`;
+  return ` Deterioro renal detectado.${eg} La pauta renal prevalece sobre la geriátrica.`;
+ }
+
+ if(g.pChosen>=1.4){
+  if(renal.egfr===null)return " No hay eGFR documentado. La edad por sí sola no contraindica 1,4–1,5 g/kg, pero conviene verificar función renal antes de mantener un aporte alto.";
+  return ` eGFR ${one(renal.egfr)} ml/min/1,73 m²: no se detecta restricción renal por eGFR; el aporte alto se justifica por catabolismo/riesgo y debe reevaluarse con evolución clínica.`;
+ }
+ if(g.pChosen>=1.2)return " La edad avanzada por sí sola no obliga a restringir proteína; se aumenta por enfermedad/riesgo y se vigila función renal y tolerancia.";
+ return " Proteína basal geriátrica; sin indicación automática de restricción solo por edad.";
 }
 
 function proteinClinicalScore(mod){
@@ -2171,13 +2244,12 @@ function chooseProteinInRange(min,max,mod,base=null){
  return Math.round(chosen*10)/10;
 }
 function geriatricProteinTarget(mod){
- const f=mod.flags||diseaseFlags();
- if(f.renal)return null;
+ const renal=renalFunctionContext();
+ if(renal.impaired)return null;
 
- // En geriatría la guía da >=1,0 g/kg y sugiere 1,2–1,5 en enfermedad.
- // Elegimos dentro del rango en décimas según los datos del paciente.
+ // ESPEN geriatría: al menos 1,0 g/kg/d.
+ // En enfermedad/riesgo se escala 1,2–1,5; la edad sola no obliga a bajar.
  const score=proteinClinicalScore(mod);
-
  if(score<=0)return 1.0;
  if(score===1)return 1.1;
  if(score===2)return 1.2;
@@ -2189,7 +2261,7 @@ function guidelineEngine(){
  const b=calculationsBase(),mod=modifierState(),cx=mod.cx,cp=currentClinicalProfile();
  const actual=b.w,ideal=idealWeightForGuide(),adj=adjustedWeight33();
  let eW=actual,pW=actual,kMin=25,kMax=30,kChosen=25,pMin=.8,pMax=1.5,pChosen=1.0,extra=0;
- let source="ESPEN Hospital Nutrition 2021",reason=[],diseaseAdvice=[];
+ let source="ESPEN Hospital Nutrition 2021 + Polymorbid Medical Inpatients",reason=[],diseaseAdvice=[];
 
  // Base hospitalaria:
  // estándar: 25 kcal/kg y 0,8–1,0 g/kg;
@@ -2234,7 +2306,7 @@ function guidelineEngine(){
    reason=["Adulto mayor con malnutrición, depleción muscular, herida o alto catabolismo: 1,5 g proteína/kg; usar solo si no existe una condición renal que obligue a otra prescripción."];
 }else if(cp==="ONCOLOGIA"){
   kMin=25;kMax=30;kChosen=(mod.nutritionRisk||mod.malnutrition||(mod.intake!==null&&mod.intake<75))?30:25;
-  pMin=1.0;pMax=1.5;pChosen=(mod.malnutrition||mod.muscle)?1.5:1.2;source="ESPEN Cáncer 2021";
+  pMin=1.0;pMax=1.5;pChosen=(mod.malnutrition||mod.muscle)?1.5:1.2;source="ESPEN Clinical Nutrition in Cancer 2021";
   reason=["Oncología: 25–30 kcal/kg; proteína >1,0 y hasta 1,5 g/kg."];
  }else if(cp==="TRAUMA"){
   // Corrección importante: trauma NO usa automáticamente peso ideal.
@@ -2265,20 +2337,40 @@ function guidelineEngine(){
    reason=[day<=3?"UCI fase temprana: meta prudente dentro del rango ASPEN 12–25 kcal/kg.":"UCI tras fase temprana: aproximación a 25 kcal/kg si la evolución lo permite."];
   }
  }else if(cp==="RENAL"){
-  source="ESPEN Renal Hospitalaria 2024";
+  source="ESPEN Renal Hospitalaria Practical Guideline 2024 + ESPEN Polimórbidos";
+  const rc=renalFunctionContext(),r=resolvedRenalSubtype();
+  if($("renalSubtype")&&$("renalSubtype").dataset.manual!=="1")$("renalSubtype").value=r;
+
   if((cx.edema||cx.ascites)&&ideal){eW=ideal;pW=ideal;}
   else{eW=actual;pW=actual;}
+
   kMin=25;kMax=30;kChosen=mod.stress.level==="ALTO"?25:30;
-  const r=val("renalSubtype")||"CKD_STABLE";
-  if(r==="CKD_STABLE"){pMin=.6;pMax=.8;pChosen=.8;}
-  if(r==="DIALYSIS_STABLE"){pMin=pMax=pChosen=1.2;}
-  if(r==="AKI_NONCRIT"){pMin=.8;pMax=1.0;pChosen=1.0;}
-  if(r==="CRIT_NO_KRT"){kChosen=25;pMin=1.0;pMax=1.3;pChosen=1.3;}
-  if(r==="CRIT_IHD"){kChosen=25;pMin=1.3;pMax=1.5;pChosen=1.5;}
-  if(r==="CRIT_CKRT"){kChosen=25;pMin=1.5;pMax=1.7;pChosen=1.7;}
-  reason=["Renal: proteína individualizada por ERC/AKI y terapia de reemplazo renal."];
+
+  // eGFR <30 sin KRT en paciente médico polimórbido: 0,8 g/kg/d.
+  if(rc.egfr!==null&&rc.egfr<30&&!rc.dialysis&&!rc.critical){
+   pMin=pMax=pChosen=.8;
+   reason=[`eGFR ${one(rc.egfr)} ml/min/1,73 m² sin KRT: objetivo 0,8 g proteína/kg para evitar sobrecarga proteica.`];
+  }else if(r==="CKD_STABLE"){
+   pMin=.6;pMax=.8;pChosen=.8;
+   reason=["ERC estable sin enfermedad aguda/crítica: 0,6–0,8 g proteína/kg."];
+  }else if(r==="DIALYSIS_STABLE"){
+   pMin=pMax=pChosen=1.2;
+   reason=["Diálisis crónica estable: al menos 1,2 g proteína/kg por mayores pérdidas/requerimientos."];
+  }else if(r==="AKI_NONCRIT"){
+   pMin=.8;pMax=1.0;pChosen=1.0;
+   reason=["AKI/AKI sobre ERC no crítica: 0,8–1,0 g proteína/kg."];
+  }else if(r==="CRIT_NO_KRT"){
+   kChosen=25;pMin=1.0;pMax=1.3;pChosen=1.3;
+   reason=["Enfermedad renal + situación crítica sin KRT: progresar hasta 1,3 g/kg según tolerancia/catabolismo."];
+  }else if(r==="CRIT_IHD"){
+   kChosen=25;pMin=1.3;pMax=1.5;pChosen=1.5;
+   reason=["Crítico con KRT intermitente: 1,3–1,5 g proteína/kg."];
+  }else if(r==="CRIT_CKRT"){
+   kChosen=25;pMin=1.5;pMax=1.7;pChosen=1.7;
+   reason=["Crítico con CKRT/PIKRT: 1,5–1,7 g proteína/kg por pérdidas asociadas a la terapia."];
+  }
  }else if(cp==="HEPATICO"){
-  kMin=30;kMax=35;kChosen=mod.malnutrition?35:30;pMin=1.2;pMax=1.5;pChosen=(mod.malnutrition||mod.muscle)?1.5:1.2;source="ESPEN Hepatopatía";
+  kMin=30;kMax=35;kChosen=mod.malnutrition?35:30;pMin=1.2;pMax=1.5;pChosen=(mod.malnutrition||mod.muscle)?1.5:1.2;source="ESPEN Clinical Nutrition in Liver Disease 2019";
   reason=["Cirrrosis/hepatopatía: proteína 1,2 g/kg si bien nutrido y 1,5 g/kg con malnutrición/sarcopenia."];
  }else if(cp==="PANCREATITIS"){
   kMin=25;kMax=30;kChosen=(mod.nutritionRisk||mod.stress.level!=="BAJO")?30:25;
@@ -2312,7 +2404,7 @@ function guidelineEngine(){
   kMin=30;kMax=35;kChosen=mod.malnutrition?35:30;pMin=1.2;pMax=1.5;pChosen=1.5;source="ESPEN Hospital Nutrition";
   reason=["Heridas/LPP: energía y proteína elevadas para reparación tisular."];
  }else if(cp==="OBESIDAD"){
-  source="ESPEN/UEG Obesidad";eW=adj||actual;pW=adj||actual;kMin=kMax=kChosen=25;
+  source="Joint ESPEN/UEG Obesity Care 2022";eW=adj||actual;pW=adj||actual;kMin=kMax=kChosen=25;
   if(mod.malnutrition||mod.muscle){pMin=1.2;pMax=1.5;pChosen=1.5;}
   else if(mod.nutritionRisk||mod.stress.level!=="BAJO"){pMin=1.0;pMax=1.5;pChosen=1.2;}
   else{pMin=.8;pMax=1.0;pChosen=1.0;}
@@ -2340,16 +2432,7 @@ function guidelineEngine(){
    }
  }
 
- // Seguridad en adulto mayor:
- // una enfermedad específica (p. ej. herida) NO lleva automáticamente a 1,5 g/kg.
- // En ≥75 años, si no hay malnutrición, depleción muscular ni catabolismo alto,
- // se limita el valor automático a 1,2 g/kg. El profesional puede modificarlo si dispone de
- // función renal y una indicación de mayor aporte.
- if((b.age||0)>=75 && !["RENAL","UCI"].includes(cp) &&
-    pChosen>=1.5 && !mod.malnutrition && !mod.muscle && mod.stress.level!=="ALTO"){
-  pChosen=1.4;
-  reason.push("Adulto mayor ≥75 años: 1,5 g/kg se reserva para malnutrición, depleción muscular o catabolismo alto; se selecciona 1,4 g/kg cuando el riesgo es alto pero no cumple esos criterios.");
- }
+ // No se aplica un tope proteico solo por edad: la función renal y el cuadro clínico son los que modifican la meta.
 
  // Obesidad concomitante en perfiles no críticos/no renales: usar peso ajustado
  // salvo cirugía, donde ya se usa peso ideal, y UCI, que tiene regla propia.
@@ -2368,6 +2451,93 @@ function guidelineEngine(){
  }
  const proteinG=pW!==null&&pChosen!==null?pW*pChosen:null;
  return {cp,mod,eW,pW,kMin,kMax,kChosen,pMin,pMax,pChosen,source,reason,diseaseAdvice,extra,estimatedKcal,goalKcal,proteinG};
+}
+
+function proteinDecisionFactors(g){
+ const m=g.mod,parts=[];
+ if(m.nutritionRisk)parts.push("riesgo nutricional");
+ if(m.malnutrition)parts.push("malnutrición");
+ if(m.muscle)parts.push("depleción muscular");
+ if(m.wound)parts.push("herida/LPP");
+ if(m.stress.level==="MODERADO")parts.push("estrés metabólico moderado");
+ if(m.stress.level==="ALTO")parts.push("estrés metabólico alto");
+ if(m.intake!==null&&m.intake<75)parts.push(`ingesta ${m.intake}%`);
+ if(!parts.length)parts.push("sin catabolismo ni depleción relevante");
+ return parts;
+}
+function whyEnergyText(g){
+ const basis=weightBasisLabel(g).replace(/^\s+/,"").toLowerCase()||"peso";
+ if(g.kChosen===null)return `Se usa gasto energético medido por calorimetría indirecta.`;
+ let t=`${one(g.kChosen)} kcal/kg se eligieron dentro del rango ${one(g.kMin)}–${one(g.kMax)} kcal/kg para ${guideLabel(g.cp).toLowerCase()}, usando ${basis}.`;
+ if(g.mod.stress.level!=="BAJO")t+=` Estrés metabólico ${g.mod.stress.level.toLowerCase()}.`;
+ if(g.mod.malnutrition)t+=" Hay malnutrición/depleción, por eso se evita el extremo bajo.";
+ if(g.mod.obesity)t+=" En obesidad se usa peso ajustado cuando la guía lo permite para no sobreestimar.";
+ return t;
+}
+function whyProteinText(g){
+ const factors=proteinDecisionFactors(g).join(", ");
+ const renal=renalFunctionContext();
+ let t=`La guía permite ${one(g.pMin)}–${one(g.pMax)} g/kg y la app seleccionó ${one(g.pChosen)} g/kg según ${factors}.`;
+ if(Math.abs(g.pMax-g.pMin)>=0.2&&!["RENAL","UCI"].includes(g.cp))
+  t+=" La selección se hace en pasos de 0,1 g/kg dentro del rango, no saltando siempre de 1,2 a 1,5.";
+ if(renal.impaired)t+=" La función renal detectada prevalece sobre la regla general.";
+ else if((num(val("edad"))||0)>=60)t+=" En adulto mayor la edad sola no es motivo para restringir proteína; se ajusta si existe enfermedad renal.";
+ return t;
+}
+function whyCarbText(c,g){
+ const diet=normalizedUpper(val("dieta"));
+ if(diet.includes("HIPOGLUCIDA"))
+  return `CHO ${Math.round(c.cho)}% porque la dieta actual es hipoglucida. La proteína se fija primero por g/kg y los lípidos completan la energía.`;
+ if(diet.includes("HIPOGRASA"))
+  return `La dieta es hipograsa: se fija el objetivo lipídico y los CHO quedan en ${Math.round(c.cho)}% después de respetar la proteína prescrita.`;
+ if(g.cp==="GERIATRIA"||g.cp==="DEMENCIA")
+  return `CHO ${Math.round(c.cho)}%: se usa 50–55% en el adulto mayor; 55% si está estable y 50% si existe enfermedad/riesgo.`;
+ if(g.cp==="GENERAL"&&!g.mod.nutritionRisk&&g.mod.stress.level==="BAJO")
+  return `CHO ${Math.round(c.cho)}%: se selecciona 55% dentro del rango de dieta estándar hospitalaria (50–60%).`;
+ return `CHO ${Math.round(c.cho)}%: paciente hospitalizado con enfermedad/riesgo, por lo que se usa el extremo alto del rango de dieta hospitalaria enriquecida (45–50%). La proteína se calcula primero en g/kg y los lípidos completan el 100% energético.`;
+}
+function appliedGuidesText(g){
+ const map={
+  GENERAL:["ESPEN Hospital Nutrition 2021","ESPEN Polymorbid Medical Inpatients 2023 / practical 2024"],
+  MALNUTRICION:["ESPEN Polymorbid Medical Inpatients 2023 / practical 2024","GLIM update 2025"],
+  GERIATRIA:["ESPEN Clinical Nutrition and Hydration in Geriatrics 2022","ESPEN Hospital Nutrition 2021"],
+  DEMENCIA:["ESPEN Nutrition and Hydration in Dementia Update 2024","ESPEN Geriatrics 2022"],
+  ONCOLOGIA:["ESPEN Clinical Nutrition in Cancer 2021","ESPEN Hospital Nutrition 2021"],
+  CIRUGIA:["ESPEN Clinical Nutrition in Surgery Update 2025"],
+  TRAUMA:["ESPEN Hospital Nutrition 2021","ASPEN Critical Care 2022 si progresa a crítico"],
+  UCI:["ASPEN Adult Critical Care 2022","ESPEN ICU guideline/practical guidance"],
+  RENAL:["ESPEN Hospitalized Acute/Chronic Kidney Disease practical 2024","ESPEN Polymorbid Medical Inpatients 2023 / practical 2024"],
+  HEPATICO:["ESPEN Clinical Nutrition in Liver Disease 2019"],
+  PANCREATITIS:["ESPEN Acute/Chronic Pancreatitis practical 2024"],
+  IBD:["ESPEN Inflammatory Bowel Disease Update 2023"],
+  INTESTINAL:["ESPEN Chronic Intestinal Failure Update 2023"],
+  OBESIDAD:["Joint ESPEN/UEG Obesity Care 2022"],
+  NEURO:["ESPEN Hospital Nutrition 2021","ESPEN Home Enteral Nutrition 2022 si requiere soporte enteral"],
+  DIABETES:["ESPEN Hospital Nutrition 2021","ADA hospital nutrition principles"],
+  CARDIACO:["ESPEN Hospital Nutrition 2021","ESPEN Polymorbid Medical Inpatients 2023"],
+  RESPIRATORIO:["ESPEN Hospital Nutrition 2021","ESPEN Polymorbid Medical Inpatients 2023"],
+  INFECCION:["ESPEN Hospital Nutrition 2021","ESPEN Polymorbid Medical Inpatients 2023"],
+  HERIDAS:["ESPEN Geriatrics 2022 cuando aplica","ESPEN Hospital Nutrition 2021"],
+  QUEMADOS:["ASPEN Critical Care 2022","ESPEN ICU guidance"],
+  EMBARAZO:["Esquema materno configurado del servicio"],
+  POSPARTO:["Esquema materno configurado del servicio"]
+ };
+ const arr=map[g.cp]||[g.source];
+ return [...new Set(arr)].join(" · ");
+}
+function renalSafetyText(g){
+ const age=num(val("edad"))||0,rc=renalFunctionContext();
+ if(rc.impaired){
+  const eg=rc.egfr!==null?`eGFR ${one(rc.egfr)} ml/min/1,73 m². `:"";
+  if(rc.dialysis)return `${eg}KRT/diálisis detectada: la proteína se ajusta por las pérdidas y el tipo de terapia, no se restringe automáticamente.`;
+  if(rc.egfr!==null&&rc.egfr<30)return `${eg}Sin KRT: se evita un objetivo proteico alto automático y se aplica la pauta renal.`;
+  return `${eg}Deterioro renal detectado: el perfil renal tiene prioridad.`;
+ }
+ if(age>=60){
+  if(rc.egfr!==null)return `eGFR ${one(rc.egfr)} ml/min/1,73 m². No hay criterio renal para reducir proteína solo por la edad.`;
+  return "No hay eGFR documentado. La evidencia no justifica restringir proteína únicamente por tener mayor edad; si se usan 1,4–1,5 g/kg conviene confirmar función renal.";
+ }
+ return "Sin modificador renal detectado en los datos disponibles.";
 }
 function requirementSanity(){
  const g=guidelineEngine(),b=calculationsBase(),c=calculations(),k=g.goalKcal;
@@ -2414,6 +2584,15 @@ function updateClinicalUI(){
  $("totalFat").textContent=c.lipG!==null?`${one(c.lipG)} g/d · ${Math.round(c.lip)}%`:"—";
  $("energySanity").textContent=requirementSanity()+highProteinSafetyNote(c.guide);
  $("clinicalReasonText").textContent=g.reason.join(" ");
+ if($("whyEnergy"))$("whyEnergy").textContent=whyEnergyText(g);
+ if($("whyProtein"))$("whyProtein").textContent=whyProteinText(g);
+ if($("whyCarbs"))$("whyCarbs").textContent=whyCarbText(c,g);
+ if($("renalSafety"))$("renalSafety").textContent=renalSafetyText(g);
+ if($("appliedGuides"))$("appliedGuides").textContent=appliedGuidesText(g);
+ if($("renalAutoHint")&&g.cp==="RENAL"){
+  const rc=renalFunctionContext(),sub=resolvedRenalSubtype();
+  $("renalAutoHint").textContent=`Detectado automáticamente: ${sub.replaceAll("_"," ")}${rc.egfr!==null?` · eGFR ${one(rc.egfr)}`:""}.`;
+ }
  if($("dietProgressionSuggestion"))$("dietProgressionSuggestion").textContent=dietProgressionSuggestion();
 
  if($("surgeryScenarioHint")&&(g.cp==="CIRUGIA"||g.cp==="TRAUMA")){

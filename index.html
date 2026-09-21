@@ -895,7 +895,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&
 const makeId=p=>`${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,9)}`;
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
 
-const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v33", FALLBACK_KEY="nutri_word_rounds_v33";
+const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v35", FALLBACK_KEY="nutri_word_rounds_v35";
 let db=null,currentRound=null,currentPatientId=null,history=[],loading=false,saveTimer=null;
 
 const simpleFields=["area","ambiente","cama","nombre","edad","cobertura","sexo","perfil","dieta","sourceText","alergia","intolerancia","ultima","bristol","habito","hallazgo","peso","pesoEstimadoDoc","cb","cp","talla","talonRodilla","pesoPregestacional","edadGestacional","reqPerfil","cie10","plan","planObs","kcalKg","extraKcal","choPct","proPct","proKg","lipPct","clinicalProfile","renalSubtype","egfr","icuDay","hasIC","measuredEE","ibdActivity","pancreasType","surgeryScenario","suppName","suppMl","suppKcal","suppProtein","suppServings","acompanante","acompananteDetalle","informante","extremidadesDetalle","mExtSupDetalle"];
@@ -2064,27 +2064,7 @@ function guideLabel(cp){
  return m[cp]||cp;
 }
 
-function geriatricProteinTarget(mod){
- const f=mod.flags||diseaseFlags();
 
- // Enfermedad renal manda sobre cualquier regla geriátrica.
- if(f.renal)return null;
-
- // Adulto mayor estable: ESPEN >=1.0 g/kg/d.
- if(!mod.nutritionRisk && !mod.malnutrition && mod.stress.level==="BAJO" && !mod.wound)
-  return 1.0;
-
- // Enfermedad/riesgo nutricional sin catabolismo mayor: 1.2 g/kg/d.
- if(mod.nutritionRisk || mod.stress.level==="MODERADO")
-  return 1.2;
-
- // 1.5 se reserva para una indicación fuerte:
- // depleción muscular, malnutrición manifiesta, heridas o alto catabolismo.
- if(mod.muscle || mod.malnutrition || mod.wound || mod.stress.level==="ALTO")
-  return 1.5;
-
- return 1.0;
-}
 function highProteinSafetyNote(g){
  const age=num(val("edad"))||0,f=diseaseFlags();
  if(age<60)return "";
@@ -2092,6 +2072,64 @@ function highProteinSafetyNote(g){
  if(g.pChosen>=1.5)return " Aporte proteico alto reservado para catabolismo, depleción, herida o malnutrición; reevaluar función renal, urea/creatinina, hidratación y tolerancia.";
  if(g.pChosen>=1.2)return " Aporte proteico aumentado por enfermedad/riesgo; reevaluar función renal y evolución clínica.";
  return "";
+}
+
+function proteinClinicalScore(mod){
+ let s=0;
+ const intake=mod.intake;
+
+ if(mod.stress.level==="MODERADO")s+=1;
+ if(mod.stress.level==="ALTO")s+=2;
+ if(mod.nutritionRisk)s+=1;
+ if(mod.under)s+=1;
+ if(mod.malnutrition)s+=2;
+ if(mod.muscle)s+=2;
+ if(mod.wound)s+=1;
+ if(intake!==null&&intake<75)s+=1;
+ if(intake!==null&&intake<=50)s+=1;
+ if(radio("apetito")==="AUSENTE")s+=1;
+ if(radio("viaoral")==="NO TOLERA"&&importedRoute()!=="NPO")s+=1;
+ return s;
+}
+function chooseProteinInRange(min,max,mod,base=null){
+ // Selección clínica en pasos de 0,1 g/kg dentro del rango permitido.
+ // Es una heurística de selección, no un nuevo rango de guía.
+ if(min===null||max===null)return base;
+ if(Math.abs(max-min)<0.001)return min;
+
+ const score=proteinClinicalScore(mod);
+ const steps=Math.round((max-min)*10);
+ let step=0;
+
+ if(score<=0)step=0;
+ else if(score===1)step=Math.min(1,steps);
+ else if(score===2)step=Math.min(2,steps);
+ else if(score===3)step=Math.min(3,steps);
+ else if(score===4)step=Math.min(4,steps);
+ else step=steps;
+
+ let chosen=min+step/10;
+
+ // Si el perfil trae una base clínica mínima, respetarla.
+ if(base!==null&&Number.isFinite(base))chosen=Math.max(chosen,base);
+
+ chosen=Math.max(min,Math.min(max,chosen));
+ return Math.round(chosen*10)/10;
+}
+function geriatricProteinTarget(mod){
+ const f=mod.flags||diseaseFlags();
+ if(f.renal)return null;
+
+ // En geriatría la guía da >=1,0 g/kg y sugiere 1,2–1,5 en enfermedad.
+ // Elegimos dentro del rango en décimas según los datos del paciente.
+ const score=proteinClinicalScore(mod);
+
+ if(score<=0)return 1.0;
+ if(score===1)return 1.1;
+ if(score===2)return 1.2;
+ if(score===3)return 1.3;
+ if(score===4)return 1.4;
+ return 1.5;
 }
 function guidelineEngine(){
  const b=calculationsBase(),mod=modifierState(),cx=mod.cx,cp=currentClinicalProfile();
@@ -2236,6 +2274,29 @@ function guidelineEngine(){
   source="Ajuste manual";reason=["Valores definidos manualmente por el profesional."];
  }
 
+ // Refinamiento de proteína dentro del rango de la guía:
+ // en perfiles con rango real, puede resultar 1,1 / 1,2 / 1,3 / 1,4 / 1,5.
+ // No modifica renal, UCI, embarazo/posparto ni ajustes manuales.
+ if(!["RENAL","UCI","EMBARAZO","POSPARTO","MANUAL"].includes(cp) &&
+    Number.isFinite(pMin)&&Number.isFinite(pMax)&&pMax>pMin){
+   const prior=pChosen;
+   pChosen=chooseProteinInRange(pMin,pMax,mod,pMin);
+   if(Math.abs(pChosen-prior)>=0.05){
+    reason.push(`Selección dentro del rango proteico: ${one(pChosen)} g/kg según riesgo, ingesta, estrés y composición corporal.`);
+   }
+ }
+
+ // Seguridad en adulto mayor:
+ // una enfermedad específica (p. ej. herida) NO lleva automáticamente a 1,5 g/kg.
+ // En ≥75 años, si no hay malnutrición, depleción muscular ni catabolismo alto,
+ // se limita el valor automático a 1,2 g/kg. El profesional puede modificarlo si dispone de
+ // función renal y una indicación de mayor aporte.
+ if((b.age||0)>=75 && !["RENAL","UCI"].includes(cp) &&
+    pChosen>=1.5 && !mod.malnutrition && !mod.muscle && mod.stress.level!=="ALTO"){
+  pChosen=1.4;
+  reason.push("Adulto mayor ≥75 años: 1,5 g/kg se reserva para malnutrición, depleción muscular o catabolismo alto; se selecciona 1,4 g/kg cuando el riesgo es alto pero no cumple esos criterios.");
+ }
+
  // Obesidad concomitante en perfiles no críticos/no renales: usar peso ajustado
  // salvo cirugía, donde ya se usa peso ideal, y UCI, que tiene regla propia.
  if(mod.obesity&&!["UCI","RENAL","EMBARAZO","POSPARTO","OBESIDAD","CIRUGIA"].includes(cp)){
@@ -2255,19 +2316,28 @@ function guidelineEngine(){
  return {cp,mod,eW,pW,kMin,kMax,kChosen,pMin,pMax,pChosen,source,reason,diseaseAdvice,extra,estimatedKcal,goalKcal,proteinG};
 }
 function requirementSanity(){
- const g=guidelineEngine(),b=calculationsBase(),k=g.goalKcal;
- if(b.w===null)return "Falta peso actual o estimado: la app no inventa kcal ni proteína.";
+ const g=guidelineEngine(),b=calculationsBase(),c=calculations(),k=g.goalKcal;
+ if(b.w===null)return "Falta peso actual o estimado: no se calculan kcal ni proteína.";
  if(!Number.isFinite(b.h)||b.h<=0)return k!==null
-  ?`Cálculo provisional: ${Math.round(k)} kcal/día. Falta talla para definir IMC y, cuando corresponda, peso ideal/ajustado.`
+  ?`Cálculo provisional: ${Math.round(k)} kcal/día. Falta talla para IMC y peso de referencia.`
   :"Falta talla para completar antropometría.";
  if(k===null)return "";
+
+ let txt="";
  if(g.kChosen!==null&&g.eW!==null){
   const raw=g.eW*g.kChosen+(g.extra||0);
   const extra=g.extra?` + ${Math.round(g.extra)} kcal`:"";
-  return `Cálculo verificado: ${one(g.eW)} kg × ${one(g.kChosen)} kcal/kg${extra} = ${Math.round(raw)} kcal/día. Talla ${one(b.h)} cm · IMC ${Number.isFinite(b.imc)?one(b.imc):"—"} kg/m².`;
+  txt=`Cálculo verificado: ${one(g.eW)} kg × ${one(g.kChosen)} kcal/kg${extra} = ${Math.round(raw)} kcal/día.`;
+ }else if(g.cp==="UCI"&&val("hasIC")==="SI"){
+  txt=`Calorimetría indirecta: ${Math.round(k)} kcal/día.`;
  }
- if(g.cp==="UCI"&&val("hasIC")==="SI")return `Calorimetría indirecta: ${Math.round(k)} kcal/día.`;
- return `Meta energética calculada: ${Math.round(k)} kcal/día.`;
+
+ if(c.macroKcal!==null&&Number.isFinite(c.macroKcal)){
+  const diff=Math.abs(c.macroKcal-c.kcal);
+  txt+=` Macros: ${Math.round(c.cho)}% CHO + ${Math.round(c.pp)}% proteína + ${Math.round(c.lip)}% lípidos; energía reconstruida ${Math.round(c.macroKcal)} kcal`;
+  txt+=diff<=2?" (coherente).":` (REVISAR: diferencia ${Math.round(diff)} kcal).`;
+ }
+ return txt;
 }
 function updateClinicalUI(){
  if(!$("guideKcal"))return;
@@ -2552,27 +2622,56 @@ function updateScreeningUI(){
 }
 function macroTargets(kcal,proteinG,profile,dietText){
  if(kcal===null||proteinG===null||kcal<=0)
-  return {choPct:null,proPct:null,lipPct:null,choG:null,lipG:null};
+  return {choPct:null,proPct:null,lipPct:null,choG:null,lipG:null,macroKcal:null};
 
  const u=normalizedUpper(dietText||""),cp=currentClinicalProfile(),mod=modifierState();
- const proPct=(proteinG*4/kcal)*100;
+ const proteinKcal=proteinG*4;
+ const proPct=proteinKcal/kcal*100;
+ let choPct=null,lipPct=null;
 
- // Distribución de trabajo:
- // - hospital/estrés: CHO 50%
- // - hipoglucida/diabetes: CHO 45%
- // - paciente estable estándar: CHO 55%
- // La proteína NO se inventa por porcentaje: viene primero de g/kg.
- let choPct=55;
- if(profile==="embarazada")choPct=58;
- else if(profile==="posparto")choPct=55;
- else if(u.includes("HIPOGLUCIDA")||u.includes("DIABET")||cp==="DIABETES")choPct=45;
- else if(cp!=="GENERAL"||mod.nutritionRisk||mod.stress.level!=="BAJO"||u.includes("HIPERPROTEICA"))choPct=50;
+ // Dieta explícitamente hipoglucida: reducir CHO respecto al patrón habitual.
+ // Diabetes por sí sola NO fuerza 45%; se individualiza.
+ if(u.includes("HIPOGLUCIDA")){
+  choPct=45;
+ }
 
- let lipPct=100-choPct-proPct;
+ // Hipograsa: fijar grasa en 30% y completar con CHO.
+ if(u.includes("HIPOGRASA")){
+  lipPct=30;
+  choPct=100-proPct-lipPct;
+ }
 
- // Mantener una fracción lipídica razonable sin romper la suma 100%.
- if(lipPct<25){
-  lipPct=25;
+ // Gestación/posparto mantienen su esquema configurado.
+ if(profile==="embarazada"){
+  choPct=58;
+ }else if(profile==="posparto"){
+  choPct=55;
+ }
+
+ // Adulto mayor estable: 50–55% según ESPEN geriatría.
+ // Elegimos 55% si está estable; 50% si está enfermo/en riesgo.
+ if(choPct===null && (cp==="GERIATRIA"||cp==="DEMENCIA")){
+  choPct=(mod.nutritionRisk||mod.stress.level!=="BAJO")?50:55;
+ }
+
+ // Paciente hospitalizado con enfermedad/riesgo: extremo alto del rango
+ // de dieta hospitalaria ESPEN (45–50%), es decir 50%.
+ if(choPct===null && (cp!=="GENERAL"||mod.nutritionRisk||mod.stress.level!=="BAJO"||u.includes("HIPERPROTEICA"))){
+  choPct=50;
+ }
+
+ // Paciente estable / dieta estándar: elegir 55% dentro del rango 50–60%.
+ if(choPct===null){
+  choPct=55;
+ }
+
+ // Si ya se fijó grasa por prescripción, no recalcularla.
+ if(lipPct===null)lipPct=100-choPct-proPct;
+
+ // Ajuste matemático solo si la proteína elegida deja grasa fuera de rango razonable.
+ // Primero preserva la proteína en g/kg; CHO se mueve únicamente cuando es necesario.
+ if(lipPct<20){
+  lipPct=20;
   choPct=100-proPct-lipPct;
  }
  if(lipPct>40){
@@ -2582,7 +2681,8 @@ function macroTargets(kcal,proteinG,profile,dietText){
 
  const choG=kcal*choPct/100/4;
  const lipG=kcal*lipPct/100/9;
- return {choPct,proPct,lipPct,choG,lipG};
+ const macroKcal=proteinG*4+choG*4+lipG*9;
+ return {choPct,proPct,lipPct,choG,lipG,macroKcal};
 }
 function calculations(){
  const w=getWeight(),h=num(val("talla")),age=num(val("edad"))||0,p=val("perfil"),older=age>=60;
@@ -2594,7 +2694,7 @@ function calculations(){
  const m=macroTargets(kcal,proG,p,val("plan")||val("dieta"));
  const low=p==="embarazada"?Number.isFinite(preImc)&&preImc<18.5:Number.isFinite(imc)&&(older?imc<23:imc<18.5);
  return {w,h,age,p,older,imc,cl:bmiClass(imc),preW,preImc,preClass:standardBmiClass(preImc),gain,low,targetBmi,idealWeight,calcWeight,kk,extra,
-  cho:m.choPct,pp:m.proPct,pk:g.pChosen,lip:m.lipPct,rawKcal:g.estimatedKcal,kcal,choG:m.choG,proG,lipG:m.lipG,guide:g};
+  cho:m.choPct,pp:m.proPct,pk:g.pChosen,lip:m.lipPct,rawKcal:g.estimatedKcal,kcal,choG:m.choG,proG,lipG:m.lipG,macroKcal:m.macroKcal,guide:g};
 }
 function calculateAll(){
  updateBowelHabit();
@@ -2792,7 +2892,10 @@ function req(){
  const c=calculations(),g=c.guide;
  if(c.kcal===null||c.proG===null)return "";
  const kcalKg=g.kChosen!==null?`${commaOne(g.kChosen)} KCAL/KG: `:"";
- return `CALORÍAS: ${kcalKg}${Math.round(c.kcal)} KCAL/DÍA. CARBOHIDRATOS ${Math.round(c.cho)}%: ${Math.round(c.choG)} G/DÍA. PROTEÍNA ${Math.round(c.pp)}%: ${commaOne(g.pChosen)} G/KG ${reqProteinWeightLabel(g)} = ${Math.round(c.proG)} G/DÍA. LÍPIDOS ${Math.round(c.lip)}%: ${Math.round(c.lipG)} G/DÍA.${lowWeightSupplementText(c)}`;
+ const pPct=Math.round(c.pp);
+ const choPct=Math.round(c.cho);
+ const lipPct=100-choPct-pPct;
+ return `CALORÍAS: ${kcalKg}${Math.round(c.kcal)} KCAL/DÍA. CARBOHIDRATOS ${choPct}%: ${Math.round(c.choG)} G/DÍA. PROTEÍNA ${pPct}%: ${commaOne(g.pChosen)} G/KG ${reqProteinWeightLabel(g)} = ${Math.round(c.proG)} G/DÍA. LÍPIDOS ${lipPct}%: ${Math.round(c.lipG)} G/DÍA.${lowWeightSupplementText(c)}`;
 }
 
 function pregnancyGainReference(){
@@ -2856,7 +2959,10 @@ function maternityReq(){
  if(c.kcal===null||c.proG===null)return "";
  const extra=val("perfil")==="posparto"?" (+250 KCAL LACTANCIA)":"";
  const kcalKg=g.kChosen!==null?`${commaOne(g.kChosen)} KCAL/KG: `:"";
- return `CALORÍAS: ${kcalKg}${Math.round(c.kcal)} KCAL/DÍA${extra}. CARBOHIDRATOS ${Math.round(c.cho)}%: ${Math.round(c.choG)} G/DÍA. PROTEÍNA ${Math.round(c.pp)}%: ${commaOne(g.pChosen)} G/KG ${reqProteinWeightLabel(g)} = ${Math.round(c.proG)} G/DÍA. LÍPIDOS ${Math.round(c.lip)}%: ${Math.round(c.lipG)} G/DÍA.${lowWeightSupplementText(c)}`;
+ const pPct=Math.round(c.pp);
+ const choPct=Math.round(c.cho);
+ const lipPct=100-choPct-pPct;
+ return `CALORÍAS: ${kcalKg}${Math.round(c.kcal)} KCAL/DÍA${extra}. CARBOHIDRATOS ${choPct}%: ${Math.round(c.choG)} G/DÍA. PROTEÍNA ${pPct}%: ${commaOne(g.pChosen)} G/KG ${reqProteinWeightLabel(g)} = ${Math.round(c.proG)} G/DÍA. LÍPIDOS ${lipPct}%: ${Math.round(c.lipG)} G/DÍA.${lowWeightSupplementText(c)}`;
 }
 function maternityPlan(){const route=importedRoute(),times=importedTimes();if(route==="NPO")return "NPO";return `${up(val("plan")||val("dieta"))}${route==="SNG"?" POR SNG":""}${times!=="N/A"?` FRACCIONADO EN ${times} TIEMPOS DE COMIDA`:""}`}
 function postpartumDiagnosis(){

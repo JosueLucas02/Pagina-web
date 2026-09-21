@@ -898,7 +898,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&
 const makeId=p=>`${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,9)}`;
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
 
-const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v28", FALLBACK_KEY="nutri_word_rounds_v28";
+const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v29", FALLBACK_KEY="nutri_word_rounds_v29";
 let db=null,currentRound=null,currentPatientId=null,history=[],loading=false,saveTimer=null;
 
 const simpleFields=["area","ambiente","cama","nombre","edad","cobertura","sexo","perfil","dieta","sourceText","alergia","intolerancia","ultima","bristol","habito","hallazgo","peso","pesoEstimadoDoc","cb","cp","talla","talonRodilla","pesoPregestacional","edadGestacional","reqPerfil","cie10","plan","planObs","kcalKg","extraKcal","choPct","proPct","proKg","lipPct","clinicalProfile","renalSubtype","egfr","icuDay","hasIC","measuredEE","ibdActivity","pancreasType","surgeryScenario","suppName","suppMl","suppKcal","suppProtein","suppServings","acompanante","acompananteDetalle","informante","extremidadesDetalle","mExtSupDetalle"];
@@ -2423,10 +2423,24 @@ function lowWeightSupplementText(c){
  const manual=manualSupplementText();
  return ` SE SUGIERE SUPLEMENTACIÓN NUTRICIONAL ORAL HIPERPROTEICA.${manual?manual:""}`;
 }
+
+function commaOne(n){
+ const x=Number(n);
+ if(!Number.isFinite(x))return "";
+ return (Math.round(x*10)/10).toFixed(1).replace(".",",");
+}
+function reqProteinWeightLabel(g){
+ const actual=getWeight(),adj=adjustedWeight33(),ideal=idealWeightForGuide();
+ if(g.pW===null)return "PESO";
+ if(adj!==null&&Math.abs(g.pW-adj)<0.15&&actual!==null&&Math.abs(adj-actual)>0.2)return "PESO AJUSTADO";
+ if(ideal!==null&&Math.abs(g.pW-ideal)<0.15&&actual!==null&&Math.abs(ideal-actual)>0.2)return "PESO IDEAL";
+ return "PESO";
+}
 function req(){
- const c=calculations(),g=c.guide;if(c.kcal===null||c.proG===null)return "";
- const proKcal=c.proG*4,lipKcal=c.lipG*9,choKcal=c.choG*4;
- return `CALORÍAS: ${g.kChosen!==null?one(g.kChosen)+" KCAL/KG ":""}(${Math.round(c.kcal)} KCAL); P: ${Math.round(c.pp)}% (${one(g.pChosen)} G/KG) (${Math.round(proKcal)} KCAL – ${Math.round(c.proG)} G); L: ${Math.round(c.lip)}% (${Math.round(lipKcal)} KCAL – ${Math.round(c.lipG)} G); CHO: ${Math.round(c.cho)}% (${Math.round(choKcal)} KCAL – ${Math.round(c.choG)} G).${lowWeightSupplementText(c)}`;
+ const c=calculations(),g=c.guide;
+ if(c.kcal===null||c.proG===null)return "";
+ const kcalKg=g.kChosen!==null?`${commaOne(g.kChosen)} KCAL/KG: `:"";
+ return `CALORÍAS: ${kcalKg}${Math.round(c.kcal)} KCAL/DÍA. CARBOHIDRATOS ${Math.round(c.cho)}%: ${Math.round(c.choG)} G/DÍA. PROTEÍNA ${Math.round(c.pp)}%: ${commaOne(g.pChosen)} G/KG ${reqProteinWeightLabel(g)} = ${Math.round(c.proG)} G/DÍA. LÍPIDOS ${Math.round(c.lip)}%: ${Math.round(c.lipG)} G/DÍA.${lowWeightSupplementText(c)}`;
 }
 
 function pregnancyGainReference(){
@@ -2486,10 +2500,11 @@ function postpartumAnthro(){
  return parts.join(", ")+".";
 }
 function maternityReq(){
- const c=calculations(),g=c.guide;if(c.kcal===null||c.proG===null)return "";
+ const c=calculations(),g=c.guide;
+ if(c.kcal===null||c.proG===null)return "";
  const extra=val("perfil")==="posparto"?" (+250 KCAL LACTANCIA)":"";
- const proKcal=c.proG*4,lipKcal=c.lipG*9,choKcal=c.choG*4;
- return `CALORÍAS: ${g.kChosen!==null?one(g.kChosen)+" KCAL/KG ":""}(${Math.round(c.kcal)} KCAL)${extra}; P: ${Math.round(c.pp)}% (${one(g.pChosen)} G/KG) (${Math.round(proKcal)} KCAL – ${Math.round(c.proG)} G); L: ${Math.round(c.lip)}% (${Math.round(lipKcal)} KCAL – ${Math.round(c.lipG)} G); CHO: ${Math.round(c.cho)}% (${Math.round(choKcal)} KCAL – ${Math.round(c.choG)} G).${lowWeightSupplementText(c)}`;
+ const kcalKg=g.kChosen!==null?`${commaOne(g.kChosen)} KCAL/KG: `:"";
+ return `CALORÍAS: ${kcalKg}${Math.round(c.kcal)} KCAL/DÍA${extra}. CARBOHIDRATOS ${Math.round(c.cho)}%: ${Math.round(c.choG)} G/DÍA. PROTEÍNA ${Math.round(c.pp)}%: ${commaOne(g.pChosen)} G/KG ${reqProteinWeightLabel(g)} = ${Math.round(c.proG)} G/DÍA. LÍPIDOS ${Math.round(c.lip)}%: ${Math.round(c.lipG)} G/DÍA.${lowWeightSupplementText(c)}`;
 }
 function maternityPlan(){const route=importedRoute(),times=importedTimes();if(route==="NPO")return "NPO";return `${up(val("plan")||val("dieta"))}${route==="SNG"?" POR SNG":""}${times!=="N/A"?` FRACCIONADO EN ${times} TIEMPOS DE COMIDA`:""}`}
 function postpartumDiagnosis(){

@@ -680,6 +680,16 @@ img,svg,table{
    <div class="srcTitle">Criterios detectados</div>
    <div id="screenReasonText" class="sourceText" style="min-height:auto;max-height:none"></div>
   </div>
+
+  <div id="glimBox" class="sourceBox hidden" style="margin-top:8px">
+   <div class="srcTitle">GLIM · evaluación diagnóstica automática</div>
+   <div class="metrics" style="margin-top:6px">
+    <div class="metric"><span>Fenotípico</span><b id="glimPhenotype">—</b></div>
+    <div class="metric"><span>Etiológico</span><b id="glimEtiology">—</b></div>
+    <div class="metric"><span>Resultado</span><b id="glimResult">—</b></div>
+   </div>
+   <div id="glimReason" class="note" style="margin-top:6px"></div>
+  </div>
  </section>
  <section class="card section">
   <div class="secHead"><div class="step">6</div><div><h2>Motor clínico nutricional</h2><p>Adapta energía, proteína, peso de cálculo y soporte según enfermedad, estado nutricional y guías vigentes.</p></div></div>
@@ -821,7 +831,12 @@ img,svg,table{
    <div><label class="label">Modo de cálculo</label><div id="reqModeLabel" class="tag">GUÍA CLÍNICA</div><select id="reqPerfil" class="hidden"><option value="general">General</option><option value="renal">Renal</option><option value="embarazo">Embarazo</option><option value="posparto">Posparto/lactancia</option><option value="custom">Personalizado</option></select></div>
   </div>
 
-  <div class="note" style="margin-top:7px"><b>Base documental revisada:</b> 19/09/2026. ESPEN Scientific Guidelines actualizado 30/08/2026; se usa la edición más reciente disponible por tema.</div>
+  <div class="sourceBox" style="margin-top:8px">
+   <div class="srcTitle">Sugerencia automática de progresión / vía</div>
+   <div id="dietProgressionSuggestion" class="sourceText" style="min-height:auto;max-height:none">—</div>
+  </div>
+
+  <div class="note" style="margin-top:7px"><b>Base documental revisada:</b> 21/09/2026. NRS-2002 según formulario aportado; MNA-SF según formulario aportado; GLIM actualizado 2025; ESPEN Scientific Guidelines revisado 30/08/2026.</div>
   <details style="margin-top:8px"><summary>Guías integradas</summary>
    <div class="note" style="margin-top:7px;line-height:1.45">
     ESPEN Nutrición hospitalaria 2021 · ESPEN Cirugía 2025 · ESPEN Renal hospitalaria práctica 2024 · ESPEN Pancreatitis práctica 2024 · ESPEN Demencia 2024 ·
@@ -895,7 +910,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&
 const makeId=p=>`${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,9)}`;
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
 
-const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v35", FALLBACK_KEY="nutri_word_rounds_v35";
+const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v36", FALLBACK_KEY="nutri_word_rounds_v36";
 let db=null,currentRound=null,currentPatientId=null,history=[],loading=false,saveTimer=null;
 
 const simpleFields=["area","ambiente","cama","nombre","edad","cobertura","sexo","perfil","dieta","sourceText","alergia","intolerancia","ultima","bristol","habito","hallazgo","peso","pesoEstimadoDoc","cb","cp","talla","talonRodilla","pesoPregestacional","edadGestacional","reqPerfil","cie10","plan","planObs","kcalKg","extraKcal","choPct","proPct","proKg","lipPct","clinicalProfile","renalSubtype","egfr","icuDay","hasIC","measuredEE","ibdActivity","pancreasType","surgeryScenario","suppName","suppMl","suppKcal","suppProtein","suppServings","acompanante","acompananteDetalle","informante","extremidadesDetalle","mExtSupDetalle"];
@@ -1092,7 +1107,9 @@ function syncWorkingPatient(){
  p.area=val("area");p.ambiente=val("ambiente");p.cama=val("cama");p.nombre=val("nombre");p.edad=val("edad");p.cobertura=val("cobertura");
  p.dieta=validDietText(val("dieta"))||patientDietText(p);p.sourceText=val("sourceText");
  const ns=captureState();
- if(oldState._autofilledFromPrevious)ns._autofilledFromPrevious=true;
+ ns._autofilledFromPrevious=true;
+ ns._sourceFingerprint=oldState._sourceFingerprint||patientSourceFingerprint(p);
+ ns._migratedV36=true;
  p.state=ns;p.note=nutritionNote();p.touched=true;p.updatedAt=Date.now();
 }
 
@@ -1413,12 +1430,16 @@ function autofillPreviousAssessment(){
 
  const per=(ex.match(/REGI[ÓO]N PERIORBITARIA\s*[:.]?\s*([^,;]+)/)||[])[1]||"";
  if(/CONSERVADA|SIN DEPLECI[ÓO]N/.test(per))setRadioFromPrevious("periorb","CONSERVADA");
- else if(/LIGERAMENTE OSCURECIDA/.test(per))setRadioFromPrevious("periorb","LIGERAMENTE OSCURECIDA");
+ else if(/LIGERAMENTE OSCURECIDA|OSCURECIDA/.test(per))setRadioFromPrevious("periorb","LIGERAMENTE OSCURECIDA");
  else if(/DEPLECI[ÓO]N/.test(per))setRadioFromPrevious("periorb","DEPLECIÓN GRASA");
 
  if(/MUCOSA ORAL\s+(?:DESHIDRATADA|SECA)/.test(ex))setRadioFromPrevious("mucosa","SECA");
  else if(/MUCOSA ORAL\s+SEMIHIDRATADA/.test(ex))setRadioFromPrevious("mucosa","SEMIHIDRATADA");
  else if(/MUCOSA ORAL\s+HIDRATADA/.test(ex))setRadioFromPrevious("mucosa","HIDRATADA");
+
+ if(/PIEL\s+(?:DESHIDRATADA|SECA)/.test(ex))setRadioFromPrevious("piel","SECA");
+ else if(/PIEL\s+SEMIHIDRATADA/.test(ex))setRadioFromPrevious("piel","SEMIHIDRATADA");
+ else if(/PIEL\s+HIDRATADA/.test(ex))setRadioFromPrevious("piel","HIDRATADA");
 
  if(/PIEZAS DENTALES\s+INCOMPLETAS/.test(ex))setRadioFromPrevious("dientes","INCOMPLETAS");
  else if(/ED[ÉE]NTUL/.test(ex))setRadioFromPrevious("dientes","EDÉNTULO/A");
@@ -1437,6 +1458,9 @@ function autofillPreviousAssessment(){
  else if(/DISTENDIDO/.test(abdomen))setRadioFromPrevious("abdomen","DISTENDIDO");
  else if(/DOLOROSO/.test(abdomen))setRadioFromPrevious("abdomen","DOLOROSO A LA PALPACIÓN");
 
+ if(/EXTREMIDADES?\s*:\s*ASIM[ÉE]TRICAS/.test(ex))setRadioFromPrevious("extremidades","ASIMÉTRICAS");
+ else if(/EXTREMIDADES?\s*:\s*SIM[ÉE]TRICAS/.test(ex))setRadioFromPrevious("extremidades","SIMÉTRICAS");
+
  if(/MASA MUSCULAR(?:\s+Y\s+MASA GRASA)?\s+CONSERVADA|MASA MUSCULAR\s+CONSERVADA/.test(ex))
   setRadioFromPrevious("masaMuscular","CONSERVADA");
  else if(/MASA MUSCULAR\s+LEVE DEPLECI[ÓO]N/.test(ex))setRadioFromPrevious("masaMuscular","LEVE DEPLECIÓN");
@@ -1449,14 +1473,19 @@ function autofillPreviousAssessment(){
  else if(/MASA GRASA\s+MODERADA DEPLECI[ÓO]N/.test(ex))setRadioFromPrevious("masaGrasa","MODERADA DEPLECIÓN");
  else if(/MASA GRASA\s+SEVERA DEPLECI[ÓO]N/.test(ex))setRadioFromPrevious("masaGrasa","SEVERA DEPLECIÓN");
 
- // Hallazgo localizado: sólo la región anatómica, no todo lo que viene después.
- const edemaLocal=ex.match(/EDEMA\s+(?:A NIVEL|EN)\s+([^,.;]+)/);
- if(edemaLocal)setFieldFromPrevious("hallazgo",`EDEMA A NIVEL ${edemaLocal[1].trim()}`);
- else setFieldFromPrevious("hallazgo","");
+ if(/OJOS\s+ICT[ÉE]RICOS|ESCLERAS?\s+ICT[ÉE]RICAS?/.test(ex))setRadioFromPrevious("ojos","ICTÉRICOS");
+ else if(/OJOS\s+LEVEMENTE ICT[ÉE]RICOS/.test(ex))setRadioFromPrevious("ojos","LEVEMENTE ICTÉRICOS");
 
- // NO EDEMA de extremidades prevalece sobre edema localizado mandibular.
- if(/\bNO EDEMA\b|SIN PRESENCIA DE EDEMA/.test(ex))setRadioFromPrevious("edemaFisico","NO");
- else if(/\bEDEMA\b/.test(ex))setRadioFromPrevious("edemaFisico","SÍ");
+ // Edema localizado: conservar descripción exacta y sincronizar el selector.
+ const edemaLocal=ex.match(/EDEMA\s+(?:A NIVEL|EN)\s+([^,.;]+)/);
+ if(edemaLocal){
+  setFieldFromPrevious("hallazgo",`EDEMA A NIVEL ${edemaLocal[1].trim()}`);
+  setRadioFromPrevious("edemaFisico","SÍ");
+ }else if(/\bEDEMA\b/.test(ex)&&!/\bNO EDEMA\b|SIN PRESENCIA DE EDEMA/.test(ex)){
+  setRadioFromPrevious("edemaFisico","SÍ");
+ }else if(/\bNO EDEMA\b|SIN PRESENCIA DE EDEMA/.test(ex)){
+  setRadioFromPrevious("edemaFisico","NO");
+ }
 
  // ---------------- VALORACIÓN NUTRICIONAL ----------------
  if(/PACIENTE\s+DESPIERT/.test(nu))setRadioFromPrevious("conciencia","DESPIERTO/A");
@@ -1473,6 +1502,12 @@ function autofillPreviousAssessment(){
  else if(/APETITO\s+DISMINUIDO|HIPOREXIA/.test(nu))setRadioFromPrevious("apetito","DISMINUIDO");
  else if(/APETITO\s+AUMENTADO/.test(nu))setRadioFromPrevious("apetito","AUMENTADO");
  else if(/APETITO\s+AUSENTE|ANOREXIA/.test(nu))setRadioFromPrevious("apetito","AUSENTE");
+
+ const consumo=nu.match(/(?:CONSUMO|INGESTA)[^0-9]{0,25}(100|75|50|25|0)\s*%/);
+ if(consumo)setRadioFromPrevious("consumoDieta",`${consumo[1]}%`);
+
+ if(/NO TOLERA(?:\s+ADECUADAMENTE)?\s+LA V[IÍ]A ORAL/.test(nu))setRadioFromPrevious("viaoral","NO TOLERA");
+ else if(/TOLERA(?:\s+ADECUADAMENTE)?\s+LA V[IÍ]A ORAL|ADECUADA TOLERANCIA ORAL/.test(nu))setRadioFromPrevious("viaoral","TOLERA");
 
  if(/PROBLEMAS? DE MASTICACI[ÓO]N|DIFICULTAD PARA MASTICAR/.test(nu))
   setRadioFromPrevious("masticacion","CON DIFICULTAD");
@@ -1504,10 +1539,11 @@ function autofillPreviousAssessment(){
  const br=nu.match(/BRISTOL\s*(?:TIPO\s*)?([1-7])/);
  if(br)setFieldFromPrevious("bristol",br[1]);
 
- // GI sólo desde la valoración nutricional, no desde diagnósticos antiguos.
  if(/DIARREA/.test(nu)&&$("aDiarrea"))$("aDiarrea").checked=true;
  if(/V[ÓO]MITO/.test(nu)&&$("aVomito"))$("aVomito").checked=true;
  if(/N[ÁA]USEA/.test(nu)&&$("aNausea"))$("aNausea").checked=true;
+ if(/DOLOR ABDOMINAL/.test(nu)&&$("aDolor"))$("aDolor").checked=true;
+ if(/DISTENSI[ÓO]N|GASES/.test(nu)&&$("aDistension"))$("aDistension").checked=true;
  if(/ESTRE[NÑ]IMIENTO/.test(nu)&&$("aEstreni"))$("aEstreni").checked=true;
  if(/MELENA/.test(nu)&&$("aMelena"))$("aMelena").checked=true;
 
@@ -1525,13 +1561,24 @@ function autofillPreviousAssessment(){
   else{setRadioFromPrevious("tieneAlergia","SÍ");setFieldFromPrevious("alergia",v);}
  }
 
- // Antropometría se procesa con su parser específico.
  applyPreviousAnthropometry();
-
  updateBowelHabit();
  toggleAlergia(false);toggleIntolerancia(false);
  toggleWeightMode(false);toggleHeightMode(false);
  calculateAll();
+}
+
+function simpleFingerprint(s){
+ let h=2166136261>>>0;
+ const t=String(s||"");
+ for(let i=0;i<t.length;i++){
+  h^=t.charCodeAt(i);
+  h=Math.imul(h,16777619)>>>0;
+ }
+ return h.toString(16);
+}
+function patientSourceFingerprint(p){
+ return simpleFingerprint(`${p?.sourceText||p?.state?.sourceText||""}|${p?.dieta||p?.state?.dieta||""}|${p?.edad||p?.state?.edad||""}`);
 }
 function openPatient(id){
  if(currentPatientId&&currentPatientId!==id)syncWorkingPatient();
@@ -1544,28 +1591,35 @@ function openPatient(id){
  restoreState(p.state);
  $("noPatient").classList.add("hidden");$("patientForm").classList.remove("hidden");$("clinicalSections").classList.remove("hidden");
 
- // Si nunca se había autorrellenado desde la valoración anterior, hacerlo ahora.
- if(!p.state?._autofilledFromPrevious){
+ if($("sourceText"))$("sourceText").value=p.sourceText||p.state?.sourceText||"";
+ if($("dieta"))$("dieta").value=patientDietText(p);
+
+ const fp=patientSourceFingerprint(p);
+ const mustRefill=p.state?._sourceFingerprint!==fp;
+
+ // Un Word nuevo/actualizado vuelve a poblar todos los datos clínicos.
+ // Si es el mismo Word, conserva las correcciones manuales del usuario.
+ if(mustRefill){
   loading=true;
   try{autofillPreviousAssessment();}
   finally{loading=false;}
+  if($("dieta"))$("dieta").value=patientDietText(p);
+  if($("plan"))$("plan").value=patientDietText(p);
  }
 
- // Limpiar datos heredados de versiones viejas.
- if($("hallazgo"))$("hallazgo").value=cleanLegacyHallazgo(val("hallazgo"));
-
- // La dieta del encabezado actual manda siempre.
- if($("dieta"))$("dieta").value=patientDietText(p);
- if($("plan"))$("plan").value=patientDietText(p);
+ if($("hallazgo")){
+  $("hallazgo").value=cleanLegacyHallazgo(val("hallazgo"));
+  if(/\bEDEMA\b/.test(normalizedUpper(val("hallazgo"))))setRadioFromPrevious("edemaFisico","SÍ");
+ }
 
  calculateAll();
  p.state=captureState();
  p.state._autofilledFromPrevious=true;
- p.state._migratedV33=true;
+ p.state._sourceFingerprint=fp;
+ p.state._migratedV36=true;
  p.note=nutritionNote();
 
  renderRound();updatePreview();
- if($("preview"))$("preview").scrollTop=0;
  window.scrollTo({top:0,behavior:"smooth"});
 }
 function captureState(){const s={};simpleFields.forEach(id=>s[id]=val(id));radios.forEach(n=>s["r_"+n]=radio(n));checks.forEach(id=>s[id]=chk(id));return s}
@@ -2360,6 +2414,7 @@ function updateClinicalUI(){
  $("totalFat").textContent=c.lipG!==null?`${one(c.lipG)} g/d · ${Math.round(c.lip)}%`:"—";
  $("energySanity").textContent=requirementSanity()+highProteinSafetyNote(c.guide);
  $("clinicalReasonText").textContent=g.reason.join(" ");
+ if($("dietProgressionSuggestion"))$("dietProgressionSuggestion").textContent=dietProgressionSuggestion();
 
  if($("surgeryScenarioHint")&&(g.cp==="CIRUGIA"||g.cp==="TRAUMA")){
   $("surgeryScenarioHint").textContent=`Detectado: ${currentSurgeryScenario().replaceAll("_"," ")}. Puedes corregirlo si el Word no describe bien el escenario.`;
@@ -2544,32 +2599,30 @@ function nrsNutritionalScoreExact(){
 function nrsDiseaseScoreExact(){
  const a=activeDiagnosisText(),all=backgroundClinicalText(),area=normalizedUpper(val("area"));
 
- // Grado 3: exactamente los prototipos de la hoja; UCI requiere APACHE >10
- // cuando está documentado.
  const apache=all.match(/APACHE\s*(?:II)?\s*[:=]?\s*(\d+)/);
  const apacheN=apache?Number(apache[1]):null;
+
  if(/TRAUMATISMO CRANEOENCEFALICO|TRAUMATISMO CRANEOENCEFÁLICO|TCE SEVERO|TRASPLANTE DE MEDULA OSEA|TRASPLANTE DE MÉDULA ÓSEA|TRANSPLANTE DE MEDULA OSEA/.test(a))
   return {score:3,label:"enfermedad grave"};
  if((/\bUCI\b|\bICU\b/.test(area))&&apacheN!==null&&apacheN>10)
   return {score:3,label:`UCI, APACHE II ${apacheN}`};
 
- // Grado 2: cirugía abdominal mayor, ACV, infección severa,
- // neoplasia hematológica. Trauma mayor no craneal se maneja como
- // prototipo de estrés moderado, no como TCE.
  if(/CIRUGIA ABDOMINAL MAYOR|CIRUGÍA ABDOMINAL MAYOR|LAPAROTOMIA|LAPAROTOMÍA|ACV|ICTUS|ACCIDENTE CEREBROVASCULAR|LEUCEMIA|LINFOMA|NEOPLASIA HEMATOLOGICA|NEOPLASIA HEMATOLÓGICA/.test(a))
-  return {score:2,label:"enfermedad moderada"};
+  return {score:2,label:"enfermedad de estrés moderado"};
  if(/SEPSIS|SHOCK SEPTICO|SHOCK SÉPTICO|CHOQUE SEPTICO|CHOQUE SÉPTICO|ENDOCARDITIS|NEUMONIA SEVERA|NEUMONÍA SEVERA|INFECCION SEVERA|INFECCIÓN SEVERA/.test(a))
   return {score:2,label:"infección severa"};
- if(/POLITRAUMA|HEMOTORAX TRAUMATICO|HEMOTÓRAX TRAUMÁTICO|DISPARO DE OTRAS ARMAS DE FUEGO|TRAUMATISMO DE LA VENA|TRAUMA MAYOR/.test(a))
+ if(/POLITRAUMA|HEMOTORAX TRAUMATICO|HEMOTÓRAX TRAUMÁTICO|DISPARO DE OTRAS ARMAS DE FUEGO|TRAUMATISMO DE LA VENA|TRAUMA MAYOR|FRACTURA MULTIPLE|FRACTURAS MULTIPLES|FRACTURAS MÚLTIPLES/.test(a))
   return {score:2,label:"trauma mayor no craneal"};
  if(/\bUCI\b|\bICU\b/.test(area))
   return {score:2,label:"UCI sin APACHE >10 documentado"};
 
- // Grado 1: fractura de cadera; crónicos con complicación aguda.
  if(/FRACTURA DE CADERA|HEMODIAL|DIALISIS|DIÁLISIS|CIRROSIS|EPOC|DIABETES|ONCOLOG|CANCER|CÁNCER/.test(all))
   return {score:1,label:"enfermedad crónica con complicación / prototipo NRS"};
+ if(/FRACTURA|COLECISTITIS|COLEDOCOLITIASIS|PANCREATITIS LEVE|TROMBOSIS|ANEMIA|ULCERA POR DECUBITO|ÚLCERA POR DECÚBITO|LESION POR PRESION|LESIÓN POR PRESIÓN/.test(a))
+  return {score:1,label:"enfermedad con aumento leve de requerimientos"};
 
- return {score:0,label:"requerimientos sin aumento NRS documentado"};
+ // El NRS-2002 sí permite 0 cuando los requerimientos son normales.
+ return {score:0,label:"requerimientos normales según NRS-2002"};
 }
 function automaticNRS2002(){
  const b=calculationsBase(),nut=nrsNutritionalScoreExact(),dis=nrsDiseaseScoreExact();
@@ -2585,14 +2638,98 @@ function automaticNRS2002(){
   nutReason:nut.reasons,disReason:dis.label
  };
 }
+
+function glimWeightLossCriterion(){
+ const u=backgroundClinicalText();
+
+ let pct=null,months=null;
+ const m=u.match(/P[ÉE]RDIDA(?:\s+DE\s+PESO)?[^0-9%]{0,35}([0-9]+(?:[.,][0-9]+)?)\s*%[^.;]{0,35}(\d+)\s*MESES?/);
+ if(m){
+  pct=parseFloat(m[1].replace(",","."));
+  months=Number(m[2]);
+ }
+ if(pct===null){
+  if(/(?:>|MAYOR A|M[ÁA]S DE)\s*15\s*%[^.;]{0,30}3\s*MESES/.test(u)){pct=15.1;months=3;}
+  else if(/(?:>|MAYOR A|M[ÁA]S DE)\s*5\s*%[^.;]{0,30}(1|2|3)\s*MESES?/.test(u)){pct=5.1;months=3;}
+ }
+
+ if(pct===null)return {present:false,severe:false,label:"pérdida de peso no documentada"};
+ const present=(months!==null&&months<=6&&pct>=5)||(months!==null&&months>6&&pct>=10);
+ const severe=(months!==null&&months<=6&&pct>10)||(months!==null&&months>6&&pct>20);
+ return {present,severe,label:`pérdida ${one(pct)}% en ${months??"?"} meses`};
+}
+function glimAssessment(){
+ const age=num(val("edad"))||0;
+ const screenPositive=age>=60?(mnaResult().complete&&mnaResult().total<=11):(automaticNRS2002().total>=3);
+ if(!screenPositive)return {applied:false,positive:false,severity:"",phenotypes:[],etiologies:[],reason:"Tamizaje sin riesgo."};
+
+ const b=calculationsBase(),phenotypes=[],etiologies=[];
+ let stage2=false,stage1=false;
+
+ const wl=glimWeightLossCriterion();
+ if(wl.present){
+  phenotypes.push(wl.label);
+  if(wl.severe)stage2=true; else stage1=true;
+ }
+
+ if(Number.isFinite(b.imc)){
+  const low=age>=70?b.imc<22:b.imc<20;
+  const severe=age>=70?b.imc<20:b.imc<18.5;
+  if(low){
+   phenotypes.push(`IMC bajo ${one(b.imc)} kg/m²`);
+   if(severe)stage2=true; else stage1=true;
+  }
+ }
+
+ const muscle=radio("masaMuscular");
+ if(["MODERADA DEPLECIÓN","SEVERA DEPLECIÓN"].includes(muscle)){
+  phenotypes.push(`masa muscular reducida (${muscle.toLowerCase()})`);
+  // GLIM 2025 no recomienda graduar severidad de forma general
+  // únicamente por masa muscular.
+ }
+
+ const intake=currentIntakePercent(),u=backgroundClinicalText();
+ const chronicGI=/MALABSORC|INTESTINO CORTO|FALLA INTESTINAL|CROHN|COLITIS ULCEROSA|DIARREA CR[ÓO]NICA/.test(u);
+ const durationLow=/INGESTA[^.;]{0,35}(?:[<>]=?|MENOR)[^.;]{0,20}50\s*%[^.;]{0,25}(?:7 D[IÍ]AS|1 SEMANA)|DISMINUCI[ÓO]N DE INGESTA[^.;]{0,35}(?:2 SEMANAS|14 D[IÍ]AS)/.test(u);
+ if(chronicGI||durationLow){
+  etiologies.push(chronicGI?"alteración de ingesta/absorción":"ingesta reducida sostenida");
+ }
+
+ const f=diseaseFlags(),active=activeDiagnosisText();
+ const diseaseBurden=f.infection||f.sepsis||f.cancer||f.pancreas||f.ibd||f.autoimmune||f.trauma||f.surgery||f.burn||
+  /INFLAM|TRAUMA|FRACTURA|HEMOTORAX|HEMOTÓRAX|SEPSIS|NEUMONIA|NEUMONÍA|PANCREATIT|CANCER|CÁNCER|ONCOLOG|INFECCI[ÓO]N/.test(active);
+ if(diseaseBurden)etiologies.push("enfermedad/lesión con carga inflamatoria");
+
+ const positive=phenotypes.length>0&&etiologies.length>0;
+ let severity="";
+ if(positive){
+  if(stage2)severity="SEVERA";
+  else if(stage1)severity="MODERADA";
+  else severity="SIN GRADO AUTOMÁTICO";
+ }
+ return {
+  applied:true,positive,severity,
+  phenotypes:[...new Set(phenotypes)],
+  etiologies:[...new Set(etiologies)],
+  reason:positive?"Cumple ≥1 criterio fenotípico + ≥1 etiológico.":"No reúne simultáneamente un criterio fenotípico y uno etiológico con los datos disponibles."
+ };
+}
+function glimScreeningSuffix(){
+ const g=glimAssessment();
+ if(!g.applied)return "";
+ if(!g.positive)return " GLIM: NO CONFIRMA MALNUTRICIÓN CON LOS DATOS DISPONIBLES.";
+ const sev=g.severity==="SIN GRADO AUTOMÁTICO"?"":` ${g.severity}`;
+ return ` GLIM: MALNUTRICIÓN${sev}, EVIDENCIADA POR ${g.phenotypes.join(", ")}; ETIOLOGÍA: ${g.etiologies.join(", ")}.`;
+}
 function screeningText(){
  const age=num(val("edad"))||0;
  if(age>=60){
   const m=mnaResult();
-  return m.complete?`${m.label}, SEGÚN MNA-SF: ${m.total}/14 PUNTOS.`:"MNA-SF PENDIENTE POR ANTROPOMETRÍA.";
+  const base=m.complete?`${m.label}, SEGÚN MNA-SF: ${m.total}/14 PUNTOS.`:"MNA-SF PENDIENTE POR ANTROPOMETRÍA.";
+  return base+glimScreeningSuffix();
  }
  const n=automaticNRS2002();
- return `${n.risk}, SEGÚN NRS-2002: ${n.total} PUNTOS.`;
+ return `${n.risk}, SEGÚN NRS-2002: ${n.total} PUNTOS.`+glimScreeningSuffix();
 }
 function calculationsBase(){
  const w=getWeight(),h=num(val("talla")),age=num(val("edad"))||0;
@@ -2611,14 +2748,22 @@ function updateScreeningUI(){
   if($("screenReasonText"))$("screenReasonText").textContent=m.complete
    ?`MNA-SF: A ${m.parts.a} + B ${m.parts.b} + C ${m.parts.c} + D ${m.parts.d} + E ${m.parts.e} + F ${m.parts.f} = ${m.total}/14. Pérdida de peso: ${m.loss.label}.`
    :m.reason;
-  return;
+ }else{
+  const n=automaticNRS2002();
+  if($("adultRiskResult"))$("adultRiskResult").textContent=`NRS-2002: ${n.total} PUNTOS`;
+  if($("adultStressResult"))$("adultStressResult").textContent=n.risk;
+  if($("screenReasonText"))$("screenReasonText").textContent=
+   `NRS-2002: estado nutricional ${n.nut} + gravedad de enfermedad ${n.dis}${n.agePt?` + edad ≥70 (${n.agePt})`:""} = ${n.total} puntos. ${n.disReason}.`;
  }
 
- const n=automaticNRS2002();
- if($("adultRiskResult"))$("adultRiskResult").textContent=`NRS-2002: ${n.total} PUNTOS`;
- if($("adultStressResult"))$("adultStressResult").textContent=n.risk;
- if($("screenReasonText"))$("screenReasonText").textContent=
-  `NRS-2002: estado nutricional ${n.nut} + gravedad de enfermedad ${n.dis}${n.agePt?` + edad ≥70 (${n.agePt})`:""} = ${n.total} puntos. ${n.disReason}.`;
+ const g=glimAssessment();
+ if($("glimBox"))$("glimBox").classList.toggle("hidden",!g.applied);
+ if(g.applied){
+  $("glimPhenotype").textContent=g.phenotypes.length?g.phenotypes.join(" · "):"NO";
+  $("glimEtiology").textContent=g.etiologies.length?g.etiologies.join(" · "):"NO";
+  $("glimResult").textContent=g.positive?`MALNUTRICIÓN ${g.severity}`:"NO CONFIRMA";
+  $("glimReason").textContent=g.reason;
+ }
 }
 function macroTargets(kcal,proteinG,profile,dietText){
  if(kcal===null||proteinG===null||kcal<=0)
@@ -2788,13 +2933,24 @@ function pregnancyValuation(){
  p.push(radio("deambula")==="NO DEAMBULA"?"NO DEAMBULA.":radio("deambula")==="CON ASISTENCIA"?"DEAMBULA CON ASISTENCIA.":"DEAMBULA SIN ASISTENCIA.");
  return p.join(" ");
 }
+
+function edemaDetail(){
+ const hall=up(val("hallazgo")).trim();
+ if(/\bEDEMA\b/.test(normalizedUpper(hall)))return hall.replace(/[.]+$/,"");
+ return "";
+}
+function edemaNarrative(){
+ const detail=edemaDetail();
+ if(detail)return `${detail}.`;
+ return radio("edemaFisico")==="SÍ"?"SE EVIDENCIA PRESENCIA DE EDEMA.":"SIN PRESENCIA DE EDEMA.";
+}
 function exam(){
  let ext=radio("extremidades");
  if(ext==="ASIMÉTRICAS"&&val("extremidadesDetalle").trim())ext+=`, ${up(val("extremidadesDetalle"))}`;
- let h=`FACIE ${radio("facie")}, MÚSCULO TEMPORAL: ${radio("temporal")}; REGIÓN PERIORBITARIA: ${radio("periorb")}; PIEZAS DENTALES ${radio("dientes")}, MUCOSA ORAL ${radio("mucosa")}, PIEL ${radio("piel")}, REGIÓN CLAVICULAR Y ACROMIÓN: ${radio("clavicula")}; ABDOMEN: ${radio("abdomen")}; EXTREMIDADES: ${ext}. MASA MUSCULAR ${radio("masaMuscular")}. MASA GRASA ${radio("masaGrasa")}. ${radio("edemaFisico")==="SÍ"?"SE EVIDENCIA PRESENCIA DE EDEMA":"SIN PRESENCIA DE EDEMA"}.`;
+ let h=`FACIE ${radio("facie")}, MÚSCULO TEMPORAL: ${radio("temporal")}; REGIÓN PERIORBITARIA: ${radio("periorb")}; PIEZAS DENTALES ${radio("dientes")}, MUCOSA ORAL ${radio("mucosa")}, PIEL ${radio("piel")}, REGIÓN CLAVICULAR Y ACROMIÓN: ${radio("clavicula")}; ABDOMEN: ${radio("abdomen")}; EXTREMIDADES: ${ext}. MASA MUSCULAR ${radio("masaMuscular")}. MASA GRASA ${radio("masaGrasa")}. ${edemaNarrative()}`;
  if(radio("ojos")!=="SIN HALLAZGOS")h+=` OJOS ${radio("ojos")}.`;
  const hall=up(val("hallazgo")).trim();
- if(hall)h+=` ${hall}.`;
+ if(hall&&!/\bEDEMA\b/.test(normalizedUpper(hall)))h+=` ${hall.replace(/[.]+$/,"")}.`;
  return h;
 }
 function maternityExam(){
@@ -2973,12 +3129,60 @@ function postpartumDiagnosis(){
 function pregnancyDiagnosis(){const c=calculations(),g=pregnancyGainReference();let t=`${c.preClass||"ESTADO PREGESTACIONAL PENDIENTE"} SEGÚN INDICADOR ANTROPOMÉTRICO IMC PREGESTACIONAL`;if(g.complete)t+=`, ${g.label}`;return t+"."}
 
 function diagnosisByBMI(){
- const c=calculations();
+ const c=calculations(),g=glimAssessment();
+ if(g.applied&&g.positive){
+  const sev=g.severity==="SIN GRADO AUTOMÁTICO"?"":` ${g.severity}`;
+  return `MALNUTRICIÓN${sev} SEGÚN CRITERIOS GLIM, EVIDENCIADA POR ${g.phenotypes.join(", ")}; ASOCIADA A ${g.etiologies.join(", ")}.`;
+ }
  if(!c.cl)return "";
  const base=c.cl.replace(/\s*\(ADULTO MAYOR\)\s*/i,"").trim();
- return c.age>=60?`${base} EVIDENCIADO POR IMC ADULTO MAYOR.`:`${base} EVIDENCIADO POR IMC.`;
+ return c.age>=60?`${base} EVIDENCIADO POR IMC ADULTO MAYOR.`:`${base} EVIDENCIADO POR INDICADOR ANTROPOMÉTRICO IMC.`;
 }
 
+
+function preserveDietModifiers(diet,newBase){
+ const u=normalizedUpper(diet||"");
+ const mods=[];
+ for(const m of ["HIPERPROTEICA","HIPOGRASA","HIPOGLUCIDA","HIPOSÓDICA","HIPOSODICA","RENAL","RICA EN FIBRA"]){
+  if(u.includes(m))mods.push(m);
+ }
+ return `${newBase}${mods.length?" "+mods.join(" "):""}`.trim();
+}
+function dietProgressionSuggestion(){
+ const diet=up(val("dieta")).trim(),u=normalizedUpper(diet);
+ const route=importedRoute(diet);
+ const tolerates=radio("viaoral")==="TOLERA";
+ const dys=radio("deglucion")==="CON DIFICULTAD";
+ const chew=radio("masticacion")==="CON DIFICULTAD";
+ const vomiting=chk("aVomito"),dist=chk("aDistension"),pain=chk("aDolor");
+ const giUnsafe=vomiting||dist||pain||/ILEO|ÍLEO|OBSTRUCCI[ÓO]N/.test(activeDiagnosisText());
+
+ if(route==="NPO"){
+  return "MANTENER NPO MIENTRAS EXISTA INDICACIÓN MÉDICA. CUANDO SE AUTORICE VÍA ORAL Y EXISTA TOLERANCIA, CONSIDERAR PROGRESIÓN: LÍQUIDA ESTRICTA → LÍQUIDA AMPLIA → BLANDA → GENERAL, SEGÚN TOLERANCIA Y CUADRO CLÍNICO.";
+ }
+ if(route==="SNG"){
+  if(dys||!tolerates)return "MANTENER SOPORTE POR SNG SEGÚN PRESCRIPCIÓN Y REEVALUAR SEGURIDAD DE LA DEGLUCIÓN ANTES DE PROGRESAR A VÍA ORAL.";
+  return "SI LA DEGLUCIÓN ES SEGURA Y HAY AUTORIZACIÓN MÉDICA, CONSIDERAR TRANSICIÓN PROGRESIVA A VÍA ORAL CON TEXTURA ADECUADA.";
+ }
+ if(giUnsafe||!tolerates){
+  return "NO PROGRESAR TEXTURA POR AHORA; MANTENER O RETROCEDER SEGÚN TOLERANCIA Y REEVALUAR SÍNTOMAS / FUNCIÓN GASTROINTESTINAL.";
+ }
+ if(dys||chew){
+  return "NO PROGRESAR A DIETA GENERAL. CONSIDERAR TEXTURA MODIFICADA / TIPO PURÉ O BLANDA SEGÚN SEGURIDAD DE MASTICACIÓN Y DEGLUCIÓN.";
+ }
+
+ if(/LIQUIDA ESTRICTA|LÍQUIDA ESTRICTA/.test(u))
+  return `SI MANTIENE TOLERANCIA, CONSIDERAR ${preserveDietModifiers(diet,"DIETA LÍQUIDA AMPLIA")}.`;
+ if(/LIQUIDA AMPLIA|LÍQUIDA AMPLIA/.test(u))
+  return `SI MANTIENE TOLERANCIA, CONSIDERAR ${preserveDietModifiers(diet,"DIETA BLANDA")}.`;
+ if(/TIPO PURE|TIPO PURÉ/.test(u))
+  return `SI MASTICACIÓN/DEGLUCIÓN SON SEGURAS, CONSIDERAR ${preserveDietModifiers(diet,"DIETA BLANDA")}.`;
+ if(/\bBLANDA\b/.test(u))
+  return `SI MANTIENE TOLERANCIA, SIN SÍNTOMAS GI Y SIN RESTRICCIÓN DE TEXTURA, CONSIDERAR ${preserveDietModifiers(diet,"DIETA GENERAL")}.`;
+ if(/\bGENERAL\b/.test(u))
+  return "DIETA GENERAL TOLERADA: MANTENER LA PRESCRIPCIÓN ACTUAL Y SUS MODIFICADORES TERAPÉUTICOS.";
+ return "MANTENER LA DIETA ACTUAL; LA PROGRESIÓN DEPENDE DE TOLERANCIA, SEGURIDAD DE DEGLUCIÓN, FUNCIÓN GASTROINTESTINAL Y PRESCRIPCIÓN MÉDICA.";
+}
 function currentDietPlanText(){
  // REVALORACIÓN: la dieta del encabezado actual es la fuente de verdad.
  // "plan" también nace de esa dieta y puede ser editado manualmente durante la ronda.

@@ -921,7 +921,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&
 const makeId=p=>`${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,9)}`;
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
 
-const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v37", FALLBACK_KEY="nutri_word_rounds_v37";
+const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v38", FALLBACK_KEY="nutri_word_rounds_v38";
 let db=null,currentRound=null,currentPatientId=null,history=[],loading=false,saveTimer=null;
 
 const simpleFields=["area","ambiente","cama","nombre","edad","cobertura","sexo","perfil","dieta","sourceText","alergia","intolerancia","ultima","bristol","habito","hallazgo","peso","pesoEstimadoDoc","cb","cp","talla","talonRodilla","pesoPregestacional","edadGestacional","reqPerfil","cie10","plan","planObs","kcalKg","extraKcal","choPct","proPct","proKg","lipPct","clinicalProfile","renalSubtype","egfr","icuDay","hasIC","measuredEE","ibdActivity","pancreasType","surgeryScenario","suppName","suppMl","suppKcal","suppProtein","suppServings","acompanante","acompananteDetalle","informante","extremidadesDetalle","mExtSupDetalle"];
@@ -3411,20 +3411,69 @@ function canonicalPostpartumNote(){
   `PLAN DIETOTERAPÉUTICO: ${currentDietPlanText()}.`
  ];
 }
+
+function clinicalSpellingFix(s){
+ let t=String(s||"").normalize("NFC");
+ const fixes=[
+  [/\bDIAGNOSTICO\b/g,"DIAGNÓSTICO"],[/\bDIAGNOSTICOS\b/g,"DIAGNÓSTICOS"],
+  [/\bVALORACION\b/g,"VALORACIÓN"],[/\bANTROPOMETRICA\b/g,"ANTROPOMÉTRICA"],[/\bANTROPOMETRICO\b/g,"ANTROPOMÉTRICO"],
+  [/\bFISICO\b/g,"FÍSICO"],[/\bMUSCULO\b/g,"MÚSCULO"],[/\bMUSCULOS\b/g,"MÚSCULOS"],[/\bREGION\b/g,"REGIÓN"],
+  [/\bDEGLUCION\b/g,"DEGLUCIÓN"],[/\bMASTICACION\b/g,"MASTICACIÓN"],[/\bDEPOSICION\b/g,"DEPOSICIÓN"],
+  [/\bULTIMA\b/g,"ÚLTIMA"],[/\bULTIMO\b/g,"ÚLTIMO"],[/\bHABITO\b/g,"HÁBITO"],[/\bORIENTACION\b/g,"ORIENTACIÓN"],
+  [/\bCALORIAS\b/g,"CALORÍAS"],[/\bPROTEINA\b/g,"PROTEÍNA"],[/\bLIPIDOS\b/g,"LÍPIDOS"],[/\bVIA\b/g,"VÍA"],
+  [/\bDIETOTERAPEUTICO\b/g,"DIETOTERAPÉUTICO"],[/\bDIETOTERAPEUTICA\b/g,"DIETOTERAPÉUTICA"],
+  [/\bPERIMETRO\b/g,"PERÍMETRO"],[/\bINDICE\b/g,"ÍNDICE"],[/\bMETABOLICO\b/g,"METABÓLICO"],[/\bMETABOLICA\b/g,"METABÓLICA"],
+  [/\bHEMODIALISIS\b/g,"HEMODIÁLISIS"],[/\bDIALISIS\b/g,"DIÁLISIS"],[/\bCRONICA\b/g,"CRÓNICA"],[/\bCRONICO\b/g,"CRÓNICO"],
+  [/\bLESION\b/g,"LESIÓN"],[/\bMALNUTRICION\b/g,"MALNUTRICIÓN"],[/\bDESNUTRICION\b/g,"DESNUTRICIÓN"],
+  [/\bINFLAMACION\b/g,"INFLAMACIÓN"],[/\bINFECCION\b/g,"INFECCIÓN"],[/\bSEPTICO\b/g,"SÉPTICO"],[/\bSEPTICA\b/g,"SÉPTICA"],
+  [/\bTRAUMATICO\b/g,"TRAUMÁTICO"],[/\bTRAUMATICA\b/g,"TRAUMÁTICA"],[/\bHEMOTORAX\b/g,"HEMOTÓRAX"],[/\bNEUMONIA\b/g,"NEUMONÍA"],
+  [/\bCIRUGIA\b/g,"CIRUGÍA"],[/\bQUIRURGICO\b/g,"QUIRÚRGICO"],[/\bQUIRURGICA\b/g,"QUIRÚRGICA"],
+  [/\bHEPATICA\b/g,"HEPÁTICA"],[/\bHEPATICO\b/g,"HEPÁTICO"],[/\bCARDIACA\b/g,"CARDÍACA"],[/\bCARDIACO\b/g,"CARDÍACO"],
+  [/\bHIPOGLUCIDA\b/g,"HIPOGLÚCIDA"],[/\bHIPOSODICA\b/g,"HIPOSÓDICA"],[/\bGESTACION\b/g,"GESTACIÓN"],
+  [/\bESTRENIMIENTO\b/g,"ESTREÑIMIENTO"],[/\bNAUSEA\b/g,"NÁUSEA"],[/\bNAUSEAS\b/g,"NÁUSEAS"],[/\bVOMITO\b/g,"VÓMITO"],[/\bVOMITOS\b/g,"VÓMITOS"],
+  [/\bSIMETRICAS\b/g,"SIMÉTRICAS"],[/\bASIMETRICAS\b/g,"ASIMÉTRICAS"],[/\bACROMION\b/g,"ACROMIÓN"],[/\bPALPACION\b/g,"PALPACIÓN"],
+  [/\bHIDRATACION\b/g,"HIDRATACIÓN"],[/\bSEMIPALIDA\b/g,"SEMIPÁLIDA"],[/\bPALIDA\b/g,"PÁLIDA"],[/\bCALIDA\b/g,"CÁLIDA"],[/\bSEMICALIDA\b/g,"SEMICÁLIDA"],
+  [/\bICTERICOS\b/g,"ICTÉRICOS"],[/\bICTERICAS\b/g,"ICTÉRICAS"],[/\bPRESION\b/g,"PRESIÓN"],[/\bULCERA\b/g,"ÚLCERA"],
+  [/\bNEUROLOGICO\b/g,"NEUROLÓGICO"],[/\bNEUROLOGICA\b/g,"NEUROLÓGICA"],[/\bFOSFORO\b/g,"FÓSFORO"],
+  [/\bKCAL\/DIA\b/g,"KCAL/DÍA"],[/\bG\/DIA\b/g,"G/DÍA"],[/\bML\/DIA\b/g,"ML/DÍA"],[/\bDIA\b/g,"DÍA"],[/\bDIAS\b/g,"DÍAS"],
+  [/\bSEGUN\b/g,"SEGÚN"],[/\bNUMERO\b/g,"NÚMERO"],[/\bPRACTICA\b/g,"PRÁCTICA"],
+  [/\bEVALUACION\b/g,"EVALUACIÓN"],[/\bESTIMACION\b/g,"ESTIMACIÓN"],[/\bPROGRESION\b/g,"PROGRESIÓN"],
+  [/\bFUNCION\b/g,"FUNCIÓN"],[/\bCLINICA\b/g,"CLÍNICA"],[/\bCLINICO\b/g,"CLÍNICO"],[/\bETIOLOGIA\b/g,"ETIOLOGÍA"],
+  [/\bFENOTIPICO\b/g,"FENOTÍPICO"],[/\bETIOLOGICO\b/g,"ETIOLÓGICO"],[/\bPATOLOGIA\b/g,"PATOLOGÍA"]
+ ];
+ for(const [rx,repl] of fixes)t=t.replace(rx,repl);
+ t=t.replace(/KG\/M2/g,"KG/M²")
+    .replace(/ML\/MIN\/1[,.]73\s*M2/g,"ML/MIN/1,73 M²")
+    .replace(/\s+([,.;:])/g,"$1")
+    .replace(/([,.;:])(?=[A-ZÁÉÍÓÚÑ0-9])/g,"$1 ")
+    .replace(/\s{2,}/g," ")
+    .replace(/\s+\./g,".")
+    .replace(/\.{2,}/g,".")
+    .trim();
+ return t;
+}
+function finalClinicalText(s){
+ return clinicalSpellingFix(String(s||"").toLocaleUpperCase("es-EC"));
+}
+function finalClinicalLines(lines){
+ return (lines||[]).map(x=>finalClinicalText(x)).filter(Boolean);
+}
 function nutritionNote(){
  const p=val("perfil");
- if(p==="embarazada")return canonicalPregnancyNote();
- if(p==="posparto")return canonicalPostpartumNote();
- return canonicalNormalNote();
+ let lines;
+ if(p==="embarazada")lines=canonicalPregnancyNote();
+ else if(p==="posparto")lines=canonicalPostpartumNote();
+ else lines=canonicalNormalNote();
+ return finalClinicalLines(lines);
 }
 function updatePreview(){
  if(!$("preview"))return;
  if(!currentPatientId){$("preview").textContent="";return}
  if($("hallazgo"))$("hallazgo").value=cleanLegacyHallazgo(val("hallazgo"));
- const n=nutritionNote();
+ const n=finalClinicalLines(nutritionNote());
  $("preview").textContent=n.join("\n\n");
  const p=currentRound?.patients.find(x=>x.id===currentPatientId);
- if(p){p.note=n;p.state=captureState();p.state._migratedV33=true;}
+ if(p){p.note=n;p.state=captureState();p.state._migratedV38=true;}
 }
 
 /* Documento final */
@@ -3442,11 +3491,13 @@ function patientFullLines(p,includePendingNote=true){
  if(p.completed||includePendingNote){
   try{note=rebuildPatientNoteFromState(p);}catch(e){note=p.note||[];}
  }
- const lines=[currentHeader(p)];
+ const lines=[finalClinicalText(currentHeader(p))];
  const raw=(p.state?.sourceText??p.sourceText??"").trim();
  const src=note.length?sourceBeforeExistingAssessment(raw):raw;
- if(src)lines.push(...src.split(/\n\s*\n/).map(x=>x.trim()).filter(Boolean));
- if(note.length)lines.push(...note);
+ if(src){
+  lines.push(...src.split(/\n\s*\n/).map(x=>finalClinicalText(x)).filter(Boolean));
+ }
+ if(note.length)lines.push(...finalClinicalLines(note));
  return lines;
 }
 async function finishRound(){

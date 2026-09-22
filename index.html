@@ -453,7 +453,8 @@ img,svg,table{
    <div class="sourceBox" style="margin-top:8px">
     <div class="srcTitle">Valoración anterior importada · autorrelleno para revaloración</div>
     <textarea id="sourceText" style="min-height:115px;font:9.5px/1.35 Calibri,Arial,sans-serif" placeholder="Texto original..."></textarea>
-    <div class="note">Se reutilizan sus datos clínicos, pero GET y PLAN se actualizan. La dieta del encabezado actual es la que manda.</div>
+    <div class="note">Se reutilizan sus datos clínicos, pero el requerimiento nutricional y el plan se recalculan. La dieta del encabezado actual es la que manda.</div>
+    <div class="note" style="margin-top:6px"><b>Datos reconocidos automáticamente:</b> <span id="smartDetectedData">—</span></div>
    </div>
   </div>
  </section>
@@ -513,7 +514,9 @@ img,svg,table{
     <label class="chip"><input type="radio" name="consumoDieta" value="50%"><span>50%</span></label>
     <label class="chip"><input type="radio" name="consumoDieta" value="25%"><span>25%</span></label>
     <label class="chip"><input type="radio" name="consumoDieta" value="0%"><span>0%</span></label>
-   </div></div>
+   </div>
+   <div style="margin-top:6px"><label class="label">Consumo exacto %</label><input id="consumoExacto" type="number" min="0" max="100" step="1" placeholder="Se completa desde el Word, ej. 80" oninput="calculateAll()"></div>
+   </div>
    <div id="viaOralBox" class="q"><div class="qt">5. Tolerancia de la vía oral</div><div class="chips">
     <label class="chip"><input type="radio" name="viaoral" value="TOLERA" checked><span>Tolera</span></label>
     <label class="chip"><input type="radio" name="viaoral" value="NO TOLERA"><span>No tolera</span></label>
@@ -626,8 +629,8 @@ img,svg,table{
  <section class="card section">
   <div class="secHead"><div class="step">4</div><div><h2>Antropometría</h2><p>Incluye talla estimada por talón-rodilla.</p></div></div>
   <div class="grid2">
-   <div class="q"><div class="qt">Peso</div><div class="chips"><label class="chip"><input type="radio" name="modoPeso" value="ACTUAL" checked onchange="toggleWeightMode()"><span>Actual</span></label><label class="chip"><input type="radio" name="modoPeso" value="ESTIMADO" onchange="toggleWeightMode()"><span>CB + CP</span></label></div>
-    <div id="actualWeight" style="margin-top:6px"><label class="label">Peso actual kg</label><input id="peso" type="number" step="0.01" oninput="calculateAll()"></div>
+   <div class="q"><div class="qt">Peso</div><div class="chips"><label class="chip"><input type="radio" name="modoPeso" value="ACTUAL" checked onchange="toggleWeightMode()"><span>Actual</span></label><label class="chip"><input type="radio" name="modoPeso" value="REFERIDO" onchange="toggleWeightMode()"><span>Referido</span></label><label class="chip"><input type="radio" name="modoPeso" value="ESTIMADO" onchange="toggleWeightMode()"><span>Estimado</span></label></div>
+    <div id="actualWeight" style="margin-top:6px"><label class="label" id="pesoDirectLabel">Peso actual kg</label><input id="peso" type="number" step="0.01" oninput="calculateAll()"></div>
     <div id="estimatedWeight" class="grid3 hidden" style="margin-top:6px">
      <div><label class="label">CMB/CB cm</label><input id="cb" type="number" step="0.1" oninput="clearImportedEstimatedWeight();calculateAll()"></div>
      <div><label class="label">CP cm</label><input id="cp" type="number" step="0.1" oninput="clearImportedEstimatedWeight();calculateAll()"></div>
@@ -930,10 +933,10 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&
 const makeId=p=>`${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,9)}`;
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
 
-const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v40", FALLBACK_KEY="nutri_word_rounds_v40";
+const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v41", FALLBACK_KEY="nutri_word_rounds_v41";
 let db=null,currentRound=null,currentPatientId=null,history=[],loading=false,saveTimer=null;
 
-const simpleFields=["area","ambiente","cama","nombre","edad","cobertura","sexo","perfil","dieta","sourceText","alergia","intolerancia","ultima","bristol","habito","hallazgo","peso","pesoEstimadoDoc","cb","cp","talla","talonRodilla","pesoPregestacional","edadGestacional","reqPerfil","cie10","plan","planObs","kcalKg","extraKcal","choPct","proPct","proKg","lipPct","clinicalProfile","renalSubtype","egfr","icuDay","hasIC","measuredEE","ibdActivity","pancreasType","surgeryScenario","suppName","suppMl","suppKcal","suppProtein","suppServings","acompanante","acompananteDetalle","informante","extremidadesDetalle","mExtSupDetalle"];
+const simpleFields=["area","ambiente","cama","nombre","edad","cobertura","sexo","perfil","dieta","sourceText","alergia","intolerancia","ultima","consumoExacto","bristol","habito","hallazgo","peso","pesoEstimadoDoc","cb","cp","talla","talonRodilla","pesoPregestacional","edadGestacional","reqPerfil","cie10","plan","planObs","kcalKg","extraKcal","choPct","proPct","proKg","lipPct","clinicalProfile","renalSubtype","egfr","icuDay","hasIC","measuredEE","ibdActivity","pancreasType","surgeryScenario","suppName","suppMl","suppKcal","suppProtein","suppServings","acompanante","acompananteDetalle","informante","extremidadesDetalle","mExtSupDetalle"];
 const radios=["conciencia","orientacion","colabora","apetito","consumoDieta","viaoral","masticacion","deglucion","diuresis","flatos","deambula","tieneAlergia","tieneIntolerancia","lactancia","facie","temporal","periorb","dientes","mucosa","piel","clavicula","extremidades","masaMuscular","masaGrasa","abdomen","edemaFisico","ojos","modoPeso","modoTalla","mFacie","mTemporal","mPeriorb","mDientes","mHidratacion","mClavicula","mAbdomen","mExtSup","mTricipital","mCuadriceps","mPatelar","mGemelos","mEdema"];
 const checks=["aNausea","aVomito","aDolor","aDistension","aDiarrea","aEstreni","aMelena"];
 
@@ -951,29 +954,15 @@ function parseDateText(s){
  return `${m[3]}-${String(m[2]).padStart(2,"0")}-${String(m[1]).padStart(2,"0")}`;
 }
 function parseHeader(text){
- const original=String(text||"").trim(),s=stripNumbering(original);
- if(!/\bAMB\s*[A-Za-z0-9-]+/i.test(s))return null;
- const seg=s.split(/\t+/).map(x=>x.trim()).filter(Boolean);
- if(seg.length>=5){
-  const ai=seg.findIndex(x=>/\bAMB\s*[A-Za-z0-9-]+/i.test(x));
-  if(ai>=0){
-   const am=seg[ai].match(/\bAMB\s*([A-Za-z0-9-]+)\s+C\s*([A-Za-z0-9-]+)/i);
-   if(am){
-    const tail=seg.slice(ai+1);
-    const di=tail.findIndex(x=>/\bDIETA\b/i.test(x)||/^(?:NPO|SNG)\b/i.test(x));
-    if(di>=0){
-     const before=tail.slice(0,di),agei=before.findIndex(x=>/^\d{1,3}$/.test(x));
-     if(agei>=0){
-      const name=before.slice(0,agei).join(" ").trim(),coverage=before.slice(agei+1).join(" ").trim();
-      if(name&&coverage)return {area:stripNumbering(seg.slice(0,ai).join(" ").trim()),ambiente:am[1],cama:am[2],nombre:name,edad:before[agei],cobertura:coverage,dieta:tail.slice(di).join(" ").trim(),originalHeader:original};
-     }
-    }
-   }
-  }
- }
- const m=s.match(/^(.*?)\bAMB\s*([A-Za-z0-9-]+)\s+C\s*([A-Za-z0-9-]+)\s+(.+?)\s+(\d{1,3})\s+([A-Za-zÁÉÍÓÚÑáéíóúñ0-9./-]+)\s+((?:DIETA\b.*)|(?:NPO\b.*)|(?:SNG\b.*))$/i);
- if(m)return {area:m[1].trim(),ambiente:m[2],cama:m[3],nombre:m[4].trim(),edad:m[5],cobertura:m[6],dieta:m[7].trim(),originalHeader:original};
- return null;
+ const original=String(text||"").trim(),s=stripNumbering(original).replace(/\s+/g," ").trim();
+ const amb=s.match(/\bAMB\s*([A-Za-z0-9-]+)\s+(?:C|CAMA)\s*([A-Za-z0-9-]+)/i);if(!amb)return null;
+ const area=stripNumbering(s.slice(0,amb.index).trim()),tail=s.slice(amb.index+amb[0].length).trim();
+ const dm=tail.match(/\s+((?:DIETA\s+.*)|(?:NPO\b.*)|(?:SNG\b.*)|(?:(?:GENERAL|BLANDA|L[IÍ]QUIDA(?:\s+ESTRICTA|\s+AMPLIA)?|TIPO\s+PUR[ÉE]|HIPERPROTEICA|HIPOGL[ÚU]CIDA|HIPOGRASA|HIPOS[ÓO]DICA)\b.*))$/i);if(!dm)return null;
+ const dieta=dm[1].trim(),beforeDiet=tail.slice(0,dm.index).trim();
+ const ages=[...beforeDiet.matchAll(/(?:^|\s)(\d{1,3})(?=\s|$)/g)];if(!ages.length)return null;
+ const am=ages[ages.length-1],edad=am[1],nombre=beforeDiet.slice(0,am.index).trim(),after=beforeDiet.slice(am.index+am[0].length).trim();if(!nombre)return null;
+ const cov=after.match(/^(MSP|IESS|ISSPOL|ISSFA|PRIVADO|PARTICULAR|SEGURO(?:\s+[A-ZÁÉÍÓÚÑ]+)?)(?:\s|$)/i);const cobertura=cov?cov[1].trim():(after?after.split(/\s+/)[0]:"");
+ return {area,ambiente:amb[1],cama:amb[2],nombre,edad,cobertura,dieta,originalHeader:original};
 }
 function inferSex(text){
  const u=normalizedUpper(text);
@@ -1217,77 +1206,165 @@ function firstClinicalNumber(s,patterns){
  }
  return null;
 }
+
+function smartNormalizedSource(s){
+ return normalizedUpper(String(s||""))
+  .replace(/\u00A0/g," ")
+  .replace(/([0-9])\s*(KGS?|CMS?|MM|M|%)(?=\b|[^A-Z])/g,"$1 $2")
+  .replace(/\bKGS\b/g,"KG")
+  .replace(/\bCMS\b/g,"CM")
+  .replace(/[ \t]+/g," ")
+  .trim();
+}
+function smartNum(v){
+ if(v===null||v===undefined)return null;
+ const n=parseFloat(String(v).replace(",","."));
+ return Number.isFinite(n)?n:null;
+}
+function firstSmartNumber(s,patterns,min=null,max=null){
+ for(const rx of patterns){
+  const m=s.match(rx);if(!m)continue;
+  const n=smartNum(m[1]);if(n===null)continue;
+  if(min!==null&&n<min)continue;if(max!==null&&n>max)continue;
+  return n;
+ }
+ return null;
+}
+function heightToCm(n,unit=""){
+ if(n===null)return null;
+ const u=normalizedUpper(unit||"");
+ if(u==="M"||(!u&&n<=2.5))return n*100;
+ return n;
+}
+function uniqueUnlabelledWeight(a){
+ const ms=[...a.matchAll(/([0-9]{2,3}(?:[.,][0-9]+)?)\s*KG\b/g)],vals=[];
+ for(const m of ms){
+  const before=a.slice(Math.max(0,m.index-55),m.index);
+  if(/PESO\s+(?:IDEAL|AJUSTADO|PREGESTACIONAL)|GANANCIA|P[ÉE]RDIDA/.test(before))continue;
+  const n=smartNum(m[1]);if(n!==null&&n>=20&&n<=350)vals.push(Math.round(n*100)/100);
+ }
+ const uniq=[...new Set(vals)];return uniq.length===1?uniq[0]:null;
+}
+function parseSmartClinicalData(){
+ const raw=smartNormalizedSource(previousAssessmentUpper());
+ const a=smartNormalizedSource(previousAnthropometrySection()||raw);
+ const nu=smartNormalizedSource(previousNutritionSection()||raw);
+ const ex=smartNormalizedSource(previousExamSection()||raw);
+
+ const cb=firstSmartNumber(a,[
+  /\b(?:CMB|CB)\s*[:=\-]?\s*([0-9]+(?:[.,][0-9]+)?)(?:\s*CM)?\b/,
+  /CIRCUNFERENCIA\s+(?:MEDIA\s+DEL\s+BRAZO|BRAQUIAL|DEL\s+BRAZO)\s*[:=\-]?\s*([0-9]+(?:[.,][0-9]+)?)(?:\s*CM)?\b/
+ ],10,80);
+ const cp=firstSmartNumber(a,[
+  /\bCP\s*[:=\-]?\s*([0-9]+(?:[.,][0-9]+)?)(?:\s*CM)?\b/,
+  /CIRCUNFERENCIA\s+(?:DE\s+LA\s+|DE\s+)?PANTORRILLA\s*[:=\-]?\s*([0-9]+(?:[.,][0-9]+)?)(?:\s*CM)?\b/
+ ],10,80);
+ const heelKnee=firstSmartNumber(a,[
+  /TAL[ÓO]N\s*[-\/]?\s*RODILLA\s*[:=\-]?\s*([0-9]+(?:[.,][0-9]+)?)(?:\s*CM)?\b/,
+  /ALTURA\s+(?:DE\s+)?RODILLA\s*[:=\-]?\s*([0-9]+(?:[.,][0-9]+)?)(?:\s*CM)?\b/
+ ],20,80);
+ const preWeight=firstSmartNumber(a,[
+  /PESO\s+PREGESTACIONAL\s*[:=\-]?\s*([0-9]+(?:[.,][0-9]+)?)\s*KG\b/,
+  /PESO\s+PRE\s*GESTACIONAL\s*[:=\-]?\s*([0-9]+(?:[.,][0-9]+)?)\s*KG\b/
+ ],20,350);
+
+ let weight=null,weightMode="";
+ const defs=[
+  ["ESTIMADO",/PESO\s+(?:ESTIMADO|CALCULADO)\s*(?:\([^)]*\))?\s*[:=\-]?\s*([0-9]+(?:[.,][0-9]+)?)\s*KG\b/],
+  ["REFERIDO",/PESO\s+(?:REFERIDO|REPORTADO|DECLARADO|AUTORREFERIDO)\s*[:=\-]?\s*([0-9]+(?:[.,][0-9]+)?)\s*KG\b/],
+  ["ACTUAL",/PESO\s+(?:ACTUAL|MEDIDO|BALANZA|REAL)\s*[:=\-]?\s*([0-9]+(?:[.,][0-9]+)?)\s*KG\b/],
+  ["ACTUAL",/\bPESO\s*[:=\-]\s*([0-9]+(?:[.,][0-9]+)?)\s*KG\b/]
+ ];
+ for(const [mode,rx] of defs){const n=firstSmartNumber(a,[rx],20,350);if(n!==null){weight=n;weightMode=mode;break;}}
+ if(weight===null){const n=uniqueUnlabelledWeight(a);if(n!==null){weight=n;weightMode=/REFERID|REPORTAD|DECLARAD/.test(a)?"REFERIDO":"ACTUAL";}}
+
+ let heightCm=null,heightMode="TALLA";
+ const hdefs=[
+  ["TALLA REFERIDA",/\b(?:TALLA|ESTATURA)\s+(?:REFERIDA|REPORTADA|DECLARADA)\s*[:=\-]?\s*([0-9]+(?:[.,][0-9]+)?)\s*(CM|M)\b/],
+  ["TALLA ESTIMADA",/\b(?:TALLA|ESTATURA)\s+(?:ESTIMADA|CALCULADA)\s*[:=\-]?\s*([0-9]+(?:[.,][0-9]+)?)\s*(CM|M)\b/],
+  ["TALLA",/\b(?:TALLA|ESTATURA)\s+(?:ACTUAL|MEDIDA|REAL)\s*[:=\-]?\s*([0-9]+(?:[.,][0-9]+)?)\s*(CM|M)\b/],
+  ["TALLA",/\b(?:TALLA|ESTATURA)\s*[:=\-]\s*([0-9]+(?:[.,][0-9]+)?)\s*(CM|M)\b/]
+ ];
+ for(const [mode,rx] of hdefs){const m=a.match(rx);if(m){const n=smartNum(m[1]);if(n!==null){heightCm=heightToCm(n,m[2]);heightMode=mode;break;}}}
+ if(heightCm===null){
+  const m=a.match(/\b(?:TALLA|ESTATURA)\s+(?:REFERIDA|ESTIMADA|ACTUAL|MEDIDA)?\s*[:=\-]?\s*(1(?:[.,][0-9]{1,2}))\b/);
+  if(m){heightCm=smartNum(m[1])*100;heightMode=/REFERIDA/.test(m[0])?"TALLA REFERIDA":/ESTIMADA/.test(m[0])?"TALLA ESTIMADA":"TALLA";}
+ }
+ if(heelKnee!==null&&/TALLA\s+ESTIMADA|TAL[ÓO]N\s*[-\/]?\s*RODILLA/.test(a)&&heightMode==="TALLA")heightMode="TALLA ESTIMADA";
+
+ const gestAge=firstSmartNumber(raw,[
+  /EDAD\s+GESTACIONAL\s*[:=\-]?\s*([0-9]+(?:[.,][0-9]+)?)\s*(?:SEMANAS?|SEM|SG)\b/,
+  /\bEG\s*[:=\-]?\s*([0-9]+(?:[.,][0-9]+)?)\s*(?:SEMANAS?|SEM|SG|S)\b/
+ ],1,45);
+ const age=firstSmartNumber(raw,[
+  /PACIENTE\s+(?:MASCULINO|FEMENINO)\s+DE\s+([0-9]{1,3})\s+A[NÑ]OS?\b/,
+  /\b([0-9]{1,3})\s+A[NÑ]OS?\s+DE\s+EDAD\b/,
+  /\bEDAD\s*[:=\-]?\s*([0-9]{1,3})\s*(?:A[NÑ]OS?)?\b/
+ ],0,120);
+ const sex=/\bFEMENIN[AO]\b|SEXO\s*[:=\-]?\s*F\b/.test(raw)?"F":/\bMASCULIN[AO]\b|SEXO\s*[:=\-]?\s*M\b/.test(raw)?"M":null;
+ const intake=firstSmartNumber(nu,[
+  /(?:CONSUMO|INGESTA)(?:\s+DE\s+LA\s+DIETA|\s+DE\s+LA\s+INGESTA|\s+PRESCRITA)?[^0-9%]{0,40}([0-9]{1,3}(?:[.,][0-9]+)?)\s*%/,
+  /CONSUME[^0-9%]{0,30}([0-9]{1,3}(?:[.,][0-9]+)?)\s*%/
+ ],0,100);
+ const bristol=firstSmartNumber(nu,[
+  /(?:ESCALA\s+DE\s+)?BRISTOL\s*(?:TIPO|N[ÚU]MERO|NRO\.?)?\s*[:=\-]?\s*([1-7])\b/,
+  /HECES[^.;]{0,25}BRISTOL\s*[:=\-]?\s*([1-7])\b/
+ ],1,7);
+ let lastStool=null;
+ if(/(?:[ÚU]LTIMA\s+DEPOSICI[ÓO]N|[ÚU]LTIMA\s+EVACUACI[ÓO]N)[^.;]{0,20}\bHOY\b/.test(nu))lastStool="HOY";
+ else if(/(?:[ÚU]LTIMA\s+DEPOSICI[ÓO]N|[ÚU]LTIMA\s+EVACUACI[ÓO]N)[^.;]{0,20}\bAYER\b/.test(nu))lastStool="AYER";
+ else {const m=nu.match(/(?:[ÚU]LTIMA\s+DEPOSICI[ÓO]N|[ÚU]LTIMA\s+EVACUACI[ÓO]N)[^0-9]{0,20}(?:HACE\s+)?([0-9]+)\s+D[IÍ]AS?/);if(m){const d=Number(m[1]);lastStool=d<=1?"AYER":d===2?"HACE 2 DÍAS":"HACE 3 DÍAS O MÁS";}}
+ const egfr=firstSmartNumber(raw,[/\bEGFR\s*[:=\-]?\s*([0-9]+(?:[.,][0-9]+)?)/,/\bTFG\s*[:=\-]?\s*([0-9]+(?:[.,][0-9]+)?)/,/FILTRADO\s+GLOMERULAR\s*[:=\-]?\s*([0-9]+(?:[.,][0-9]+)?)/],1,200);
+ return {raw,a,nu,ex,cb,cp,heelKnee,preWeight,weight,weightMode,heightCm,heightMode,gestAge,age,sex,intake,bristol,lastStool,egfr};
+}
+function nearestIntakeChip(n){
+ if(n===null||!Number.isFinite(n))return null;const vals=[0,25,50,75,100];let best=vals[0];
+ for(const x of vals)if(Math.abs(x-n)<Math.abs(best-n))best=x;return `${best}%`;
+}
+function smartDetectedSummary(d){
+ const p=[];
+ if(d.weight!==null)p.push(`PESO ${d.weightMode||"DETECTADO"}: ${one(d.weight)} KG`);
+ if(d.heightCm!==null)p.push(`${d.heightMode}: ${one(d.heightCm)} CM`);
+ if(d.cb!==null)p.push(`CMB/CB: ${one(d.cb)} CM`);if(d.cp!==null)p.push(`CP: ${one(d.cp)} CM`);
+ if(d.heelKnee!==null)p.push(`TALÓN-RODILLA: ${one(d.heelKnee)} CM`);
+ if(d.preWeight!==null)p.push(`PESO PREGESTACIONAL: ${one(d.preWeight)} KG`);if(d.gestAge!==null)p.push(`EG: ${one(d.gestAge)} SEM`);
+ if(d.intake!==null)p.push(`CONSUMO: ${one(d.intake)}%`);if(d.lastStool)p.push(`ÚLTIMA DEPOSICIÓN: ${d.lastStool}`);
+ if(d.bristol!==null)p.push(`BRISTOL: ${d.bristol}`);if(d.egfr!==null)p.push(`TFG/eGFR: ${one(d.egfr)}`);
+ return p.join(" · ")||"SIN DATOS ESTRUCTURADOS DETECTADOS";
+}
+function applySmartClinicalData(d){
+ if(!d)return;
+ if(d.sex)setFieldFromPrevious("sexo",d.sex);
+ if(d.age!==null&&(!val("edad")||Number(val("edad"))<=0))setFieldFromPrevious("edad",d.age);
+ if(typeof syncAgeProfile==="function")syncAgeProfile();
+ if(d.intake!==null){setFieldFromPrevious("consumoExacto",d.intake);setRadioFromPrevious("consumoDieta",nearestIntakeChip(d.intake));}
+ if(d.lastStool)setFieldFromPrevious("ultima",d.lastStool);
+ if(d.bristol!==null)setFieldFromPrevious("bristol",d.bristol);
+ if(d.egfr!==null&&$("egfr")&&!val("egfr"))$("egfr").value=one(d.egfr);
+ const comp=d.nu.match(/ACOMPA[NÑ]AD[OA]\s+(?:DE|POR)\s+SU\s+(HIJO|HIJA|MADRE|PADRE|ESPOSO|ESPOSA|HERMANO|HERMANA|CUIDADOR(?:A)?)/);
+ if(comp){let c=comp[1].replace("CUIDADORA","CUIDADOR/A").replace("CUIDADOR","CUIDADOR/A");setFieldFromPrevious("acompanante",c);}
+ if($("smartDetectedData"))$("smartDetectedData").textContent=smartDetectedSummary(d);
+}
 function parsePreviousAnthropometry(){
- const a=previousAnthropometrySection();
-
- const cb=firstClinicalNumber(a,[
-  /(?:CMB|CB)\s*[:=]?\s*([0-9]+(?:[.,][0-9]+)?)\s*(?:CM)?\b/,
-  /CIRCUNFERENCIA\s+(?:MEDIA\s+DEL\s+BRAZO|BRAQUIAL)\s*[:=]?\s*([0-9]+(?:[.,][0-9]+)?)\s*(?:CM)?\b/
- ]);
- const cp=firstClinicalNumber(a,[
-  /\bCP\s*[:=]?\s*([0-9]+(?:[.,][0-9]+)?)\s*(?:CM)?\b/,
-  /CIRCUNFERENCIA\s+(?:DE\s+)?PANTORRILLA\s*[:=]?\s*([0-9]+(?:[.,][0-9]+)?)\s*(?:CM)?\b/
- ]);
-
- // CRÍTICO: primero consume el paréntesis CMB/CP y recién después toma el peso.
- // Ej.: PESO ESTIMADO (CMB: 27CM; CP: 33): 60KG -> 60, no 27.
- const estimatedWeight=firstClinicalNumber(a,[
-  /PESO\s+ESTIMADO\s*(?:\([^)]*\))?\s*[:=]?\s*([0-9]+(?:[.,][0-9]+)?)\s*KG\b/,
-  /PESO\s+CALCULADO\s*(?:\([^)]*\))?\s*[:=]?\s*([0-9]+(?:[.,][0-9]+)?)\s*KG\b/
- ]);
- const actualWeight=firstClinicalNumber(a,[
-  /PESO\s+(?:ACTUAL|BALANZA|MEDIDO)\s*[:=]?\s*([0-9]+(?:[.,][0-9]+)?)\s*KG\b/,
-  /\bPESO\s*[:=]\s*([0-9]+(?:[.,][0-9]+)?)\s*KG\b/
- ]);
-
- let heightCm=firstClinicalNumber(a,[
-  /TALLA(?:\s+(?:ACTUAL|MEDIDA|REFERIDA|ESTIMADA))?\s*[:=]?\s*([0-9]{2,3}(?:[.,][0-9]+)?)\s*CM\b/,
-  /ESTATURA\s*[:=]?\s*([0-9]{2,3}(?:[.,][0-9]+)?)\s*CM\b/
- ]);
- if(heightCm===null){
-  const hm=firstClinicalNumber(a,[
-   /TALLA(?:\s+(?:ACTUAL|MEDIDA|REFERIDA|ESTIMADA))?\s*[:=]?\s*(1(?:[.,][0-9]{1,2}))\s*M\b/,
-   /ESTATURA\s*[:=]?\s*(1(?:[.,][0-9]{1,2}))\s*M\b/
-  ]);
-  if(hm!==null)heightCm=hm*100;
- }
- // Talla sin unidad: 1.58 => m, 158 => cm
- if(heightCm===null){
-  const h=firstClinicalNumber(a,[/TALLA\s*[:=]?\s*([0-9]+(?:[.,][0-9]+)?)/]);
-  if(h!==null)heightCm=h<=2.5?h*100:h;
- }
-
- let heightMode="TALLA";
- if(/TALLA\s+REFERIDA/.test(a))heightMode="TALLA REFERIDA";
- else if(/TALLA\s+ESTIMADA|TAL[ÓO]N[\s-]*RODILLA/.test(a))heightMode="TALLA ESTIMADA";
-
- return {section:a,cb,cp,estimatedWeight,actualWeight,heightCm,heightMode};
+ const d=parseSmartClinicalData();
+ return {section:d.a,cb:d.cb,cp:d.cp,heelKnee:d.heelKnee,weight:d.weight,weightMode:d.weightMode,heightCm:d.heightCm,heightMode:d.heightMode,preWeight:d.preWeight,gestAge:d.gestAge};
 }
 function applyPreviousAnthropometry(){
  const a=parsePreviousAnthropometry();
-
- if(a.cb!==null)setFieldFromPrevious("cb",a.cb);
- if(a.cp!==null)setFieldFromPrevious("cp",a.cp);
-
- if(a.estimatedWeight!==null){
-  setRadioFromPrevious("modoPeso","ESTIMADO");
-  setFieldFromPrevious("pesoEstimadoDoc",a.estimatedWeight);
-  if($("pesoEstimadoDoc"))$("pesoEstimadoDoc").dataset.fromWord="1";
- }else if(a.actualWeight!==null){
-  setRadioFromPrevious("modoPeso","ACTUAL");
-  setFieldFromPrevious("peso",a.actualWeight);
-  if($("pesoEstimadoDoc")){$("pesoEstimadoDoc").value="";delete $("pesoEstimadoDoc").dataset.fromWord;}
- }else if(a.cb!==null&&a.cp!==null){
-  setRadioFromPrevious("modoPeso","ESTIMADO");
-  // Sin peso total documentado: getWeight usa CMB + CP como fallback configurado.
- }
-
+ if(a.cb!==null)setFieldFromPrevious("cb",a.cb);if(a.cp!==null)setFieldFromPrevious("cp",a.cp);
+ if(a.heelKnee!==null)setFieldFromPrevious("talonRodilla",a.heelKnee);
+ if(a.preWeight!==null)setFieldFromPrevious("pesoPregestacional",a.preWeight);
+ if(a.gestAge!==null)setFieldFromPrevious("edadGestacional",a.gestAge);
+ if(a.weight!==null){
+  const mode=a.weightMode||"ACTUAL";setRadioFromPrevious("modoPeso",mode);
+  if(mode==="ESTIMADO"){
+   setFieldFromPrevious("pesoEstimadoDoc",a.weight);if($("pesoEstimadoDoc"))$("pesoEstimadoDoc").dataset.fromWord="1";
+  }else{
+   setFieldFromPrevious("peso",a.weight);if($("pesoEstimadoDoc")){$("pesoEstimadoDoc").value="";delete $("pesoEstimadoDoc").dataset.fromWord;}
+  }
+ }else if(a.cb!==null&&a.cp!==null)setRadioFromPrevious("modoPeso","ESTIMADO");
  if(a.heightCm!==null)setFieldFromPrevious("talla",Math.round(a.heightCm*10)/10);
- setRadioFromPrevious("modoTalla",a.heightMode);
-
- toggleWeightMode(false);
- toggleHeightMode(false);
- return a;
+ setRadioFromPrevious("modoTalla",a.heightMode||"TALLA");toggleWeightMode(false);toggleHeightMode(false);return a;
 }
 
 function previousSection(labelPatterns,stopPatterns){
@@ -1581,7 +1658,9 @@ function autofillPreviousAssessment(){
   else{setRadioFromPrevious("tieneAlergia","SÍ");setFieldFromPrevious("alergia",v);}
  }
 
+ const smart=parseSmartClinicalData();
  applyPreviousAnthropometry();
+ applySmartClinicalData(smart);
 
  // Función renal si viene en el documento.
  const egfrDoc=parsedEgfr();
@@ -1831,15 +1910,19 @@ function clearImportedEstimatedWeight(){
   delete el.dataset.fromWord;
  }
 }
-function toggleWeightMode(calc=true){const e=radio("modoPeso")==="ESTIMADO";$("actualWeight").classList.toggle("hidden",e);$("estimatedWeight").classList.toggle("hidden",!e);if(calc)calculateAll()}
+function toggleWeightMode(calc=true){
+ const mode=radio("modoPeso"),estimated=mode==="ESTIMADO";
+ $("actualWeight").classList.toggle("hidden",estimated);$("estimatedWeight").classList.toggle("hidden",!estimated);
+ if($("pesoDirectLabel"))$("pesoDirectLabel").textContent=mode==="REFERIDO"?"Peso referido kg":"Peso actual kg";
+ if(calc)calculateAll();
+}
 function toggleHeightMode(calc=true){const e=radio("modoTalla")==="TALLA ESTIMADA";$("heelBox").classList.toggle("hidden",!e);if(calc){if(e)calculateHeelKnee();else calculateAll()}}
 function calculateHeelKnee(){if(radio("modoTalla")!=="TALLA ESTIMADA"){calculateAll();return}const tr=num(val("talonRodilla")),age=num(val("edad"));if(tr===null||age===null||tr<=0||age<=0){calculateAll();return}const h=val("sexo")==="F"?84.88+1.83*tr-0.24*age:64.19+2.02*tr-0.04*age;$("talla").value=one(h);calculateAll()}
 function getWeight(){
- if(radio("modoPeso")==="ESTIMADO"){
-  const doc=num(val("pesoEstimadoDoc"));
-  if(doc!==null&&doc>0)return doc;
-  const cb=num(val("cb")),cp=num(val("cp"));
-  return cb!==null&&cp!==null?cb+cp:null;
+ const mode=radio("modoPeso");
+ if(mode==="ESTIMADO"){
+  const doc=num(val("pesoEstimadoDoc"));if(doc!==null&&doc>0)return doc;
+  const cb=num(val("cb")),cp=num(val("cp"));return cb!==null&&cp!==null?cb+cp:null;
  }
  return num(val("peso"));
 }
@@ -1989,10 +2072,8 @@ function clinicalStressState(){
  return {level:"BAJO",score:0};
 }
 function currentIntakePercent(){
- if(importedRoute()==="NPO")return null;
- const raw=radio("consumoDieta")||"100%";
- const n=parseInt(raw,10);
- return Number.isFinite(n)?n:100;
+ if(importedRoute()==="NPO")return null;const exact=num(val("consumoExacto"));if(exact!==null&&exact>=0&&exact<=100)return exact;
+ const raw=radio("consumoDieta")||"100%",n=parseInt(raw,10);return Number.isFinite(n)?n:100;
 }
 function clinicalNutritionRisk(){
  const b=calculationsBase(),stress=clinicalStressState(),f=diseaseFlags(),factors=[];
@@ -3080,7 +3161,7 @@ function valuation(){
  else{
   if(radio("viaoral")==="TOLERA")p.push("TOLERA ADECUADAMENTE LA VÍA ORAL.");
   if(radio("viaoral")==="NO TOLERA")p.push("NO TOLERA ADECUADAMENTE LA VÍA ORAL.");
-  p.push(`REFIERE APETITO ${radio("apetito")} CON UN CONSUMO DEL ${radio("consumoDieta")} DE LA INGESTA PRESCRITA.`);
+  const intake=currentIntakePercent();p.push(`REFIERE APETITO ${radio("apetito")} CON UN CONSUMO DEL ${intake!==null?one(intake):0}% DE LA INGESTA PRESCRITA.`);
  }
  if(route!=="NPO"){
   if(radio("masticacion")==="SIN INCONVENIENTES"&&radio("deglucion")==="SIN INCONVENIENTES")p.push("NO REFIERE INCONVENIENTES PARA MASTICAR NI DEGLUTIR.");
@@ -3155,30 +3236,19 @@ function maternityExam(){
 function antro(){
  const c=calculations(),p=[];
  if(c.w!==null){
-  if(radio("modoPeso")==="ESTIMADO"){
-   const cb=num(val("cb")),cp=num(val("cp"));
-   let refs=[];
-   if(cb!==null)refs.push(`CMB: ${one(cb)}CM`);
-   if(cp!==null)refs.push(`CP: ${one(cp)}CM`);
+  const wm=radio("modoPeso");
+  if(wm==="ESTIMADO"){
+   const cb=num(val("cb")),cp=num(val("cp")),refs=[];if(cb!==null)refs.push(`CMB: ${one(cb)}CM`);if(cp!==null)refs.push(`CP: ${one(cp)}CM`);
    p.push(`PESO ESTIMADO${refs.length?` (${refs.join("; ")})`:""}: ${one(c.w)}KG`);
-  }else{
-   p.push(`PESO ACTUAL: ${one(c.w)}KG`);
-  }
+  }else p.push(`${wm==="REFERIDO"?"PESO REFERIDO":"PESO ACTUAL"}: ${one(c.w)}KG`);
  }
  if(c.h!==null){
-  const modo=radio("modoTalla");
-  const lbl=modo==="TALLA REFERIDA"?"TALLA REFERIDA":modo==="TALLA ESTIMADA"?"TALLA ESTIMADA":"TALLA";
-  p.push(`${lbl}: ${one(c.h)}CM`);
+  const modo=radio("modoTalla"),lbl=modo==="TALLA REFERIDA"?"TALLA REFERIDA":modo==="TALLA ESTIMADA"?"TALLA ESTIMADA":"TALLA";
+  p.push(`${lbl}: ${one(c.h)}CM`);const tr=num(val("talonRodilla"));if(modo==="TALLA ESTIMADA"&&tr!==null)p.push(`TALÓN-RODILLA: ${one(tr)}CM`);
  }
  if(c.imc!==null)p.push(`IMC: ${one(c.imc)}KG/M2`);
-
- const borderlineLow=Number.isFinite(c.imc)&&(c.age>=60?c.imc<23:c.imc<20);
- if(borderlineLow&&c.idealWeight!==null)p.push(`PESO IDEAL: ${one(c.idealWeight)}KG`);
-
- if(c.cl&&c.cl.includes("OBESIDAD")){
-  const aw=adjustedWeight33();
-  if(aw!==null)p.push(`PESO AJUSTADO: ${one(aw)}KG`);
- }
+ const borderlineLow=Number.isFinite(c.imc)&&(c.age>=60?c.imc<23:c.imc<20);if(borderlineLow&&c.idealWeight!==null)p.push(`PESO IDEAL: ${one(c.idealWeight)}KG`);
+ if(c.cl&&c.cl.includes("OBESIDAD")){const aw=adjustedWeight33();if(aw!==null)p.push(`PESO AJUSTADO: ${one(aw)}KG`);}
  return p.join(". ")+".";
 }
 function weightBasisLabel(g){
@@ -3271,14 +3341,11 @@ function pregnancyReferenceWeights(){
  return {ideal,adjusted,preImc};
 }
 function pregnancyAnthro(){
- const c=calculations(),parts=[],r=pregnancyReferenceWeights(),g=pregnancyGainReference();
- const w=c.w,preW=num(val("pesoPregestacional")),h=num(val("talla"));
- if(w!==null)parts.push(`${radio("modoPeso")==="ESTIMADO"?"PESO ESTIMADO":"PESO BALANZA"}: ${one(w)} KG`);
+ const c=calculations(),parts=[],r=pregnancyReferenceWeights(),g=pregnancyGainReference();const w=c.w,preW=num(val("pesoPregestacional")),h=num(val("talla"));
+ if(w!==null){const wm=radio("modoPeso");parts.push(`${wm==="ESTIMADO"?"PESO ESTIMADO":wm==="REFERIDO"?"PESO REFERIDO":"PESO ACTUAL"}: ${one(w)} KG`);}
  if(preW!==null)parts.push(`PESO PREGESTACIONAL: ${one(preW)} KG`);
- if(h!==null){const mode=radio("modoTalla");parts.push(`${mode==="TALÓN-RODILLA"?"TALLA ESTIMADA":"TALLA REFERIDA"}: ${one(h)} CM`);}
- if(Number.isFinite(r.preImc))parts.push(`IMC PREGESTACIONAL: ${one(r.preImc)} KG/M2`);
- if(Number.isFinite(r.preImc)&&r.preImc<20&&r.ideal!==null)parts.push(`PESO IDEAL PREGESTACIONAL: ${one(r.ideal)} KG`);
- if(Number.isFinite(r.preImc)&&r.preImc>=30&&r.adjusted!==null)parts.push(`PESO AJUSTADO PREGESTACIONAL: ${one(r.adjusted)} KG`);
+ if(h!==null){const mode=radio("modoTalla");parts.push(`${mode==="TALLA ESTIMADA"?"TALLA ESTIMADA":mode==="TALLA REFERIDA"?"TALLA REFERIDA":"TALLA"}: ${one(h)} CM`);const tr=num(val("talonRodilla"));if(mode==="TALLA ESTIMADA"&&tr!==null)parts.push(`TALÓN-RODILLA: ${one(tr)} CM`);}
+ if(Number.isFinite(r.preImc))parts.push(`IMC PREGESTACIONAL: ${one(r.preImc)} KG/M2`);if(Number.isFinite(r.preImc)&&r.preImc<20&&r.ideal!==null)parts.push(`PESO IDEAL PREGESTACIONAL: ${one(r.ideal)} KG`);if(Number.isFinite(r.preImc)&&r.preImc>=30&&r.adjusted!==null)parts.push(`PESO AJUSTADO PREGESTACIONAL: ${one(r.adjusted)} KG`);
  if(g.complete){parts.push(`GANANCIA DE PESO: ${one(g.gain)} KG`);if(!g.multiple)parts.push(`RANGO ESPERADO A LA SEMANA ${one(num(val("edadGestacional")))}: ${one(g.expectedMin)}–${one(g.expectedMax)} KG`);parts.push(g.label);}
  return parts.join(". ")+".";
 }

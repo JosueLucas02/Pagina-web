@@ -933,7 +933,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&
 const makeId=p=>`${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,9)}`;
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
 
-const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v41", FALLBACK_KEY="nutri_word_rounds_v41";
+const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v42", FALLBACK_KEY="nutri_word_rounds_v42";
 let db=null,currentRound=null,currentPatientId=null,history=[],loading=false,saveTimer=null;
 
 const simpleFields=["area","ambiente","cama","nombre","edad","cobertura","sexo","perfil","dieta","sourceText","alergia","intolerancia","ultima","consumoExacto","bristol","habito","hallazgo","peso","pesoEstimadoDoc","cb","cp","talla","talonRodilla","pesoPregestacional","edadGestacional","reqPerfil","cie10","plan","planObs","kcalKg","extraKcal","choPct","proPct","proKg","lipPct","clinicalProfile","renalSubtype","egfr","icuDay","hasIC","measuredEE","ibdActivity","pancreasType","surgeryScenario","suppName","suppMl","suppKcal","suppProtein","suppServings","acompanante","acompananteDetalle","informante","extremidadesDetalle","mExtSupDetalle"];
@@ -3598,35 +3598,152 @@ function canonicalPostpartumNote(){
 }
 
 function clinicalSpellingFix(s){
- let t=String(s||"").normalize("NFC");
+ let t=String(s||"").normalize("NFC").toLocaleUpperCase("es-EC");
+
+ // Corrección del texto clínico importado y generado.
+ // No modifica nombres propios, códigos, fechas ni números.
  const fixes=[
-  [/\bDIAGNOSTICO\b/g,"DIAGNÓSTICO"],[/\bDIAGNOSTICOS\b/g,"DIAGNÓSTICOS"],
-  [/\bVALORACION\b/g,"VALORACIÓN"],[/\bANTROPOMETRICA\b/g,"ANTROPOMÉTRICA"],[/\bANTROPOMETRICO\b/g,"ANTROPOMÉTRICO"],
-  [/\bFISICO\b/g,"FÍSICO"],[/\bMUSCULO\b/g,"MÚSCULO"],[/\bMUSCULOS\b/g,"MÚSCULOS"],[/\bREGION\b/g,"REGIÓN"],
-  [/\bDEGLUCION\b/g,"DEGLUCIÓN"],[/\bMASTICACION\b/g,"MASTICACIÓN"],[/\bDEPOSICION\b/g,"DEPOSICIÓN"],
-  [/\bULTIMA\b/g,"ÚLTIMA"],[/\bULTIMO\b/g,"ÚLTIMO"],[/\bHABITO\b/g,"HÁBITO"],[/\bORIENTACION\b/g,"ORIENTACIÓN"],
-  [/\bCALORIAS\b/g,"CALORÍAS"],[/\bPROTEINA\b/g,"PROTEÍNA"],[/\bLIPIDOS\b/g,"LÍPIDOS"],[/\bVIA\b/g,"VÍA"],
-  [/\bDIETOTERAPEUTICO\b/g,"DIETOTERAPÉUTICO"],[/\bDIETOTERAPEUTICA\b/g,"DIETOTERAPÉUTICA"],
-  [/\bPERIMETRO\b/g,"PERÍMETRO"],[/\bINDICE\b/g,"ÍNDICE"],[/\bMETABOLICO\b/g,"METABÓLICO"],[/\bMETABOLICA\b/g,"METABÓLICA"],
-  [/\bHEMODIALISIS\b/g,"HEMODIÁLISIS"],[/\bDIALISIS\b/g,"DIÁLISIS"],[/\bCRONICA\b/g,"CRÓNICA"],[/\bCRONICO\b/g,"CRÓNICO"],
-  [/\bLESION\b/g,"LESIÓN"],[/\bMALNUTRICION\b/g,"MALNUTRICIÓN"],[/\bDESNUTRICION\b/g,"DESNUTRICIÓN"],
-  [/\bINFLAMACION\b/g,"INFLAMACIÓN"],[/\bINFECCION\b/g,"INFECCIÓN"],[/\bSEPTICO\b/g,"SÉPTICO"],[/\bSEPTICA\b/g,"SÉPTICA"],
-  [/\bTRAUMATICO\b/g,"TRAUMÁTICO"],[/\bTRAUMATICA\b/g,"TRAUMÁTICA"],[/\bHEMOTORAX\b/g,"HEMOTÓRAX"],[/\bNEUMONIA\b/g,"NEUMONÍA"],
-  [/\bCIRUGIA\b/g,"CIRUGÍA"],[/\bQUIRURGICO\b/g,"QUIRÚRGICO"],[/\bQUIRURGICA\b/g,"QUIRÚRGICA"],
-  [/\bHEPATICA\b/g,"HEPÁTICA"],[/\bHEPATICO\b/g,"HEPÁTICO"],[/\bCARDIACA\b/g,"CARDÍACA"],[/\bCARDIACO\b/g,"CARDÍACO"],
-  [/\bHIPOGLUCIDA\b/g,"HIPOGLÚCIDA"],[/\bHIPOSODICA\b/g,"HIPOSÓDICA"],[/\bGESTACION\b/g,"GESTACIÓN"],
-  [/\bESTRENIMIENTO\b/g,"ESTREÑIMIENTO"],[/\bNAUSEA\b/g,"NÁUSEA"],[/\bNAUSEAS\b/g,"NÁUSEAS"],[/\bVOMITO\b/g,"VÓMITO"],[/\bVOMITOS\b/g,"VÓMITOS"],
-  [/\bSIMETRICAS\b/g,"SIMÉTRICAS"],[/\bASIMETRICAS\b/g,"ASIMÉTRICAS"],[/\bACROMION\b/g,"ACROMIÓN"],[/\bPALPACION\b/g,"PALPACIÓN"],
-  [/\bHIDRATACION\b/g,"HIDRATACIÓN"],[/\bSEMIPALIDA\b/g,"SEMIPÁLIDA"],[/\bPALIDA\b/g,"PÁLIDA"],[/\bCALIDA\b/g,"CÁLIDA"],[/\bSEMICALIDA\b/g,"SEMICÁLIDA"],
-  [/\bICTERICOS\b/g,"ICTÉRICOS"],[/\bICTERICAS\b/g,"ICTÉRICAS"],[/\bPRESION\b/g,"PRESIÓN"],[/\bULCERA\b/g,"ÚLCERA"],
-  [/\bNEUROLOGICO\b/g,"NEUROLÓGICO"],[/\bNEUROLOGICA\b/g,"NEUROLÓGICA"],[/\bFOSFORO\b/g,"FÓSFORO"],
-  [/\bKCAL\/DIA\b/g,"KCAL/DÍA"],[/\bG\/DIA\b/g,"G/DÍA"],[/\bML\/DIA\b/g,"ML/DÍA"],[/\bDIA\b/g,"DÍA"],[/\bDIAS\b/g,"DÍAS"],
-  [/\bSEGUN\b/g,"SEGÚN"],[/\bNUMERO\b/g,"NÚMERO"],[/\bPRACTICA\b/g,"PRÁCTICA"],
-  [/\bEVALUACION\b/g,"EVALUACIÓN"],[/\bESTIMACION\b/g,"ESTIMACIÓN"],[/\bPROGRESION\b/g,"PROGRESIÓN"],
-  [/\bFUNCION\b/g,"FUNCIÓN"],[/\bCLINICA\b/g,"CLÍNICA"],[/\bCLINICO\b/g,"CLÍNICO"],[/\bETIOLOGIA\b/g,"ETIOLOGÍA"],
-  [/\bFENOTIPICO\b/g,"FENOTÍPICO"],[/\bETIOLOGICO\b/g,"ETIOLÓGICO"],[/\bPATOLOGIA\b/g,"PATOLOGÍA"]
+  // Errores frecuentes de digitación / unión de palabras
+  [/\bGINECOOSBSTETRICOS\b/g,"GINECOOBSTÉTRICOS"],
+  [/\bGINECOOBSTETRICOS\b/g,"GINECOOBSTÉTRICOS"],
+  [/\bGINECO OBSTETRICOS\b/g,"GINECOOBSTÉTRICOS"],
+  [/\bPROCEDIMINETO\b/g,"PROCEDIMIENTO"],
+  [/\bPROCEDIEMIENTO\b/g,"PROCEDIMIENTO"],
+  [/\bPRE QUIRURGICO\b/g,"PREQUIRÚRGICO"],
+  [/\bPREQUIRURGICO\b/g,"PREQUIRÚRGICO"],
+  [/\bPOST QUIRURGICO\b/g,"POSQUIRÚRGICO"],
+  [/\bPOSTQUIRURGICO\b/g,"POSQUIRÚRGICO"],
+  [/\bPOST OPERATORIO\b/g,"POSOPERATORIO"],
+  [/\bPOSTOPERATORIO\b/g,"POSOPERATORIO"],
+  [/\bNO DOLOROSO A LA PALPACION\b/g,"NO DOLOROSO A LA PALPACIÓN"],
+  [/\bDOLOROSO A LA PALPACION\b/g,"DOLOROSO A LA PALPACIÓN"],
+
+  // Edad / antecedentes / obstetricia
+  [/\bANOS\b/g,"AÑOS"],
+  [/\bANO\b/g,"AÑO"],
+  [/\bPATOLOGICOS\b/g,"PATOLÓGICOS"],
+  [/\bPATOLOGICAS\b/g,"PATOLÓGICAS"],
+  [/\bPATOLOGICO\b/g,"PATOLÓGICO"],
+  [/\bPATOLOGICA\b/g,"PATOLÓGICA"],
+  [/\bQUIRURGICOS\b/g,"QUIRÚRGICOS"],
+  [/\bQUIRURGICAS\b/g,"QUIRÚRGICAS"],
+  [/\bQUIRURGICO\b/g,"QUIRÚRGICO"],
+  [/\bQUIRURGICA\b/g,"QUIRÚRGICA"],
+  [/\bSIFILIS\b/g,"SÍFILIS"],
+  [/\bCESAREA\b/g,"CESÁREA"],
+  [/\bOBSTETRICOS\b/g,"OBSTÉTRICOS"],
+  [/\bOBSTETRICAS\b/g,"OBSTÉTRICAS"],
+  [/\bGESTACION\b/g,"GESTACIÓN"],
+  [/\bPUERPERIO\b/g,"PUERPERIO"],
+
+  // Diagnóstico / valoración / antropometría
+  [/\bDIAGNOSTICO\b/g,"DIAGNÓSTICO"],
+  [/\bDIAGNOSTICOS\b/g,"DIAGNÓSTICOS"],
+  [/\bVALORACION\b/g,"VALORACIÓN"],
+  [/\bEVALUACION\b/g,"EVALUACIÓN"],
+  [/\bANTROPOMETRICA\b/g,"ANTROPOMÉTRICA"],
+  [/\bANTROPOMETRICO\b/g,"ANTROPOMÉTRICO"],
+  [/\bANTROPOMETRIA\b/g,"ANTROPOMETRÍA"],
+  [/\bFISICO\b/g,"FÍSICO"],
+  [/\bFISICA\b/g,"FÍSICA"],
+  [/\bMUSCULO\b/g,"MÚSCULO"],
+  [/\bMUSCULOS\b/g,"MÚSCULOS"],
+  [/\bREGION\b/g,"REGIÓN"],
+  [/\bACROMION\b/g,"ACROMIÓN"],
+  [/\bPALPACION\b/g,"PALPACIÓN"],
+  [/\bSIMETRICAS\b/g,"SIMÉTRICAS"],
+  [/\bASIMETRICAS\b/g,"ASIMÉTRICAS"],
+  [/\bDEPLECION\b/g,"DEPLECIÓN"],
+  [/\bSEMIPALIDA\b/g,"SEMIPÁLIDA"],
+  [/\bPALIDA\b/g,"PÁLIDA"],
+  [/\bCALIDA\b/g,"CÁLIDA"],
+  [/\bSEMICALIDA\b/g,"SEMICÁLIDA"],
+  [/\bICTERICOS\b/g,"ICTÉRICOS"],
+  [/\bICTERICAS\b/g,"ICTÉRICAS"],
+
+  // Función digestiva / entrevista
+  [/\bDEGLUCION\b/g,"DEGLUCIÓN"],
+  [/\bMASTICACION\b/g,"MASTICACIÓN"],
+  [/\bDEPOSICION\b/g,"DEPOSICIÓN"],
+  [/\bULTIMA\b/g,"ÚLTIMA"],
+  [/\bULTIMO\b/g,"ÚLTIMO"],
+  [/\bHABITO\b/g,"HÁBITO"],
+  [/\bORIENTACION\b/g,"ORIENTACIÓN"],
+  [/\bTOLERANCIA\b/g,"TOLERANCIA"],
+  [/\bINTOLERANCIA\b/g,"INTOLERANCIA"],
+  [/\bNAUSEAS\b/g,"NÁUSEAS"],
+  [/\bNAUSEA\b/g,"NÁUSEA"],
+  [/\bVOMITOS\b/g,"VÓMITOS"],
+  [/\bVOMITO\b/g,"VÓMITO"],
+  [/\bESTRENIMIENTO\b/g,"ESTREÑIMIENTO"],
+  [/\bCONSTIPACION\b/g,"ESTREÑIMIENTO"],
+
+  // Nutrición / dieta
+  [/\bNUTRICION\b/g,"NUTRICIÓN"],
+  [/\bCALORIAS\b/g,"CALORÍAS"],
+  [/\bPROTEINA\b/g,"PROTEÍNA"],
+  [/\bLIPIDOS\b/g,"LÍPIDOS"],
+  [/\bVIA\b/g,"VÍA"],
+  [/\bDIETOTERAPEUTICO\b/g,"DIETOTERAPÉUTICO"],
+  [/\bDIETOTERAPEUTICA\b/g,"DIETOTERAPÉUTICA"],
+  [/\bHIPOGLUCIDA\b/g,"HIPOGLÚCIDA"],
+  [/\bHIPOSODICA\b/g,"HIPOSÓDICA"],
+  [/\bHIPERCALORICA\b/g,"HIPERCALÓRICA"],
+  [/\bHIPOCALORICA\b/g,"HIPOCALÓRICA"],
+  [/\bPERIMETRO\b/g,"PERÍMETRO"],
+  [/\bINDICE\b/g,"ÍNDICE"],
+  [/\bESTIMACION\b/g,"ESTIMACIÓN"],
+  [/\bPROGRESION\b/g,"PROGRESIÓN"],
+
+  // Patologías y términos médicos frecuentes
+  [/\bMULTIPLES\b/g,"MÚLTIPLES"],
+  [/\bCRONICA\b/g,"CRÓNICA"],
+  [/\bCRONICO\b/g,"CRÓNICO"],
+  [/\bLESION\b/g,"LESIÓN"],
+  [/\bMALNUTRICION\b/g,"MALNUTRICIÓN"],
+  [/\bDESNUTRICION\b/g,"DESNUTRICIÓN"],
+  [/\bINFLAMACION\b/g,"INFLAMACIÓN"],
+  [/\bINFECCION\b/g,"INFECCIÓN"],
+  [/\bSEPTICO\b/g,"SÉPTICO"],
+  [/\bSEPTICA\b/g,"SÉPTICA"],
+  [/\bTRAUMATICO\b/g,"TRAUMÁTICO"],
+  [/\bTRAUMATICA\b/g,"TRAUMÁTICA"],
+  [/\bHEMOTORAX\b/g,"HEMOTÓRAX"],
+  [/\bNEUMONIA\b/g,"NEUMONÍA"],
+  [/\bCIRUGIA\b/g,"CIRUGÍA"],
+  [/\bHEPATICA\b/g,"HEPÁTICA"],
+  [/\bHEPATICO\b/g,"HEPÁTICO"],
+  [/\bCARDIACA\b/g,"CARDÍACA"],
+  [/\bCARDIACO\b/g,"CARDÍACO"],
+  [/\bHEMODIALISIS\b/g,"HEMODIÁLISIS"],
+  [/\bDIALISIS\b/g,"DIÁLISIS"],
+  [/\bPRESION\b/g,"PRESIÓN"],
+  [/\bULCERA\b/g,"ÚLCERA"],
+  [/\bNEUROLOGICO\b/g,"NEUROLÓGICO"],
+  [/\bNEUROLOGICA\b/g,"NEUROLÓGICA"],
+  [/\bFOSFORO\b/g,"FÓSFORO"],
+  [/\bFUNCION\b/g,"FUNCIÓN"],
+  [/\bCLINICA\b/g,"CLÍNICA"],
+  [/\bCLINICO\b/g,"CLÍNICO"],
+  [/\bETIOLOGIA\b/g,"ETIOLOGÍA"],
+  [/\bFENOTIPICO\b/g,"FENOTÍPICO"],
+  [/\bETIOLOGICO\b/g,"ETIOLÓGICO"],
+  [/\bPATOLOGIA\b/g,"PATOLOGÍA"],
+
+  // Unidades / conectores
+  [/\bKCAL\/DIA\b/g,"KCAL/DÍA"],
+  [/\bG\/DIA\b/g,"G/DÍA"],
+  [/\bML\/DIA\b/g,"ML/DÍA"],
+  [/\bDIA\b/g,"DÍA"],
+  [/\bDIAS\b/g,"DÍAS"],
+  [/\bSEGUN\b/g,"SEGÚN"],
+  [/\bNUMERO\b/g,"NÚMERO"],
+  [/\bPRACTICA\b/g,"PRÁCTICA"]
  ];
+
  for(const [rx,repl] of fixes)t=t.replace(rx,repl);
+
+ // Normalización de unidades y puntuación sin modificar cifras clínicas.
  t=t.replace(/KG\/M2/g,"KG/M²")
     .replace(/ML\/MIN\/1[,.]73\s*M2/g,"ML/MIN/1,73 M²")
     .replace(/\s+([,.;:])/g,"$1")
@@ -3638,7 +3755,7 @@ function clinicalSpellingFix(s){
  return t;
 }
 function finalClinicalText(s){
- return clinicalSpellingFix(String(s||"").toLocaleUpperCase("es-EC"));
+ return clinicalSpellingFix(String(s||""));
 }
 function finalClinicalLines(lines){
  return (lines||[]).map(x=>finalClinicalText(x)).filter(Boolean);

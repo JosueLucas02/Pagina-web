@@ -441,15 +441,15 @@ img,svg,table{
   <div id="patientForm" class="hidden">
    <div class="grid4">
     <div><label class="label">Área / servicio</label><input id="area"></div>
-    <div><label class="label">Ambiente (AMB)</label><input id="ambiente"></div>
-    <div><label class="label">Cama (C)</label><input id="cama"></div>
+    <div id="ambienteWrap"><label class="label">Ambiente (AMB)</label><input id="ambiente"></div>
+    <div id="camaWrap"><label class="label">Cama (C)</label><input id="cama"></div>
     <div><label class="label">Nombre</label><input id="nombre"></div>
     <div><label class="label">Edad</label><input id="edad" type="number" oninput="syncAgeProfile();calculateHeelKnee();calculateAll()"></div>
     <div><label class="label">Cobertura</label><input id="cobertura"></div>
     <div><label class="label">Sexo</label><select id="sexo" onchange="calculateHeelKnee();updatePreview()"><option value="M">Masculino</option><option value="F">Femenino</option></select></div>
     <div><label class="label">Condición nutricional</label><select id="perfil" onchange="profileChanged()"><option value="adulto">Adulto</option><option value="adultomayor">Adulto mayor (≥60 años)</option><option value="renal">Renal / hemodiálisis</option><option value="embarazada">Embarazada</option><option value="posparto">Posparto / lactancia</option></select><div class="note">Se detecta automáticamente desde edad/texto del Word; puedes corregirlo aquí.</div></div>
    </div>
-   <div style="margin-top:7px"><label class="label">Dieta importada</label><input id="dieta"></div>
+   <div style="margin-top:7px"><label class="label">Dieta importada</label><input id="dieta"></div><div class="note" id="headerModeNote" style="margin-top:6px"></div>
    <div class="sourceBox" style="margin-top:8px">
     <div class="srcTitle">Valoración anterior importada · autorrelleno para revaloración</div>
     <textarea id="sourceText" style="min-height:115px;font:9.5px/1.35 Calibri,Arial,sans-serif" placeholder="Texto original..."></textarea>
@@ -928,7 +928,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&
 const makeId=p=>`${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,9)}`;
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
 
-const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v48", FALLBACK_KEY="nutri_word_rounds_v48";
+const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v49", FALLBACK_KEY="nutri_word_rounds_v49";
 let db=null,currentRound=null,currentPatientId=null,history=[],loading=false,saveTimer=null;
 
 const simpleFields=["area","ambiente","cama","nombre","edad","cobertura","sexo","perfil","dieta","sourceText","alergia","intolerancia","ultima","consumoExacto","bristol","habito","hallazgo","peso","pesoEstimadoDoc","cb","cp","talla","talonRodilla","mediaEnvergadura","pesoPregestacional","edadGestacional","reqPerfil","cie10","plan","planObs","kcalKg","extraKcal","choPct","proPct","proKg","lipPct","clinicalProfile","renalSubtype","egfr","icuDay","hasIC","measuredEE","ibdActivity","pancreasType","surgeryScenario","suppName","suppMl","suppKcal","suppProtein","suppServings","acompanante","acompananteDetalle","informante","extremidadesDetalle","mExtSupDetalle"];
@@ -949,15 +949,80 @@ function parseDateText(s){
  return `${m[3]}-${String(m[2]).padStart(2,"0")}-${String(m[1]).padStart(2,"0")}`;
 }
 function parseHeader(text){
- const original=String(text||"").trim(),s=stripNumbering(original).replace(/\s+/g," ").trim();
- const amb=s.match(/\bAMB\s*([A-Za-z0-9-]+)\s+(?:C|CAMA)\s*([A-Za-z0-9-]+)/i);if(!amb)return null;
- const area=stripNumbering(s.slice(0,amb.index).trim()),tail=s.slice(amb.index+amb[0].length).trim();
- const dm=tail.match(/\s+((?:DIETA\s+.*)|(?:NPO\b.*)|(?:SNG\b.*)|(?:(?:GENERAL|BLANDA|L[IÍ]QUIDA(?:\s+ESTRICTA|\s+AMPLIA)?|TIPO\s+PUR[ÉE]|HIPERPROTEICA|HIPOGL[ÚU]CIDA|HIPOGRASA|HIPOS[ÓO]DICA)\b.*))$/i);if(!dm)return null;
- const dieta=dm[1].trim(),beforeDiet=tail.slice(0,dm.index).trim();
- const ages=[...beforeDiet.matchAll(/(?:^|\s)(\d{1,3})(?=\s|$)/g)];if(!ages.length)return null;
- const am=ages[ages.length-1],edad=am[1],nombre=beforeDiet.slice(0,am.index).trim(),after=beforeDiet.slice(am.index+am[0].length).trim();if(!nombre)return null;
- const cov=after.match(/^(MSP|IESS|ISSPOL|ISSFA|PRIVADO|PARTICULAR|SEGURO(?:\s+[A-ZÁÉÍÓÚÑ]+)?)(?:\s|$)/i);const cobertura=cov?cov[1].trim():(after?after.split(/\s+/)[0]:"");
- return {area,ambiente:amb[1],cama:amb[2],nombre,edad,cobertura,dieta,originalHeader:original};
+ const original=String(text||"").trim();
+ if(!original)return null;
+
+ // ==========================================================
+ // FORMATO 1: HOSPITALIZACIÓN CON AMB / CAMA
+ // ==========================================================
+ const compact=stripNumbering(original).replace(/\s+/g," ").trim();
+ const amb=compact.match(/\bAMB\s*([A-Za-z0-9-]+)\s+(?:C|CAMA)\s*([A-Za-z0-9-]+)/i);
+ if(amb){
+  const area=stripNumbering(compact.slice(0,amb.index).trim()),tail=compact.slice(amb.index+amb[0].length).trim();
+  const dm=tail.match(/\s+((?:DIETA\s+.*)|(?:NPO\b.*)|(?:SNG\b.*)|(?:(?:GENERAL|BLANDA|L[IÍ]QUIDA(?:\s+ESTRICTA|\s+AMPLIA)?|TIPO\s+PUR[ÉE]|HIPERPROTEICA|HIPOGL[ÚU]CIDA|HIPOGRASA|HIPOS[ÓO]DICA)\b.*))$/i);
+  if(!dm)return null;
+  const dieta=dm[1].trim(),beforeDiet=tail.slice(0,dm.index).trim();
+  const ages=[...beforeDiet.matchAll(/(?:^|\s)(\d{1,3})(?=\s|$)/g)];
+  if(!ages.length)return null;
+  const am=ages[ages.length-1],edad=am[1],nombre=beforeDiet.slice(0,am.index).trim(),after=beforeDiet.slice(am.index+am[0].length).trim();
+  if(!nombre)return null;
+  const cov=after.match(/^(MSP|SPATT|IESS|ISSPOL|ISSFA|PRIVADO|PARTICULAR|SEGURO(?:\s+[A-ZÁÉÍÓÚÑ]+)?)(?:\s|$)/i);
+  const cobertura=cov?cov[1].trim():(after?after.split(/\s+/)[0]:"");
+  return {headerMode:"HOSPITAL",area,ambiente:amb[1],cama:amb[2],nombre,edad,cobertura,dieta,originalHeader:original};
+ }
+
+ // ==========================================================
+ // FORMATO 2: EMERGENCIA SIN AMBIENTE NI CAMA
+ // Ejemplo real:
+ // 11 [TAB] NOMBRE [TAB] 63 [TAB] MSP [TAB] [TAB] DIETA HIPOSODICA
+ // 1  [TAB] NOMBRE [TAB] 75 [TAB] MSP [TAB] X [TAB] NPO
+ // ==========================================================
+ let cols=original.split(/\t+/).map(x=>x.trim()).filter(Boolean);
+
+ if(cols.length>=4 && /^\d{1,3}$/.test(cols[0])){
+  const ref=cols[0];
+  const nombre=cols[1]||"";
+  const edad=(cols[2]||"").match(/\d{1,3}/)?.[0]||"";
+  const cobertura=cols[3]||"";
+  const tail=cols.slice(4).filter(x=>!/^X$/i.test(x)).join(" ").trim();
+  let dieta=tail;
+  if(!dieta){
+   const all=cols.join(" ");
+   const dm=all.match(/\b(NPO|SNG|DIETA\s+.+|HIPOGL[ÚU]CIDA(?:\s+HIPOS[ÓO]DICA)?|HIPOS[ÓO]DICA|HIPERPROTEICA|GENERAL|BLANDA|L[IÍ]QUIDA.*)$/i);
+   dieta=dm?dm[1].trim():"";
+  }
+  if(nombre&&edad&&cobertura&&dieta){
+   return {
+    headerMode:"EMERGENCIA",
+    emergencyRef:ref,
+    area:"",
+    ambiente:"",
+    cama:"",
+    nombre,edad,cobertura,dieta,
+    originalHeader:original
+   };
+  }
+ }
+
+ // Respaldo por si Word pierde tabulaciones.
+ const flat=stripNumbering(original).replace(/\s+/g," ").trim();
+ const em=flat.match(/^(\d{1,3})\s+(.+?)\s+(\d{1,3})\s+(MSP|SPATT|IESS|ISSPOL|ISSFA|PRIVADO|PARTICULAR)\s+(?:X\s+)?(NPO|SNG|DIETA\s+.+|HIPOGL[ÚU]CIDA(?:\s+HIPOS[ÓO]DICA)?|HIPOS[ÓO]DICA|HIPERPROTEICA|GENERAL|BLANDA|L[IÍ]QUIDA.*)$/i);
+ if(em){
+  return {
+   headerMode:"EMERGENCIA",
+   emergencyRef:em[1],
+   area:"",
+   ambiente:"",
+   cama:"",
+   nombre:em[2].trim(),
+   edad:em[3],
+   cobertura:em[4].trim(),
+   dieta:em[5].trim(),
+   originalHeader:original
+  };
+ }
+
+ return null;
 }
 function inferSex(text){
  const u=normalizedUpper(text);
@@ -1029,24 +1094,47 @@ function makeDefaultState(h,sourceText){
 }
 function parseParagraphs(paras,fileName){
  const clean=paras.map(x=>String(x||"").trim()).filter(x=>x!=="");
- let prefix=[],patients=[],current=null,section="",firstPatientIndex=clean.findIndex(x=>parseHeader(x));
+ let prefix=[],patients=[],current=null,section="";
+
  for(let i=0;i<clean.length;i++){
   const t=clean[i],h=parseHeader(t);
+
   if(h){
    if(current)patients.push(current);
+   if(h.headerMode==="EMERGENCIA"&&!h.area)h.area=section||"EMERGENCIA";
    current={...h,id:makeId("patient"),section,sourceParas:[],completed:false,touched:false};
    continue;
   }
-  const nextHeader=(()=>{for(let j=i+1;j<clean.length;j++){if(parseHeader(clean[j]))return true;if(clean[j].trim())return false}return false})();
-  if(isShortHeading(t)&&nextHeader){
+
+  // Los títulos de sección de Emergencia deben reconocerse aunque el
+  // encabezado siguiente no tenga AMB/CAMA.
+  const emergencySection=/^(?:OBSERVACI[ÓO]N\s+CR[IÍ]TICA|OBSERVACI[ÓO]N\s+ADULTOS|CIRUG[IÍ]A\s+MENOR|OBSERVACI[ÓO]N\s+GINECOL[ÓO]GICA|EMERGENCIA(?:\s+.+)?)$/i.test(t);
+  const nextHeader=(()=>{
+   for(let j=i+1;j<clean.length;j++){
+    if(parseHeader(clean[j]))return true;
+    if(clean[j].trim())return false;
+   }
+   return false;
+  })();
+
+  if((emergencySection||isShortHeading(t))&&nextHeader){
    if(current){patients.push(current);current=null}
-   section=stripNumbering(t);continue;
+   section=stripNumbering(t).trim();
+   continue;
   }
-  if(current)current.sourceParas.push(t);else prefix.push(t);
+
+  if(current)current.sourceParas.push(t);
+  else prefix.push(t);
  }
+
  if(current)patients.push(current);
+
  const date=prefix.map(parseDateText).find(Boolean)||today();
- patients=patients.map(p=>{const sourceText=p.sourceParas.join("\n\n");return {...p,sourceText,state:makeDefaultState(p,sourceText)}});
+ patients=patients.map(p=>{
+  const sourceText=p.sourceParas.join("\n\n");
+  return {...p,sourceText,state:makeDefaultState(p,sourceText)};
+ });
+
  return {id:makeId("round"),date,fileName,prefix,patients,createdAt:Date.now(),updatedAt:Date.now()};
 }
 function paragraphText(p){
@@ -1074,7 +1162,7 @@ async function importWord(event){
   if(currentRound)await persistRound();
   flash("Leyendo Word...");
   const paras=await docxParagraphs(file),round=parseParagraphs(paras,file.name);
-  if(!round.patients.length)throw new Error("No se detectaron pacientes. Revisa que las líneas contengan AMB, C, edad, cobertura y DIETA.");
+  if(!round.patients.length)throw new Error("No se detectaron pacientes. La app acepta hospitalización con AMB/CAMA y Emergencia con número, nombre, edad, cobertura y dieta.");
   currentRound=round;currentPatientId=null;await persistRound();renderRound();renderHistory();openPatient(round.patients[0].id);
   flash(`${round.patients.length} pacientes detectados`);
  }catch(e){alert("No pude interpretar ese Word: "+e.message)}
@@ -1096,7 +1184,24 @@ function repairPatient(p){
  p.dieta=d;
  p.state=p.state||{};
  p.state.dieta=d;
- if(!p.state.perfil){const sx=p.state.sexo||inferSex(p.sourceText||"");p.state.perfil=inferProfileFromText(p.sourceText||"",sx,parseInt(p.edad||0,10),d)}
+
+ if(!p.headerMode){
+  p.headerMode=(p.ambiente||p.cama)?"HOSPITAL":"EMERGENCIA";
+ }
+
+ if(p.headerMode==="EMERGENCIA"){
+  p.ambiente="";
+  p.cama="";
+  if(!p.area)p.area=p.section||"EMERGENCIA";
+  p.state.ambiente="";
+  p.state.cama="";
+  if(!p.state.area)p.state.area=p.area;
+ }
+
+ if(!p.state.perfil){
+  const sx=p.state.sexo||inferSex(p.sourceText||"");
+  p.state.perfil=inferProfileFromText(p.sourceText||"",sx,parseInt(p.edad||0,10),d);
+ }
  return p;
 }
 function repairRound(r){if(!r)return r;if(Array.isArray(r.patients))r.patients=r.patients.map(repairPatient);return r;}
@@ -1709,6 +1814,19 @@ function simpleFingerprint(s){
 function patientSourceFingerprint(p){
  return simpleFingerprint(`${p?.sourceText||p?.state?.sourceText||""}|${p?.dieta||p?.state?.dieta||""}|${p?.edad||p?.state?.edad||""}`);
 }
+
+function toggleHeaderModeUI(p){
+ const emergency=(p?.headerMode==="EMERGENCIA");
+ if($("ambienteWrap"))$("ambienteWrap").classList.toggle("hidden",emergency);
+ if($("camaWrap"))$("camaWrap").classList.toggle("hidden",emergency);
+
+ if($("headerModeNote"))$("headerModeNote").textContent=emergency?"FORMATO EMERGENCIA: SIN AMBIENTE NI CAMA. LA SECCIÓN DEL WORD SE USA COMO ÁREA.":"FORMATO HOSPITALIZACIÓN: ÁREA + AMBIENTE + CAMA.";
+ if(emergency){
+  if($("ambiente"))$("ambiente").value="";
+  if($("cama"))$("cama").value="";
+  if($("area")&&!val("area"))$("area").value=p?.section||p?.area||"EMERGENCIA";
+ }
+}
 function openPatient(id){
  if(currentPatientId&&currentPatientId!==id)syncWorkingPatient();
  let p=currentRound?.patients.find(x=>x.id===id);if(!p)return;
@@ -1718,6 +1836,7 @@ function openPatient(id){
 
  currentPatientId=id;
  restoreState(p.state);
+ toggleHeaderModeUI(p);
  $("noPatient").classList.add("hidden");$("patientForm").classList.remove("hidden");$("clinicalSections").classList.remove("hidden");
 
  if($("sourceText"))$("sourceText").value=p.sourceText||p.state?.sourceText||"";
@@ -4018,7 +4137,20 @@ function updatePreview(){
 }
 
 /* Documento final */
-function currentHeader(p){p=repairPatient(p);const s=p.state||{},diet=patientDietText(p);return `${up(safeTextValue(s.area)||safeTextValue(p.area))} AMB ${up(safeTextValue(s.ambiente)||safeTextValue(p.ambiente))} C${up(safeTextValue(s.cama)||safeTextValue(p.cama))}   ${up(safeTextValue(s.nombre)||safeTextValue(p.nombre))} ${safeTextValue(s.edad)||safeTextValue(p.edad)} ${up(safeTextValue(s.cobertura)||safeTextValue(p.cobertura))} ${up(diet)}`}
+function currentHeader(p){
+ p=repairPatient(p);
+ const s=p.state||{},diet=patientDietText(p);
+ const nombre=up(safeTextValue(s.nombre)||safeTextValue(p.nombre));
+ const edad=safeTextValue(s.edad)||safeTextValue(p.edad);
+ const cobertura=up(safeTextValue(s.cobertura)||safeTextValue(p.cobertura));
+
+ if(p.headerMode==="EMERGENCIA"){
+  const ref=up(safeTextValue(p.emergencyRef));
+  return `${ref?ref+"   ":""}${nombre}   ${edad}   ${cobertura}   ${up(diet)}`.trim();
+ }
+
+ return `${up(safeTextValue(s.area)||safeTextValue(p.area))} AMB ${up(safeTextValue(s.ambiente)||safeTextValue(p.ambiente))} C${up(safeTextValue(s.cama)||safeTextValue(p.cama))}   ${nombre} ${edad} ${cobertura} ${up(diet)}`;
+}
 
 function sourceBeforeExistingAssessment(src){
  const s=String(src||"").trim();if(!s)return "";

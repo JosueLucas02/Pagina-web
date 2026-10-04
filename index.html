@@ -929,7 +929,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&
 const makeId=p=>`${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,9)}`;
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
 
-const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v50", FALLBACK_KEY="nutri_word_rounds_v50";
+const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v51", FALLBACK_KEY="nutri_word_rounds_v51";
 let db=null,currentRound=null,currentPatientId=null,history=[],loading=false,saveTimer=null;
 
 const simpleFields=["area","ambiente","cama","nombre","edad","cobertura","sexo","perfil","dieta","sourceText","alergia","intolerancia","ultima","consumoExacto","bristol","habito","hallazgo","peso","pesoEstimadoDoc","cb","cp","talla","talonRodilla","mediaEnvergadura","pesoPregestacional","edadGestacional","reqPerfil","cie10","plan","planObs","kcalKg","extraKcal","choPct","proPct","proKg","lipPct","clinicalProfile","renalSubtype","egfr","icuDay","hasIC","measuredEE","ibdActivity","pancreasType","surgeryScenario","suppName","suppMl","suppKcal","suppProtein","suppServings","acompanante","acompananteDetalle","informante","extremidadesDetalle","mExtSupDetalle"];
@@ -954,32 +954,47 @@ function parseHeader(text){
  if(!original)return null;
 
  // ==========================================================
- // FORMATO 1: HOSPITALIZACIÓN CON AMB / CAMA
+ // FORMATO HOSPITALARIO:
+ // Acepta AMB 4 C2, AMB 2C1, AMB4C2, AMB 10 C4.
  // ==========================================================
  const compact=stripNumbering(original).replace(/\s+/g," ").trim();
- const amb=compact.match(/\bAMB\s*([A-Za-z0-9-]+)\s+(?:C|CAMA)\s*([A-Za-z0-9-]+)/i);
+ const amb=compact.match(/\bAMB\s*([A-Za-z0-9-]+?)\s*(?:CAMA\s*|C\s*)([A-Za-z0-9-]+)/i);
+
  if(amb){
-  const area=stripNumbering(compact.slice(0,amb.index).trim()),tail=compact.slice(amb.index+amb[0].length).trim();
+  const area=stripNumbering(compact.slice(0,amb.index).trim());
+  const tail=compact.slice(amb.index+amb[0].length).trim();
+
   const dm=tail.match(/\s+((?:DIETA\s+.*)|(?:NPO\b.*)|(?:SNG\b.*)|(?:(?:GENERAL|BLANDA|L[IÍ]QUIDA(?:\s+ESTRICTA|\s+AMPLIA)?|TIPO\s+PUR[ÉE]|HIPERPROTEICA|HIPOGL[ÚU]CIDA|HIPOGRASA|HIPOS[ÓO]DICA)\b.*))$/i);
   if(!dm)return null;
-  const dieta=dm[1].trim(),beforeDiet=tail.slice(0,dm.index).trim();
+
+  const dieta=dm[1].trim();
+  const beforeDiet=tail.slice(0,dm.index).trim();
   const ages=[...beforeDiet.matchAll(/(?:^|\s)(\d{1,3})(?=\s|$)/g)];
   if(!ages.length)return null;
-  const am=ages[ages.length-1],edad=am[1],nombre=beforeDiet.slice(0,am.index).trim(),after=beforeDiet.slice(am.index+am[0].length).trim();
+
+  const am=ages[ages.length-1];
+  const edad=am[1];
+  const nombre=beforeDiet.slice(0,am.index).trim();
+  const after=beforeDiet.slice(am.index+am[0].length).trim();
   if(!nombre)return null;
+
   const cov=after.match(/^(MSP|SPATT|IESS|ISSPOL|ISSFA|PRIVADO|PARTICULAR|SEGURO(?:\s+[A-ZÁÉÍÓÚÑ]+)?)(?:\s|$)/i);
   const cobertura=cov?cov[1].trim():(after?after.split(/\s+/)[0]:"");
-  return {headerMode:"HOSPITAL",area,ambiente:amb[1],cama:amb[2],nombre,edad,cobertura,dieta,originalHeader:original};
+
+  return {
+   headerMode:"HOSPITAL",
+   area,
+   ambiente:amb[1],
+   cama:amb[2],
+   nombre,edad,cobertura,dieta,
+   originalHeader:original
+  };
  }
 
  // ==========================================================
- // FORMATO 2: EMERGENCIA SIN AMBIENTE NI CAMA
- // Ejemplo real:
- // 11 [TAB] NOMBRE [TAB] 63 [TAB] MSP [TAB] [TAB] DIETA HIPOSODICA
- // 1  [TAB] NOMBRE [TAB] 75 [TAB] MSP [TAB] X [TAB] NPO
+ // FORMATO EMERGENCIA SIN AMB/CAMA
  // ==========================================================
  let cols=original.split(/\t+/).map(x=>x.trim()).filter(Boolean);
-
  if(cols.length>=4 && /^\d{1,3}$/.test(cols[0])){
   const ref=cols[0];
   const nombre=cols[1]||"";
@@ -987,11 +1002,13 @@ function parseHeader(text){
   const cobertura=cols[3]||"";
   const tail=cols.slice(4).filter(x=>!/^X$/i.test(x)).join(" ").trim();
   let dieta=tail;
+
   if(!dieta){
    const all=cols.join(" ");
    const dm=all.match(/\b(NPO|SNG|DIETA\s+.+|HIPOGL[ÚU]CIDA(?:\s+HIPOS[ÓO]DICA)?|HIPOS[ÓO]DICA|HIPERPROTEICA|GENERAL|BLANDA|L[IÍ]QUIDA.*)$/i);
    dieta=dm?dm[1].trim():"";
   }
+
   if(nombre&&edad&&cobertura&&dieta){
    return {
     headerMode:"EMERGENCIA",
@@ -1005,7 +1022,6 @@ function parseHeader(text){
   }
  }
 
- // Respaldo por si Word pierde tabulaciones.
  const flat=stripNumbering(original).replace(/\s+/g," ").trim();
  const em=flat.match(/^(\d{1,3})\s+(.+?)\s+(\d{1,3})\s+(MSP|SPATT|IESS|ISSPOL|ISSFA|PRIVADO|PARTICULAR)\s+(?:X\s+)?(NPO|SNG|DIETA\s+.+|HIPOGL[ÚU]CIDA(?:\s+HIPOS[ÓO]DICA)?|HIPOS[ÓO]DICA|HIPERPROTEICA|GENERAL|BLANDA|L[IÍ]QUIDA.*)$/i);
  if(em){
@@ -1022,7 +1038,6 @@ function parseHeader(text){
    originalHeader:original
   };
  }
-
  return null;
 }
 function inferSex(text){
@@ -1095,32 +1110,59 @@ function makeDefaultState(h,sourceText){
 }
 function parseParagraphs(paras,fileName){
  const clean=paras.map(x=>String(x||"").trim()).filter(x=>x!=="");
- let prefix=[],patients=[],current=null,section="";
+ let prefix=[],patients=[],current=null,section="",serviceSection="";
 
  for(let i=0;i<clean.length;i++){
   const t=clean[i],h=parseHeader(t);
 
   if(h){
    if(current)patients.push(current);
-   if(h.headerMode==="EMERGENCIA"&&!h.area)h.area=section||"EMERGENCIA";
-   current={...h,id:makeId("patient"),section,sourceParas:[],completed:false,touched:false};
+
+   // Si el encabezado no trae área escrita, tomar la sección real del Word.
+   if(!h.area)h.area=section||serviceSection||(h.headerMode==="EMERGENCIA"?"EMERGENCIA":"");
+
+   current={...h,id:makeId("patient"),section:h.area||section||serviceSection,sourceParas:[],completed:false,touched:false};
    continue;
   }
 
-  // Los títulos de sección de Emergencia deben reconocerse aunque el
-  // encabezado siguiente no tenga AMB/CAMA.
+  const norm=normalizedUpper(t);
+  const explicitService=/^(?:GINECO(?:\s+\d+)?|CIRUG[IÍ]A(?:\s+\d+)?|MEDICINA(?:\s+\d+)?|PEDIATR[IÍ]A(?:\s+\d+)?|EMERGENCIA(?:\s+\d+)?)$/.test(norm);
+  const genericHeading=/^(?:INGRESOS|EGRESOS|OBSERVACI[ÓO]N|HOSPITALIZACI[ÓO]N)$/.test(norm);
   const emergencySection=/^(?:OBSERVACI[ÓO]N\s+CR[IÍ]TICA|OBSERVACI[ÓO]N\s+ADULTOS|CIRUG[IÍ]A\s+MENOR|OBSERVACI[ÓO]N\s+GINECOL[ÓO]GICA|EMERGENCIA(?:\s+.+)?)$/i.test(t);
+
+  if(explicitService){
+   if(current){patients.push(current);current=null;}
+   serviceSection=stripNumbering(t).trim();
+   section=serviceSection;
+   continue;
+  }
+
+  // "INGRESOS" no reemplaza GINECO/GINECO 2.
+  if(genericHeading){
+   if(!serviceSection)section=stripNumbering(t).trim();
+   if(!current)prefix.push(t);
+   else current.sourceParas.push(t);
+   continue;
+  }
+
+  if(emergencySection){
+   if(current){patients.push(current);current=null;}
+   section=stripNumbering(t).trim();
+   continue;
+  }
+
   const nextHeader=(()=>{
-   for(let j=i+1;j<clean.length;j++){
+   for(let j=i+1;j<Math.min(clean.length,i+4);j++){
     if(parseHeader(clean[j]))return true;
-    if(clean[j].trim())return false;
+    if(!isShortHeading(clean[j]))break;
    }
    return false;
   })();
 
-  if((emergencySection||isShortHeading(t))&&nextHeader){
-   if(current){patients.push(current);current=null}
+  if(isShortHeading(t)&&nextHeader){
+   if(current){patients.push(current);current=null;}
    section=stripNumbering(t).trim();
+   if(!serviceSection)serviceSection=section;
    continue;
   }
 
@@ -2212,15 +2254,50 @@ function parsedEgfr(){
  }
  return null;
 }
+
+function dialysisTreatmentStatus(){
+ const u=backgroundClinicalText();
+
+ const negativePatterns=[
+  /NO\s+(?:SE\s+)?REALIZA\s+(?:HEMODI[ÁA]LISIS|DI[ÁA]LISIS)/,
+  /NO\s+(?:EST[ÁA]\s+)?EN\s+(?:HEMODI[ÁA]LISIS|DI[ÁA]LISIS)/,
+  /SIN\s+(?:HEMODI[ÁA]LISIS|DI[ÁA]LISIS|KRT)/,
+  /NO\s+HEMODIALIZA/,
+  /NEGATIVA\s+(?:A|DEL)\s+(?:MISMO|TRATAMIENTO|HEMODI[ÁA]LISIS|DI[ÁA]LISIS)/,
+  /RECHAZA\s+(?:HEMODI[ÁA]LISIS|DI[ÁA]LISIS|KRT)/,
+  /SE\s+NIEGA\s+A\s+(?:HEMODI[ÁA]LISIS|DI[ÁA]LISIS|KRT)/
+ ];
+
+ const refused=negativePatterns.some(rx=>rx.test(u));
+ const required=/REQUERIMIENTO\s+DIAL[IÍ]TICO|INDICACI[ÓO]N\s+DE\s+(?:HEMODI[ÁA]LISIS|DI[ÁA]LISIS)|REQUIERE\s+(?:HEMODI[ÁA]LISIS|DI[ÁA]LISIS)/.test(u);
+
+ const ckrt=/\bCKRT\b|\bCRRT\b|\bPIKRT\b|HEMOFILTRACI[ÓO]N\s+CONTINUA|HEMODIAFILTRACI[ÓO]N\s+CONTINUA/.test(u);
+ const intermittent=/HEMODI[ÁA]LISIS\s+(?:INTERMITENTE|CR[ÓO]NICA)|\bIHD\b|KRT\s+INTERMITENTE/.test(u);
+ const activeGeneral=/EN\s+HEMODI[ÁA]LISIS|RECIBE\s+HEMODI[ÁA]LISIS|SE\s+REALIZA\s+HEMODI[ÁA]LISIS|PACIENTE\s+DIAL[IÍ]TICO|DI[ÁA]LISIS\s+PERITONEAL|EN\s+DI[ÁA]LISIS|\bKRT\b/.test(u);
+
+ const active=!refused&&(ckrt||intermittent||activeGeneral);
+ let label="SIN DIÁLISIS/KRT ACTUAL DOCUMENTADA";
+ if(refused&&required)label="REQUIERE DIÁLISIS/KRT, PERO NO SE REALIZA / FUE RECHAZADA";
+ else if(refused)label="DIÁLISIS/KRT NEGADA O NO REALIZADA";
+ else if(ckrt)label="CKRT/PIKRT ACTIVA";
+ else if(intermittent)label="HEMODIÁLISIS/KRT INTERMITENTE ACTIVA";
+ else if(active)label="DIÁLISIS/KRT ACTIVA";
+
+ return {active,refused,required,ckrt,intermittent,label};
+}
 function renalFunctionContext(){
- const u=backgroundClinicalText(),active=activeDiagnosisText(),area=normalizedUpper(val("area")),egfr=parsedEgfr();
- const dialysis=/HEMODIAL|DIALISIS|DIÁLISIS|\bKRT\b|CKRT|PIKRT/.test(u);
- const ckrt=/CKRT|PIKRT|CRRT|TERAPIA CONTINUA/.test(u);
- const aki=/\bAKI\b|LESI[ÓO]N RENAL AGUDA|FALLA RENAL AGUDA|INSUFICIENCIA RENAL AGUDA/.test(active);
+ const u=backgroundClinicalText(),activeDx=activeDiagnosisText(),area=normalizedUpper(val("area")),egfr=parsedEgfr();
+ const ds=dialysisTreatmentStatus();
+ const dialysis=ds.active;
+ const ckrt=ds.ckrt&&ds.active;
+
+ const aki=/\bAKI\b|LESI[ÓO]N RENAL AGUDA|FALLA RENAL AGUDA|INSUFICIENCIA RENAL AGUDA/.test(activeDx);
  const ckd=/ENFERMEDAD RENAL CR[ÓO]NICA|INSUFICIENCIA RENAL CR[ÓO]NICA|\bERC\b|\bCKD\b|N18\.?/.test(u);
+ const kidneyFailure=/FALLA RENAL|INSUFICIENCIA RENAL|ENFERMEDAD RENAL CR[ÓO]NICA ESTADIO [45]|ERC ESTADIO [45]|REQUERIMIENTO DIAL[IÍ]TICO/.test(u);
  const critical=/\bUCI\b|\bICU\b/.test(area)||diseaseFlagsBaseCritical();
- const impaired=(egfr!==null&&egfr<60)||aki||ckd||dialysis;
- return {egfr,dialysis,ckrt,aki,ckd,critical,impaired};
+ const impaired=(egfr!==null&&egfr<60)||aki||ckd||kidneyFailure||dialysis||ds.required;
+
+ return {egfr,dialysis,ckrt,aki,ckd,kidneyFailure,critical,impaired,dialysisStatus:ds};
 }
 function diseaseFlagsBaseCritical(){
  const active=activeDiagnosisText(),area=normalizedUpper(val("area"));
@@ -2228,6 +2305,7 @@ function diseaseFlagsBaseCritical(){
 }
 function autoRenalSubtype(){
  const r=renalFunctionContext();
+
  if(r.critical&&r.dialysis)return r.ckrt?"CRIT_CKRT":"CRIT_IHD";
  if(r.critical&&!r.dialysis)return "CRIT_NO_KRT";
  if(r.aki&&!r.critical)return "AKI_NONCRIT";
@@ -2242,8 +2320,8 @@ function resolvedRenalSubtype(){
 function diseaseFlags(){
  const all=backgroundClinicalText(),active=activeDiagnosisText(),area=normalizedUpper(val("area")),egfr=parsedEgfr();
  return {
-  renal:/ENFERMEDAD RENAL|INSUFICIENCIA RENAL|\bERC\b|\bCKD\b|\bAKI\b|N18\.?|HEMODIAL|DIALISIS|DIÁLISIS|LESI[ÓO]N RENAL AGUDA/.test(all)||(egfr!==null&&egfr<60),
-  dialysis:/HEMODIAL|DIALISIS|DIÁLISIS|\bKRT\b|CKRT|PIKRT|CRRT/.test(all),
+  renal:/ENFERMEDAD RENAL|INSUFICIENCIA RENAL|\bERC\b|\bCKD\b|\bAKI\b|N18\.?|HEMODIAL|DIALISIS|DIÁLISIS|REQUERIMIENTO DIAL[IÍ]TICO|LESI[ÓO]N RENAL AGUDA/.test(all)||(egfr!==null&&egfr<60),
+  dialysis:dialysisTreatmentStatus().active,
   hepatic:/CIRROSIS|HEPATOPAT|INSUFICIENCIA HEPATICA|INSUFICIENCIA HEPÁTICA|TRASPLANTE HEPATICO|TRANSPLANTE HEPATICO|SINDROME COLESTASICO|SÍNDROME COLESTÁSICO/.test(all),
   pancreas:/PANCREATIT/.test(active),
   ibd:/CROHN|COLITIS ULCEROSA|ENFERMEDAD INFLAMATORIA INTESTINAL|\bEII\b/.test(all),
@@ -2345,10 +2423,15 @@ function currentContextText(){
 }
 function inferClinicalProfile(){
  const p=val("perfil"),f=diseaseFlags(),all=backgroundClinicalText(),b=calculationsBase();
+
  if(p==="embarazada")return "EMBARAZO";
  if(p==="posparto")return "POSPARTO";
- if(f.critical)return "UCI";
+
+ // Si existe enfermedad renal, usar primero el motor renal porque este
+ // distingue crítico/no crítico y KRT/no KRT.
  if(f.renal)return "RENAL";
+ if(f.critical)return "UCI";
+
  if(f.pancreas)return "PANCREATITIS";
  if(f.ibd)return "IBD";
  if(f.hepatic)return "HEPATICO";
@@ -2769,38 +2852,61 @@ function guidelineEngine(){
     :day<=7?"UCI días 4–7: progresión energética dentro del rango ASPEN.":"UCI >7 días: aproximación a 25 kcal/kg si no hay calorimetría y la tolerancia es adecuada."];
   }
  }else if(cp==="RENAL"){
-  source="ESPEN Kidney Disease Practical Guideline 2024 + ESPEN Polymorbid Practical 2024";
-  const rc=renalFunctionContext(),r=resolvedRenalSubtype();
+  source="ESPEN Kidney Disease Practical Guideline 2024";
+  const rc=renalFunctionContext(),r=resolvedRenalSubtype(),ds=rc.dialysisStatus;
   if($("renalSubtype")&&$("renalSubtype").dataset.manual!=="1")$("renalSubtype").value=r;
 
-  // En edema/sobrecarga o situación crítica usar peso de referencia; si está estable y euvolémico, actual.
+  // Peso de referencia: si hay edema/sobrecarga o estado crítico,
+  // evitar que el peso hídrico sobrestime el requerimiento.
   if((cx.edema||cx.ascites||rc.critical)&&ideal){eW=ideal;pW=ideal;}
   else{eW=actual;pW=actual;}
 
-  kMin=25;kMax=30;kChosen=rc.critical?25:30;
+  // La enfermedad renal o la diálisis por sí solas NO aumentan automáticamente
+  // el gasto energético. Sin calorimetría se individualiza 20–30 kcal/kg
+  // según fase aguda, estabilidad, riesgo y comorbilidades.
+  kMin=20;kMax=30;
+  if(rc.critical)kChosen=25;
+  else if(mod.malnutrition||mod.nutritionRisk||mod.stress.level!=="BAJO")kChosen=30;
+  else kChosen=25;
 
-  if(rc.egfr!==null&&rc.egfr<30&&!rc.dialysis&&!rc.critical){
-   pMin=pMax=pChosen=.8;
-   reason=[`eGFR ${one(rc.egfr)} ml/min/1,73 m² sin KRT: 0,8 g proteína/kg.`];
-  }else if(r==="CKD_STABLE"){
-   pMin=.6;pMax=.8;pChosen=.8;
-   reason=["ERC hospitalizada sin enfermedad aguda/crítica: 0,6–0,8 g proteína/kg."];
+  if(r==="CKD_STABLE"){
+   pMin=.6;pMax=.8;
+   pChosen=(mod.stress.level==="BAJO"&&!mod.nutritionRisk&&!mod.malnutrition)?.8:.8;
+   reason=[
+    `${ds.label}. ERC hospitalizada sin enfermedad crítica y SIN KRT ACTIVA: 0,6–0,8 g proteína/kg/día; se usa 0,8 g/kg como meta hospitalaria.`
+   ];
   }else if(r==="DIALYSIS_STABLE"){
    pMin=pMax=pChosen=1.2;
-   reason=["Diálisis crónica estable: ≥1,2 g proteína/kg."];
+   reason=[
+    `${ds.label}. ERC/falla renal con KRT crónica estable: ≥1,2 g proteína/kg/día por pérdidas y mayores necesidades.`
+   ];
   }else if(r==="AKI_NONCRIT"){
    pMin=.8;pMax=1.0;pChosen=1.0;
-   reason=["AKI/AKI sobre ERC no crítica: 0,8–1,0 g proteína/kg."];
+   reason=[
+    `${ds.label}. AKI o AKI sobre ERC no crítica: 0,8–1,0 g proteína/kg/día.`
+   ];
   }else if(r==="CRIT_NO_KRT"){
-   pMin=1.0;pMax=1.3;pChosen=1.3;
-   reason=["Enfermedad renal crítica sin KRT: iniciar 1,0 y progresar hasta 1,3 g/kg si tolera."];
+   pMin=1.0;pMax=1.3;
+   pChosen=mod.stress.level==="ALTO"?1.3:1.1;
+   reason=[
+    `${ds.label}. Enfermedad renal + enfermedad crítica SIN KRT: iniciar alrededor de 1,0 g/kg y progresar hasta 1,3 g/kg si tolera.`
+   ];
   }else if(r==="CRIT_IHD"){
-   pMin=1.3;pMax=1.5;pChosen=1.5;
-   reason=["Crítico con KRT intermitente: 1,3–1,5 g proteína/kg."];
+   pMin=1.3;pMax=1.5;
+   pChosen=mod.stress.level==="ALTO"?1.5:1.3;
+   reason=[
+    `${ds.label}. Paciente crítico con KRT intermitente: 1,3–1,5 g proteína/kg/día.`
+   ];
   }else if(r==="CRIT_CKRT"){
-   pMin=1.5;pMax=1.7;pChosen=1.7;
-   reason=["Crítico con CKRT/PIKRT: 1,5–1,7 g proteína/kg."];
+   pMin=1.5;pMax=1.7;
+   pChosen=mod.stress.level==="ALTO"?1.7:1.5;
+   reason=[
+    `${ds.label}. Paciente crítico con CKRT/PIKRT: 1,5–1,7 g proteína/kg/día por pérdidas asociadas a la terapia.`
+   ];
   }
+
+  if(rc.egfr!==null)reason.push(`eGFR/TFG documentada: ${one(rc.egfr)} ml/min/1,73 m².`);
+  if(ds.required&&!ds.active)reason.push("Existe indicación/requerimiento dialítico, pero NO se contabiliza como paciente en diálisis mientras la terapia no se esté realizando.");
  }else if(cp==="HEPATICO"){
   // Si además hay obesidad, joint ESPEN/UEG propone ABW con 33% del exceso.
   eW=mod.obesity?(adj33||actual):actual;pW=mod.obesity?(adj33||actual):actual;
@@ -2985,16 +3091,22 @@ function appliedGuidesText(g){
  return `Biblioteca ESPEN vigente revisada 30-08-2026 · ${[...new Set(map[g.cp]||[g.source])].join(" · ")}`;
 }
 function renalSafetyText(g){
- const age=num(val("edad"))||0,rc=renalFunctionContext();
+ const age=num(val("edad"))||0,rc=renalFunctionContext(),ds=rc.dialysisStatus;
+
  if(rc.impaired){
-  const eg=rc.egfr!==null?`eGFR ${one(rc.egfr)} ml/min/1,73 m². `:"";
-  if(rc.dialysis)return `${eg}KRT/diálisis detectada: la proteína se ajusta por las pérdidas y el tipo de terapia, no se restringe automáticamente.`;
-  if(rc.egfr!==null&&rc.egfr<30)return `${eg}Sin KRT: se evita un objetivo proteico alto automático y se aplica la pauta renal.`;
-  return `${eg}Deterioro renal detectado: el perfil renal tiene prioridad.`;
+  const eg=rc.egfr!==null?`TFG/eGFR ${one(rc.egfr)} ml/min/1,73 m². `:"";
+  if(ds.active){
+   if(ds.ckrt)return `${eg}${ds.label}: proteína ajustada a terapia continua; no aplicar restricción de ERC estable.`;
+   return `${eg}${ds.label}: proteína ajustada por pérdidas de diálisis/KRT.`;
+  }
+  if(ds.required&&!ds.active)
+   return `${eg}${ds.label}: se calcula como SIN KRT ACTIVA hasta que la terapia realmente se realice.`;
+  return `${eg}SIN DIÁLISIS/KRT ACTUAL DOCUMENTADA: se aplica la pauta renal correspondiente al estado clínico.`;
  }
+
  if(age>=60){
-  if(rc.egfr!==null)return `eGFR ${one(rc.egfr)} ml/min/1,73 m². No hay criterio renal para reducir proteína solo por la edad.`;
-  return "No hay eGFR documentado. La evidencia no justifica restringir proteína únicamente por tener mayor edad; si se usan 1,4–1,5 g/kg conviene confirmar función renal.";
+  if(rc.egfr!==null)return `TFG/eGFR ${one(rc.egfr)} ml/min/1,73 m². No se restringe proteína únicamente por edad.`;
+  return "No hay TFG/eGFR documentada. La edad por sí sola no justifica reducir proteína.";
  }
  return "Sin modificador renal detectado en los datos disponibles.";
 }
@@ -3051,7 +3163,7 @@ function updateClinicalUI(){
  if($("appliedGuides"))$("appliedGuides").textContent=appliedGuidesText(g);
  if($("renalAutoHint")&&g.cp==="RENAL"){
   const rc=renalFunctionContext(),sub=resolvedRenalSubtype();
-  $("renalAutoHint").textContent=`Detectado automáticamente: ${sub.replaceAll("_"," ")}${rc.egfr!==null?` · eGFR ${one(rc.egfr)}`:""}.`;
+  $("renalAutoHint").textContent=`Detectado automáticamente: ${sub.replaceAll("_"," ")} · ${rc.dialysisStatus.label}${rc.egfr!==null?` · TFG/eGFR ${one(rc.egfr)}`:""}.`;
  }
  if($("dietProgressionSuggestion"))$("dietProgressionSuggestion").textContent=dietProgressionSuggestion();
 
@@ -3301,16 +3413,18 @@ function automaticNRS2002(){
 
 function screeningText(){
  const age=num(val("edad"))||0;
+
  if(age>=60){
   const m=mnaResult();
   return m.complete
-   ?`${m.label}, SEGÚN CRIBADO MNA-SF: ${m.total}/14 PUNTOS.`
-   :"CRIBADO MNA-SF PENDIENTE POR ANTROPOMETRÍA.";
+   ?`${m.label}, SEGÚN MNA-SF (${m.total}/14 PUNTOS).`
+   :"MNA-SF PENDIENTE POR ANTROPOMETRÍA.";
  }
+
  const n=automaticNRS2002();
- if(!n.finalPerformed)
-  return "CRIBADO INICIAL NRS-2002 NEGATIVO. SIN RIESGO NUTRICIONAL; REEVALUAR SEMANALMENTE.";
- return `${n.risk}, SEGÚN CRIBADO NRS-2002: ${n.total} PUNTOS.`;
+ if(n.total===0)return "SIN RIESGO NUTRICIONAL SEGÚN NRS-2002 (0 PUNTOS).";
+ if(n.total<3)return `SIN RIESGO NUTRICIONAL SEGÚN NRS-2002 (${n.total} PUNTOS).`;
+ return `CON RIESGO NUTRICIONAL SEGÚN NRS-2002 (${n.total} PUNTOS).`;
 }
 function calculationsBase(){
  const w=getWeight(),h=num(val("talla")),age=num(val("edad"))||0;
@@ -3334,15 +3448,15 @@ function updateScreeningUI(){
 
  const n=automaticNRS2002();
  if(!n.finalPerformed){
-  if($("adultRiskResult"))$("adultRiskResult").textContent="CRIBADO INICIAL NEGATIVO";
-  if($("adultStressResult"))$("adultStressResult").textContent="SIN RIESGO · REEVALUAR SEMANALMENTE";
+  if($("adultRiskResult"))$("adultRiskResult").textContent="NRS-2002: 0 PUNTOS";
+  if($("adultStressResult"))$("adultStressResult").textContent="SIN RIESGO NUTRICIONAL";
   if($("screenReasonText"))$("screenReasonText").textContent=
    `NRS-2002 INICIAL: IMC <20,5 ${n.initial.bmi?"SÍ":"NO"} · PÉRDIDA DE PESO 3 MESES ${n.initial.loss?"SÍ":"NO"} · INGESTA REDUCIDA ÚLTIMA SEMANA ${n.initial.reduced?"SÍ":"NO"} · ENFERMEDAD GRAVE ${n.initial.severe?"SÍ":"NO"}.`;
   return;
  }
 
  if($("adultRiskResult"))$("adultRiskResult").textContent=`NRS-2002: ${n.total} PUNTOS`;
- if($("adultStressResult"))$("adultStressResult").textContent=n.risk;
+ if($("adultStressResult"))$("adultStressResult").textContent=n.total>=3?"CON RIESGO NUTRICIONAL":"SIN RIESGO NUTRICIONAL";
  if($("screenReasonText"))$("screenReasonText").textContent=
   `NRS-2002 FINAL: ESTADO NUTRICIONAL ${n.nut} + GRAVEDAD DE ENFERMEDAD ${n.dis}${n.agePt?` + EDAD ≥70 (${n.agePt})`:""} = ${n.total} PUNTOS. ${n.disReason}.`;
 }
@@ -3819,15 +3933,18 @@ function diagnosisWithICD10(baseDiagnosis){
 
 function screeningEvidenceForDiagnosis(){
  const age=num(val("edad"))||0;
+
  if(age>=60){
   const m=mnaResult();
   return m.complete
-   ?`${m.label} SEGÚN CRIBADO MNA-SF: ${m.total}/14 PUNTOS`
-   :"CRIBADO MNA-SF PENDIENTE";
+   ?`${m.label} SEGÚN MNA-SF (${m.total}/14 PUNTOS)`
+   :"MNA-SF PENDIENTE";
  }
+
  const n=automaticNRS2002();
- if(!n.finalPerformed)return "CRIBADO INICIAL NRS-2002 NEGATIVO";
- return `${n.risk} SEGÚN CRIBADO NRS-2002: ${n.total} PUNTOS`;
+ if(n.total===0)return "SIN RIESGO NUTRICIONAL SEGÚN NRS-2002 (0 PUNTOS)";
+ if(n.total<3)return `SIN RIESGO NUTRICIONAL SEGÚN NRS-2002 (${n.total} PUNTOS)`;
+ return `CON RIESGO NUTRICIONAL SEGÚN NRS-2002 (${n.total} PUNTOS)`;
 }
 function diagnosisByBMI(){
  const c=calculations(),screen=screeningEvidenceForDiagnosis();

@@ -822,6 +822,7 @@ img,svg,table{
     <div class="q"><div class="qt">Energía</div><div id="whyEnergy" class="note"></div></div>
     <div class="q"><div class="qt">Proteína</div><div id="whyProtein" class="note"></div></div>
     <div class="q"><div class="qt">Carbohidratos</div><div id="whyCarbs" class="note"></div></div>
+    <div class="q"><div class="qt">Lípidos</div><div id="whyLipids" class="note"></div></div>
     <div class="q"><div class="qt">Seguridad renal</div><div id="renalSafety" class="note"></div></div>
    </div>
    <div class="q" style="margin-top:8px">
@@ -929,7 +930,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&
 const makeId=p=>`${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,9)}`;
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
 
-const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v51", FALLBACK_KEY="nutri_word_rounds_v51";
+const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v52", FALLBACK_KEY="nutri_word_rounds_v52";
 let db=null,currentRound=null,currentPatientId=null,history=[],loading=false,saveTimer=null;
 
 const simpleFields=["area","ambiente","cama","nombre","edad","cobertura","sexo","perfil","dieta","sourceText","alergia","intolerancia","ultima","consumoExacto","bristol","habito","hallazgo","peso","pesoEstimadoDoc","cb","cp","talla","talonRodilla","mediaEnvergadura","pesoPregestacional","edadGestacional","reqPerfil","cie10","plan","planObs","kcalKg","extraKcal","choPct","proPct","proKg","lipPct","clinicalProfile","renalSubtype","egfr","icuDay","hasIC","measuredEE","ibdActivity","pancreasType","surgeryScenario","suppName","suppMl","suppKcal","suppProtein","suppServings","acompanante","acompananteDetalle","informante","extremidadesDetalle","mExtSupDetalle"];
@@ -2991,6 +2992,16 @@ function guidelineEngine(){
     reason.push(`ENERGÍA SELECCIONADA EN ${one(kChosen)} KCAL/KG DENTRO DEL RANGO ${one(kMin)}–${one(kMax)} SEGÚN ${energyClinicalFactors(mod).join(", ")}.`);
  }
 
+ // La prescripción HIPERPROTEICA también es información clínica.
+ const dietOrder=normalizedUpper(val("plan")||val("dieta")||"");
+ if(/HIPERPROTEICA|ALTA EN PROTE[IÍ]NA/.test(dietOrder) &&
+    !["RENAL","UCI","EMBARAZO","POSPARTO","MANUAL"].includes(cp)){
+   pMin=Math.max(pMin,1.2);
+   pMax=Math.max(pMax,1.5);
+   pChosen=Math.max(pChosen,chooseProteinInRange(pMin,pMax,mod,1.2));
+   reason.push(`PRESCRIPCIÓN HIPERPROTEICA DETECTADA: SE ASEGURA AL MENOS 1,2 G/KG Y SE INDIVIDUALIZA DENTRO DE ${one(pMin)}–${one(pMax)} G/KG.`);
+ }
+
  // Refinamiento de proteína dentro del rango según el cuadro clínico.
  if(!["RENAL","UCI","EMBARAZO","POSPARTO","MANUAL","GERIATRIA","DEMENCIA"].includes(cp) &&
     Number.isFinite(pMin)&&Number.isFinite(pMax)&&pMax>pMin){
@@ -3051,16 +3062,8 @@ function whyProteinText(g){
  return t;
 }
 function whyCarbText(c,g){
- const diet=normalizedUpper(val("dieta"));
- if(diet.includes("HIPOGLUCIDA"))
-  return `CHO ${Math.round(c.cho)}% porque la prescripción actual es hipoglucida. La proteína se fija por g/kg y los lípidos completan la energía.`;
- if(diet.includes("HIPOGRASA"))
-  return `La dieta es hipograsa: se fija grasa en 30% y los CHO quedan en ${Math.round(c.cho)}% después de respetar la proteína.`;
- if(g.cp==="GERIATRIA"||g.cp==="DEMENCIA")
-  return `CHO ${Math.round(c.cho)}%: 55% si el adulto mayor está estable y 50% si existe enfermedad/riesgo, dentro del patrón hospitalario.`;
- if(g.cp==="GENERAL"&&!g.mod.nutritionRisk&&g.mod.stress.level==="BAJO")
-  return `CHO ${Math.round(c.cho)}%: dieta estándar hospitalaria, dentro del rango ESPEN 50–60%.`;
- return `CHO ${Math.round(c.cho)}%: dieta hospitalaria/enfermedad activa. ESPEN propone 45–50% para dieta hospitalaria; la app usa 50% salvo una prescripción específica como hipoglucida.`;
+ if(c.choReason)return c.choReason;
+ return `CARBOHIDRATOS ${one(c.cho)}% SEGÚN LA ENERGÍA, PROTEÍNA Y LÍPIDOS DEFINIDOS PARA EL PERFIL CLÍNICO.`;
 }
 function appliedGuidesText(g){
  const map={
@@ -3090,6 +3093,11 @@ function appliedGuidesText(g){
  };
  return `Biblioteca ESPEN vigente revisada 30-08-2026 · ${[...new Set(map[g.cp]||[g.source])].join(" · ")}`;
 }
+
+function whyLipidText(c,g){
+ if(c.fatReason)return c.fatReason;
+ return `LÍPIDOS ${one(c.lip)}%: SE AJUSTAN SEGÚN DIETA, TOLERANCIA DIGESTIVA, PERFIL CARDIOMETABÓLICO/RENAL Y PORCENTAJE PROTEICO; NO SE USAN COMO SIMPLE RESIDUO DE LOS CHO.`;
+}
 function renalSafetyText(g){
  const age=num(val("edad"))||0,rc=renalFunctionContext(),ds=rc.dialysisStatus;
 
@@ -3112,22 +3120,23 @@ function renalSafetyText(g){
 }
 function requirementSanity(){
  const g=guidelineEngine(),b=calculationsBase(),c=calculations(),k=g.goalKcal;
- if(b.w===null)return "Falta peso actual o estimado: no se calculan kcal ni proteína.";
+ if(b.w===null)return "FALTA PESO ACTUAL O ESTIMADO: NO SE CALCULAN KCAL NI PROTEÍNA.";
  if(k===null)return "";
 
  let txt="";
- if(g.kChosen!==null&&g.eW!==null){
+ if(g.kChosen!==null&&g.eW!==null)
   txt=`CÁLCULO CLÍNICO: ${one(g.eW)} KG × ${one(g.kChosen)} KCAL/KG${g.extra?` + ${Math.round(g.extra)} KCAL`:""} = ${Math.round(k)} KCAL/DÍA.`;
- }
  if(g.energyCheck?.low!==null&&g.energyCheck?.high!==null)
-  txt+=` RANGO ENERGÉTICO DE LA GUÍA PARA ESTE PACIENTE: ${Math.round(g.energyCheck.low)}–${Math.round(g.energyCheck.high)} KCAL/DÍA. META FINAL ${g.energyCheck.status}.`;
-
- txt+=` FACTORES USADOS: ${energyClinicalFactors(g.mod).join(", ")}.`;
+  txt+=` RANGO ENERGÉTICO DE LA GUÍA: ${Math.round(g.energyCheck.low)}–${Math.round(g.energyCheck.high)} KCAL/DÍA. META FINAL ${g.energyCheck.status}.`;
+ txt+=` FACTORES: ${energyClinicalFactors(g.mod).join(", ")}.`;
 
  if(c.macroKcal!==null&&Number.isFinite(c.macroKcal)){
-  const diff=Math.abs(c.macroKcal-c.kcal);
-  txt+=` MACROS: ${Math.round(c.cho)}% CHO + ${Math.round(c.pp)}% PROTEÍNA + ${Math.round(c.lip)}% LÍPIDOS = ${Math.round(c.macroKcal)} KCAL`;
+  const diff=Math.abs(c.macroKcal-c.kcal),sum=c.cho+c.pp+c.lip;
+  txt+=` DISTRIBUCIÓN: ${one(c.cho)}% CHO + ${one(c.pp)}% PROTEÍNA + ${one(c.lip)}% LÍPIDOS = ${one(sum)}%.`;
+  txt+=` RECONSTRUCCIÓN ENERGÉTICA: ${Math.round(c.macroKcal)} KCAL`;
   txt+=diff<=2?" (COHERENTE).":` (REVISAR: DIFERENCIA ${Math.round(diff)} KCAL).`;
+  if(c.lip>40)txt+=" ALERTA: LÍPIDOS >40%; REVISAR PRESCRIPCIÓN/CONDICIÓN CLÍNICA.";
+  if(c.lip<20)txt+=" ALERTA: LÍPIDOS <20%; REVISAR ESENCIALIDAD Y TOLERANCIA.";
  }
  return txt;
 }
@@ -3159,6 +3168,7 @@ function updateClinicalUI(){
  if($("whyEnergy"))$("whyEnergy").textContent=whyEnergyText(g);
  if($("whyProtein"))$("whyProtein").textContent=whyProteinText(g);
  if($("whyCarbs"))$("whyCarbs").textContent=whyCarbText(c,g);
+ if($("whyLipids"))$("whyLipids").textContent=whyLipidText(c,g);
  if($("renalSafety"))$("renalSafety").textContent=renalSafetyText(g);
  if($("appliedGuides"))$("appliedGuides").textContent=appliedGuidesText(g);
  if($("renalAutoHint")&&g.cp==="RENAL"){
@@ -3191,6 +3201,12 @@ function updateClinicalUI(){
  if(cx.fistula)tags.push("fístula/fuga");
  if(cx.highStoma)tags.push("ostomía alto débito");
  if(cx.openAbdomen)tags.push("abdomen abierto");
+ const macroCtx=macroClinicalContext(val("plan")||val("dieta"));
+ if(macroCtx.explicitLowFat)tags.push("hipograsa");
+ else if(macroCtx.soft&&macroCtx.lowFatClinical)tags.push("blanda + grasa moderada");
+ else if(macroCtx.soft)tags.push("blanda = textura");
+ if(macroCtx.lowCarb)tags.push("hipoglúcida");
+ if(macroCtx.hyperProtein)tags.push("hiperproteica");
  if(importedRoute()==="NPO")tags.push("NPO");
  $("modifierTags").innerHTML=tags.length?tags.map(t=>`<span class="tag">${esc(t)}</span>`).join(""):'<span class="note">Sin complicaciones/modificadores adicionales detectados.</span>';
 }
@@ -3460,49 +3476,122 @@ function updateScreeningUI(){
  if($("screenReasonText"))$("screenReasonText").textContent=
   `NRS-2002 FINAL: ESTADO NUTRICIONAL ${n.nut} + GRAVEDAD DE ENFERMEDAD ${n.dis}${n.agePt?` + EDAD ≥70 (${n.agePt})`:""} = ${n.total} PUNTOS. ${n.disReason}.`;
 }
+
+function macroClinicalContext(dietText){
+ const u=normalizedUpper(dietText||val("dieta")||""),all=backgroundClinicalText(),active=activeDiagnosisText();
+ const f=diseaseFlags(),cx=complicationState(),cp=currentClinicalProfile();
+ const explicitLowFat=/HIPOGRASA|BAJA EN GRASA|BAJO CONTENIDO(?: EN)? GRASA/.test(u);
+ const soft=/\bBLANDA\b/.test(u);
+ const lowCarb=/HIPOGL[ÚU]CIDA|BAJA EN CARBOHIDRATOS|CARBOHIDRATOS REDUCIDOS/.test(u);
+ const hyperProtein=/HIPERPROTEICA|ALTA EN PROTE[IÍ]NA/.test(u);
+ const biliary=/COLECISTIT|COLELITIAS|COLEDOCOLITIAS|COLANGIT|LITIASIS BILIAR|VES[IÍ]CULA BILIAR/.test(all);
+ const giSurgery=/GASTRECTOM|COLECTOM|RESECCI[ÓO]N INTESTINAL|ANASTOMOS|CIRUG[IÍ]A ABDOMINAL|POSTOPERATORIO[^.;]{0,80}(?:ABDOM|GASTR|INTESTIN)/.test(active);
+ const giIntolerance=cx.vomiting||cx.diarrhea||chk("aDistension")||chk("aDolor");
+ const pancreatitis=f.pancreas||cp==="PANCREATITIS";
+ const cholestasis=/COLESTASIS|S[IÍ]NDROME COLEST[ÁA]SICO/.test(all);
+ const lowFatClinical=explicitLowFat||pancreatitis||(soft&&(biliary||giSurgery||giIntolerance));
+ return {u,f,cx,cp,explicitLowFat,soft,lowCarb,hyperProtein,biliary,giSurgery,giIntolerance,pancreatitis,cholestasis,lowFatClinical};
+}
+function clampMacro(x,min,max){return Math.max(min,Math.min(max,x))}
 function macroTargets(kcal,proteinG,profile,dietText){
  if(kcal===null||proteinG===null||kcal<=0)
-  return {choPct:null,proPct:null,lipPct:null,choG:null,lipG:null,macroKcal:null};
+  return {choPct:null,proPct:null,lipPct:null,choG:null,lipG:null,macroKcal:null,reason:"",fatReason:"",choReason:"",flags:[]};
 
- const u=normalizedUpper(dietText||""),cp=currentClinicalProfile(),mod=modifierState();
+ const ctx=macroClinicalContext(dietText),cp=ctx.cp,mod=modifierState();
  const proteinKcal=proteinG*4;
  const proPct=proteinKcal/kcal*100;
- let choPct=null,lipPct=null;
+ let fatPct=35,choPct=null,fatReason="",choReason="";
+ const flags=[];
 
- if(u.includes("HIPOGLUCIDA"))choPct=45;
-
- if(u.includes("HIPOGRASA")){
-  lipPct=30;
-  choPct=100-proPct-lipPct;
+ // La proteína se calcula primero por g/kg. Después se decide la fracción grasa
+ // según el cuadro clínico; los CHO completan la energía.
+ if(profile==="embarazada"||profile==="posparto"){
+  fatPct=30;
+  fatReason="GESTACIÓN/POSPARTO: SE MANTIENE UN APORTE LIPÍDICO MODERADO DE 30% Y SE RESPETA PRIMERO LA PROTEÍNA CALCULADA.";
+ }else if(ctx.explicitLowFat){
+  fatPct=25;
+  flags.push("HIPOGRASA EXPLÍCITA");
+  fatReason="PRESCRIPCIÓN HIPOGRASA EXPLÍCITA: OBJETIVO OPERATIVO 25% DE LÍPIDOS; LOS CHO COMPLETAN LA ENERGÍA DESPUÉS DE LA PROTEÍNA.";
+ }else if(ctx.pancreatitis){
+  fatPct=25;
+  flags.push("PANCREATITIS · BAJO EN GRASA");
+  fatReason="PANCREATITIS: PARA VÍA ORAL SE PRIORIZA DIETA BLANDA BAJA EN GRASA; SE USA 25% COMO OBJETIVO OPERATIVO DE LA APP.";
+ }else if(ctx.soft&&(ctx.biliary||ctx.giSurgery||ctx.giIntolerance)){
+  fatPct=30;
+  flags.push("BLANDA + INDICACIÓN DIGESTIVA");
+  fatReason="DIETA BLANDA CON INDICACIÓN DIGESTIVA/BILIAR O INTOLERANCIA: SE MODERA LA GRASA A 30%. BLANDA POR SÍ SOLA NO SE INTERPRETA AUTOMÁTICAMENTE COMO HIPOGRASA.";
+ }else if(cp==="CARDIACO"||ctx.f.cardiac||ctx.f.diabetes||mod.obesity){
+  fatPct=30;
+  flags.push("LÍPIDOS MODERADOS");
+  fatReason="CARDIOMETABÓLICO/OBESIDAD: SE EVITA QUE LOS LÍPIDOS SUBAN POR SIMPLE DIFERENCIA MATEMÁTICA; OBJETIVO 30% SALVO OTRA PRESCRIPCIÓN.";
+ }else if(cp==="RENAL"){
+  fatPct=35;
+  flags.push("RENAL");
+  fatReason="PERFIL RENAL: LA PROTEÍNA CAMBIA SEGÚN KRT/DIÁLISIS; LOS LÍPIDOS SE MANTIENEN EN 35% Y LOS CHO APORTAN EL RESTO, EVITANDO LÍPIDOS EXCESIVOS POR LA RESTRICCIÓN PROTEICA.";
+ }else if(cp==="HEPATICO"&&ctx.cholestasis){
+  fatPct=30;
+  flags.push("COLESTASIS");
+  fatReason="HEPATOBILIAR CON COLESTASIS: SE MODERA EL APORTE LIPÍDICO A 30% Y SE INDIVIDUALIZA SEGÚN TOLERANCIA/MALABSORCIÓN.";
+ }else if(cp==="GENERAL"&&!mod.nutritionRisk&&mod.stress.level==="BAJO"){
+  fatPct=30;
+  fatReason="DIETA ESTÁNDAR HOSPITALARIA: SE USA 30% DE LÍPIDOS, DENTRO DEL RANGO ESPEN 30–35%.";
+ }else{
+  fatPct=35;
+  fatReason="PACIENTE HOSPITALIZADO CON ENFERMEDAD/RIESGO: SE USA 35% DE LÍPIDOS, EN EL LÍMITE INFERIOR DEL RANGO ESPEN 35–40%, PARA EVITAR EXCESO DE GRASA.";
  }
 
- if(profile==="embarazada")choPct=58;
- else if(profile==="posparto")choPct=55;
-
- if(choPct===null&&(cp==="GERIATRIA"||cp==="DEMENCIA")){
-  choPct=(mod.nutritionRisk||mod.stress.level!=="BAJO")?50:55;
+ // Hipo-glúcida explícita: 45% es objetivo inicial, pero no se fuerza a costa
+ // de producir un porcentaje lipídico excesivo. Si hacen conflicto dos órdenes,
+ // se prioriza seguridad y coherencia energética.
+ if(ctx.lowCarb){
+  flags.push("HIPOGLÚCIDA");
+  const desiredCho=45;
+  const neededFat=100-proPct-desiredCho;
+  if(ctx.lowFatClinical){
+   choPct=100-proPct-fatPct;
+   choReason=`HAY INDICACIÓN HIPOGLÚCIDA Y BAJA EN GRASA AL MISMO TIEMPO. CON LA PROTEÍNA EN ${one(proPct)}%, SE PRIORIZA NO ELEVAR LA GRASA; LOS CHO QUEDAN EN ${one(choPct)}%.`;
+  }else if(neededFat<=40&&neededFat>=30){
+   fatPct=neededFat;
+   choPct=desiredCho;
+   choReason=`PRESCRIPCIÓN HIPOGLÚCIDA: CHO 45%. LA GRASA SE AJUSTA A ${one(fatPct)}% PARA QUE PROTEÍNA + CHO + LÍPIDOS SUMEN 100%.`;
+   fatReason=`EL PORCENTAJE LIPÍDICO RESULTA DE RESPETAR CHO 45% Y LA PROTEÍNA CALCULADA, SIN SUPERAR 40%.`;
+  }else{
+   fatPct=clampMacro(neededFat,30,40);
+   choPct=100-proPct-fatPct;
+   choReason=`LA ORDEN ES HIPOGLÚCIDA, PERO FORZAR 45% DE CHO LLEVARÍA LOS LÍPIDOS A ${one(neededFat)}%. SE LIMITA LA GRASA A ${one(fatPct)}% Y LOS CHO QUEDAN EN ${one(choPct)}% PARA MANTENER COHERENCIA CLÍNICA.`;
+  }
  }
 
- if(choPct===null&&(cp!=="GENERAL"||mod.nutritionRisk||mod.stress.level!=="BAJO"||u.includes("HIPERPROTEICA"))){
-  choPct=50;
+ if(choPct===null)choPct=100-proPct-fatPct;
+
+ // Seguridad final. La grasa no debe convertirse en el "residuo" sin control.
+ if(!ctx.explicitLowFat&&!ctx.pancreatitis){
+  if(fatPct>40){fatPct=40;choPct=100-proPct-fatPct;}
+  if(fatPct<25){fatPct=25;choPct=100-proPct-fatPct;}
+ }
+ if(choPct<40&&!ctx.lowCarb){
+  const targetCho=40;
+  fatPct=100-proPct-targetCho;
+  if(fatPct>=25&&fatPct<=40)choPct=targetCho;
+ }
+ if(choPct>60){
+  const targetCho=60;
+  const candidateFat=100-proPct-targetCho;
+  if(candidateFat>=25&&candidateFat<=40){fatPct=candidateFat;choPct=targetCho;}
  }
 
- if(choPct===null)choPct=55;
-
- if(lipPct===null)lipPct=100-choPct-proPct;
-
- // Evitar extremos por redondeos o aportes proteicos elevados.
- if(lipPct<20){
-  lipPct=20;choPct=100-proPct-lipPct;
- }
- if(lipPct>40){
-  lipPct=40;choPct=100-proPct-lipPct;
+ if(!choReason){
+  if(ctx.soft&&!ctx.lowFatClinical)
+   choReason=`DIETA BLANDA DETECTADA COMO MODIFICACIÓN DE TEXTURA, NO COMO HIPOGRASA AUTOMÁTICA. CHO ${one(choPct)}% DESPUÉS DE FIJAR PROTEÍNA Y ${one(fatPct)}% DE LÍPIDOS SEGÚN EL CUADRO CLÍNICO.`;
+  else
+   choReason=`CHO ${one(choPct)}%: COMPLETAN LA ENERGÍA DESPUÉS DE FIJAR PROTEÍNA (${one(proPct)}%) Y LÍPIDOS (${one(fatPct)}%) SEGÚN EL PERFIL CLÍNICO.`;
  }
 
  const choG=kcal*choPct/100/4;
- const lipG=kcal*lipPct/100/9;
+ const lipG=kcal*fatPct/100/9;
  const macroKcal=proteinG*4+choG*4+lipG*9;
- return {choPct,proPct,lipPct,choG,lipG,macroKcal};
+ const reason=`PROTEÍNA ${one(proPct)}% + CHO ${one(choPct)}% + LÍPIDOS ${one(fatPct)}% = 100%.`;
+ return {choPct,proPct,lipPct:fatPct,choG,lipG,macroKcal,reason,fatReason,choReason,flags};
 }
 function calculations(){
  const w=getWeight(),h=num(val("talla")),age=num(val("edad"))||0,p=val("perfil"),older=age>=60;
@@ -3514,7 +3603,8 @@ function calculations(){
  const m=macroTargets(kcal,proG,p,val("plan")||val("dieta"));
  const low=p==="embarazada"?Number.isFinite(preImc)&&preImc<18.5:Number.isFinite(imc)&&(older?imc<23:imc<18.5);
  return {w,h,age,p,older,imc,cl:bmiClass(imc),preW,preImc,preClass:standardBmiClass(preImc),gain,low,targetBmi,idealWeight,calcWeight,kk,extra,
-  cho:m.choPct,pp:m.proPct,pk:g.pChosen,lip:m.lipPct,rawKcal:g.estimatedKcal,kcal,choG:m.choG,proG,lipG:m.lipG,macroKcal:m.macroKcal,guide:g};
+  cho:m.choPct,pp:m.proPct,pk:g.pChosen,lip:m.lipPct,rawKcal:g.estimatedKcal,kcal,choG:m.choG,proG,lipG:m.lipG,macroKcal:m.macroKcal,
+  macroReason:m.reason,choReason:m.choReason,fatReason:m.fatReason,macroFlags:m.flags,guide:g};
 }
 function calculateAll(){
  updateBowelHabit();
@@ -3763,10 +3853,10 @@ function req(){
  const c=calculations(),g=c.guide;
  if(c.kcal===null||c.proG===null)return "";
  const kcalKg=g.kChosen!==null?`${smartComma(g.kChosen)} KCAL/KG: `:"";
- const pPct=Math.round(c.pp);
- const choPct=Math.round(c.cho);
- const lipPct=100-choPct-pPct;
- return `CALORÍAS: ${kcalKg}${Math.round(c.kcal)} KCAL/DÍA. CARBOHIDRATOS ${choPct}%: ${Math.round(c.choG)} G/DÍA. PROTEÍNA ${pPct}%: ${commaOne(g.pChosen)} G/KG ${reqProteinWeightLabel(g)} = ${Math.round(c.proG)} G/DÍA. LÍPIDOS ${lipPct}%: ${Math.round(c.lipG)} G/DÍA.${lowWeightSupplementText(c)}`;
+ const pPct=Math.round(c.pp),choPct=Math.round(c.cho),lipPct=100-choPct-pPct;
+ const choG=Math.round(c.kcal*choPct/100/4);
+ const lipG=Math.round(c.kcal*lipPct/100/9);
+ return `CALORÍAS: ${kcalKg}${Math.round(c.kcal)} KCAL/DÍA. CARBOHIDRATOS ${choPct}%: ${choG} G/DÍA. PROTEÍNA ${pPct}%: ${commaOne(g.pChosen)} G/KG ${reqProteinWeightLabel(g)} = ${Math.round(c.proG)} G/DÍA. LÍPIDOS ${lipPct}%: ${lipG} G/DÍA.${lowWeightSupplementText(c)}`;
 }
 
 function pregnancyGainReference(){
@@ -3845,10 +3935,9 @@ function maternityReq(){
  if(c.kcal===null||c.proG===null)return "";
  const extra=val("perfil")==="posparto"?" (+250 KCAL LACTANCIA)":"";
  const kcalKg=g.kChosen!==null?`${smartComma(g.kChosen)} KCAL/KG: `:"";
- const pPct=Math.round(c.pp);
- const choPct=Math.round(c.cho);
- const lipPct=100-choPct-pPct;
- return `CALORÍAS: ${kcalKg}${Math.round(c.kcal)} KCAL/DÍA${extra}. CARBOHIDRATOS ${choPct}%: ${Math.round(c.choG)} G/DÍA. PROTEÍNA ${pPct}%: ${commaOne(g.pChosen)} G/KG ${reqProteinWeightLabel(g)} = ${Math.round(c.proG)} G/DÍA. LÍPIDOS ${lipPct}%: ${Math.round(c.lipG)} G/DÍA.${lowWeightSupplementText(c)}`;
+ const pPct=Math.round(c.pp),choPct=Math.round(c.cho),lipPct=100-choPct-pPct;
+ const choG=Math.round(c.kcal*choPct/100/4),lipG=Math.round(c.kcal*lipPct/100/9);
+ return `CALORÍAS: ${kcalKg}${Math.round(c.kcal)} KCAL/DÍA${extra}. CARBOHIDRATOS ${choPct}%: ${choG} G/DÍA. PROTEÍNA ${pPct}%: ${commaOne(g.pChosen)} G/KG ${reqProteinWeightLabel(g)} = ${Math.round(c.proG)} G/DÍA. LÍPIDOS ${lipPct}%: ${lipG} G/DÍA.${lowWeightSupplementText(c)}`;
 }
 function maternityPlan(){const route=importedRoute(),times=importedTimes();if(route==="NPO")return "NPO";return `${up(val("plan")||val("dieta"))}${route==="SNG"?" POR SNG":""}${times!=="N/A"?` FRACCIONADO EN ${times} TIEMPOS DE COMIDA`:""}`}
 function postpartumDiagnosis(){

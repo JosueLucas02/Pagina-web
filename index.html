@@ -505,6 +505,74 @@ img,svg,table{
    </div>
   </div>
 
+  <div class="q" style="margin-top:8px;border:1px solid var(--line);padding:10px;border-radius:12px">
+   <div class="qt">¿ES INTERCONSULTA NUTRICIONAL?</div>
+   <div class="chips">
+    <label class="chip"><input type="radio" name="interconsulta" value="NO" checked onchange="toggleInterconsulta();calculateAll()"><span>No</span></label>
+    <label class="chip"><input type="radio" name="interconsulta" value="SÍ" onchange="toggleInterconsulta();calculateAll()"><span>Sí · valorar evolución</span></label>
+   </div>
+  </div>
+
+  <div id="interconsultaBox" class="hidden" style="margin-top:8px">
+   <div class="card" style="padding:10px;margin:0 0 8px 0">
+    <div class="secHead" style="margin-bottom:7px"><div class="step">H</div><div><h3 style="margin:0">Alimentación antes del ingreso / en casa</h3><p style="margin:2px 0 0">Compara apetito, consumo y peso previo al ingreso.</p></div></div>
+
+    <div class="grid2">
+     <div class="q"><div class="qt">Apetito en casa</div><div class="chips">
+      <label class="chip"><input type="radio" name="interApetitoCasa" value="CONSERVADO" checked><span>Conservado</span></label>
+      <label class="chip"><input type="radio" name="interApetitoCasa" value="DISMINUIDO"><span>Disminuido</span></label>
+      <label class="chip"><input type="radio" name="interApetitoCasa" value="AUSENTE"><span>Ausente</span></label>
+     </div></div>
+     <div><label class="label">¿Cuántos días tuvo apetito disminuido/ausente en casa?</label><input id="interApetitoCasaDias" type="number" min="0" step="1" placeholder="Ej. 7"></div>
+
+     <div class="q"><div class="qt">¿Consumía todos sus alimentos en casa?</div><div class="chips">
+      <label class="chip"><input type="radio" name="interComiaTodoCasa" value="SÍ" checked onchange="syncInterconsultaFields()"><span>Sí</span></label>
+      <label class="chip"><input type="radio" name="interComiaTodoCasa" value="NO" onchange="syncInterconsultaFields()"><span>No</span></label>
+     </div></div>
+     <div><label class="label">Consumo aproximado en casa (%)</label><input id="interConsumoCasa" type="number" min="0" max="100" step="1" value="100" placeholder="Ej. 50"></div>
+
+     <div class="q"><div class="qt">¿Perdió peso antes del ingreso?</div><div class="chips">
+      <label class="chip"><input type="radio" name="interPerdioPesoCasa" value="NO" checked><span>No</span></label>
+      <label class="chip"><input type="radio" name="interPerdioPesoCasa" value="SÍ"><span>Sí</span></label>
+      <label class="chip"><input type="radio" name="interPerdioPesoCasa" value="NO SABE"><span>No sabe</span></label>
+     </div></div>
+     <div class="grid2">
+      <div><label class="label">Peso habitual en casa (kg)</label><input id="interPesoHabitual" type="number" step="0.1" placeholder="Si lo conoce"></div>
+      <div><label class="label">Peso al ingreso (kg)</label><input id="interPesoIngreso" type="number" step="0.1" placeholder="Si consta"></div>
+     </div>
+     <div><label class="label">Pérdida referida antes del ingreso (kg)</label><input id="interPerdidaCasaKg" type="number" min="0" step="0.1" placeholder="Si no conoce pesos exactos"></div>
+     <div><label class="label">¿En cuántos días ocurrió esa pérdida?</label><input id="interPerdidaCasaDias" type="number" min="0" step="1" placeholder="Ej. 30, 60, 90"></div>
+    </div>
+   </div>
+
+   <div class="card" style="padding:10px;margin:0">
+    <div class="secHead" style="margin-bottom:7px"><div class="step">H+</div><div><h3 style="margin:0">Evolución durante la hospitalización</h3><p style="margin:2px 0 0">Valora si el ingreso modificó apetito, ingesta o peso.</p></div></div>
+    <div class="grid2">
+     <div><label class="label">Días hospitalizado hasta hoy</label><input id="interDiasHospital" type="number" min="0" step="1" placeholder="Ej. 4"></div>
+     <div class="q"><div class="qt">Apetito en el hospital</div><div class="chips">
+      <label class="chip"><input type="radio" name="interApetitoHosp" value="CONSERVADO" checked onchange="syncInterconsultaFields()"><span>Conservado</span></label>
+      <label class="chip"><input type="radio" name="interApetitoHosp" value="DISMINUIDO" onchange="syncInterconsultaFields()"><span>Disminuido</span></label>
+      <label class="chip"><input type="radio" name="interApetitoHosp" value="AUSENTE" onchange="syncInterconsultaFields()"><span>Ausente</span></label>
+     </div></div>
+     <div><label class="label">¿Cuántos días lleva con apetito disminuido/ausente aquí?</label><input id="interApetitoHospDias" type="number" min="0" step="1" placeholder="Ej. 3"></div>
+
+     <div class="q"><div class="qt">¿Se come toda la comida que recibe?</div><div class="chips">
+      <label class="chip"><input type="radio" name="interComeTodoHosp" value="SÍ" checked onchange="syncInterconsultaFields()"><span>Sí</span></label>
+      <label class="chip"><input type="radio" name="interComeTodoHosp" value="NO" onchange="syncInterconsultaFields()"><span>No</span></label>
+     </div></div>
+     <div><label class="label">Consumo aproximado de la dieta hospitalaria (%)</label><input id="interConsumoHosp" type="number" min="0" max="100" step="1" value="100" placeholder="Ej. 75" oninput="syncInterconsultaFields()"></div>
+
+     <div class="q"><div class="qt">¿Ha perdido peso durante la hospitalización?</div><div class="chips">
+      <label class="chip"><input type="radio" name="interPerdioPesoHosp" value="NO" checked><span>No</span></label>
+      <label class="chip"><input type="radio" name="interPerdioPesoHosp" value="SÍ"><span>Sí</span></label>
+      <label class="chip"><input type="radio" name="interPerdioPesoHosp" value="NO SABE"><span>No sabe</span></label>
+     </div></div>
+     <div><label class="label">Pérdida de peso en el hospital (kg)</label><input id="interPerdidaHospKg" type="number" min="0" step="0.1" placeholder="Si la conoce"></div>
+    </div>
+    <div id="interconsultaResumen" class="note" style="margin-top:8px">Se integrará automáticamente en VALORACIÓN NUTRICIONAL.</div>
+   </div>
+  </div>
+
   <div class="grid2" style="margin-top:7px">
    <div id="appetiteBox" class="q"><div class="qt">3. Apetito</div><div class="chips">
     <label class="chip"><input type="radio" name="apetito" value="CONSERVADO" checked><span>Conservado</span></label>
@@ -930,11 +998,11 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&
 const makeId=p=>`${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,9)}`;
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
 
-const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v52", FALLBACK_KEY="nutri_word_rounds_v52";
+const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v53", FALLBACK_KEY="nutri_word_rounds_v53";
 let db=null,currentRound=null,currentPatientId=null,history=[],loading=false,saveTimer=null;
 
-const simpleFields=["area","ambiente","cama","nombre","edad","cobertura","sexo","perfil","dieta","sourceText","alergia","intolerancia","ultima","consumoExacto","bristol","habito","hallazgo","peso","pesoEstimadoDoc","cb","cp","talla","talonRodilla","mediaEnvergadura","pesoPregestacional","edadGestacional","reqPerfil","cie10","plan","planObs","kcalKg","extraKcal","choPct","proPct","proKg","lipPct","clinicalProfile","renalSubtype","egfr","icuDay","hasIC","measuredEE","ibdActivity","pancreasType","surgeryScenario","suppName","suppMl","suppKcal","suppProtein","suppServings","acompanante","acompananteDetalle","informante","extremidadesDetalle","mExtSupDetalle"];
-const radios=["conciencia","orientacion","colabora","apetito","consumoDieta","viaoral","masticacion","deglucion","diuresis","flatos","deambula","tieneAlergia","tieneIntolerancia","lactancia","facie","temporal","periorb","dientes","mucosa","piel","clavicula","extremidades","masaMuscular","masaGrasa","abdomen","edemaFisico","ojos","modoPeso","modoTalla","mFacie","mTemporal","mPeriorb","mDientes","mHidratacion","mClavicula","mAbdomen","mExtSup","mTricipital","mCuadriceps","mPatelar","mGemelos","mEdema"];
+const simpleFields=["area","ambiente","cama","nombre","edad","cobertura","sexo","perfil","dieta","sourceText","alergia","intolerancia","ultima","consumoExacto","bristol","habito","hallazgo","peso","pesoEstimadoDoc","cb","cp","talla","talonRodilla","mediaEnvergadura","pesoPregestacional","edadGestacional","reqPerfil","cie10","plan","planObs","kcalKg","extraKcal","choPct","proPct","proKg","lipPct","clinicalProfile","renalSubtype","egfr","icuDay","hasIC","measuredEE","ibdActivity","pancreasType","surgeryScenario","suppName","suppMl","suppKcal","suppProtein","suppServings","acompanante","acompananteDetalle","informante","extremidadesDetalle","mExtSupDetalle","interApetitoCasaDias","interConsumoCasa","interPesoHabitual","interPesoIngreso","interPerdidaCasaKg","interPerdidaCasaDias","interApetitoHospDias","interConsumoHosp","interPerdidaHospKg","interDiasHospital"];
+const radios=["conciencia","orientacion","colabora","apetito","consumoDieta","viaoral","masticacion","deglucion","diuresis","flatos","deambula","tieneAlergia","tieneIntolerancia","lactancia","facie","temporal","periorb","dientes","mucosa","piel","clavicula","extremidades","masaMuscular","masaGrasa","abdomen","edemaFisico","ojos","modoPeso","modoTalla","mFacie","mTemporal","mPeriorb","mDientes","mHidratacion","mClavicula","mAbdomen","mExtSup","mTricipital","mCuadriceps","mPatelar","mGemelos","mEdema","interconsulta","interApetitoCasa","interPerdioPesoCasa","interApetitoHosp","interPerdioPesoHosp","interComiaTodoCasa","interComeTodoHosp"];
 const checks=["aNausea","aVomito","aDolor","aDistension","aDiarrea","aEstreni","aMelena"];
 
 function flash(t){$("status").textContent=t;clearTimeout(flash.t);flash.t=setTimeout(()=>$("status").textContent="",2300)}
@@ -1943,7 +2011,7 @@ function restoreState(s){
   if($("ibdActivity")&&!val("ibdActivity"))$("ibdActivity").value="ACTIVA";
   if($("pancreasType")&&!val("pancreasType"))$("pancreasType").value="AGUDA";
   syncAgeProfile();updateProfileVisibility();applyMaternityDefaults(val("perfil"),false);
-  toggleAlergia(false);toggleIntolerancia(false);toggleCompanion();toggleExtremityDetail();toggleMaternityExtremityDetail();
+  toggleAlergia(false);toggleIntolerancia(false);toggleCompanion();toggleExtremityDetail();toggleMaternityExtremityDetail();toggleInterconsulta();
   toggleWeightMode(false);toggleHeightMode(false);updateNpoVisibility();updateBowelHabit();autoRequirementProfile();calculateAll();
  }finally{loading=false}
 }
@@ -3318,26 +3386,38 @@ function documentedWeightLossText(){
  return backgroundClinicalText();
 }
 function nrsWeightLossScore(){
+ if(radio("interconsulta")==="SÍ"&&radio("interPerdioPesoCasa")==="SÍ"){
+  const l=interconsultaHomeLoss();
+  if(l.pct!==null){
+   const days=l.days;
+   if(days!==null&&days<=31&&l.pct>5)return {score:3,label:`PÉRDIDA ${one(l.pct)}% EN ${one(days)} DÍAS`};
+   if(days!==null&&days<=62&&l.pct>5)return {score:2,label:`PÉRDIDA ${one(l.pct)}% EN ${one(days)} DÍAS`};
+   if(days!==null&&days<=93&&l.pct>15)return {score:3,label:`PÉRDIDA ${one(l.pct)}% EN ${one(days)} DÍAS`};
+   if(days!==null&&days<=93&&l.pct>5)return {score:1,label:`PÉRDIDA ${one(l.pct)}% EN ${one(days)} DÍAS`};
+  }
+ }
+
  const u=documentedWeightLossText();
-
- // Sólo puntúa pérdida si está realmente documentada.
- // Si el paciente no sabe/no consta, no se inventa una pérdida.
  if(/P[ÉE]RDIDA[^.;]{0,45}(?:>|MAYOR A|MAS DE|MÁS DE)\s*15\s*%[^.;]{0,35}3\s*MESES/.test(u))
-  return {score:3,label:">15% en 3 meses"};
+  return {score:3,label:">15% EN 3 MESES"};
  if(/P[ÉE]RDIDA[^.;]{0,45}(?:>|MAYOR A|MAS DE|MÁS DE)\s*5\s*%[^.;]{0,35}1\s*MES/.test(u))
-  return {score:3,label:">5% en 1 mes"};
+  return {score:3,label:">5% EN 1 MES"};
  if(/P[ÉE]RDIDA[^.;]{0,45}(?:>|MAYOR A|MAS DE|MÁS DE)\s*5\s*%[^.;]{0,35}2\s*MESES/.test(u))
-  return {score:2,label:">5% en 2 meses"};
+  return {score:2,label:">5% EN 2 MESES"};
  if(/P[ÉE]RDIDA[^.;]{0,45}(?:>|MAYOR A|MAS DE|MÁS DE)\s*5\s*%[^.;]{0,35}3\s*MESES/.test(u))
-  return {score:1,label:">5% en 3 meses"};
-
+  return {score:1,label:">5% EN 3 MESES"};
  if(/NO REFIERE[^.;]{0,20}P[ÉE]RDIDA DE PESO|SIN P[ÉE]RDIDA DE PESO/.test(u))
-  return {score:0,label:"sin pérdida referida"};
- return {score:0,label:"pérdida no documentada"};
+  return {score:0,label:"SIN PÉRDIDA REFERIDA"};
+ return {score:0,label:"PÉRDIDA NO DOCUMENTADA"};
 }
 function nrsWeeklyIntakePercent(){
- // La ronda ya pregunta porcentaje de ingesta. Si el documento anterior trae
- // explícitamente una ingesta semanal, esa información tiene prioridad.
+ if(radio("interconsulta")==="SÍ"){
+  const hosp=num(val("interConsumoHosp"));
+  const home=num(val("interConsumoCasa"));
+  const daysHosp=num(val("interDiasHospital"));
+  if(hosp!==null&&daysHosp!==null&&daysHosp>0)return hosp;
+  if(home!==null)return home;
+ }
  const u=backgroundClinicalText();
  const m=u.match(/(?:INGESTA|CONSUMO)[^.;]{0,50}(?:SEMANA|SEMANAL)[^0-9]{0,20}(100|75|50|25|0)\s*%/);
  if(m)return Number(m[1]);
@@ -3626,6 +3706,10 @@ function calculateAll(){
  if($("mLip"))$("mLip").textContent=c.lipG!==null?Math.round(c.lipG)+" g/día":"—";
  updateScreeningUI();
  updateClinicalUI();
+ if($("interconsultaResumen")){
+  const n=interconsultaNarrative();
+  $("interconsultaResumen").textContent=n||"SE INTEGRARÁ AUTOMÁTICAMENTE EN VALORACIÓN NUTRICIONAL.";
+ }
  updateChangeSummary();
  if($("suppManualTotal")){
   const s=manualSupplementData();
@@ -3652,10 +3736,104 @@ function consciousnessText(){
  let o=ori==="ORIENTADO/A"?(f?"ORIENTADA":"ORIENTADO"):ori==="DESORIENTADO/A"?(f?"DESORIENTADA":"DESORIENTADO"):ori;
  return {c,o,coll};
 }
+
+function toggleInterconsulta(){
+ const on=radio("interconsulta")==="SÍ";
+ if($("interconsultaBox"))$("interconsultaBox").classList.toggle("hidden",!on);
+ if(on)syncInterconsultaFields();
+}
+function syncInterconsultaFields(){
+ if(radio("interconsulta")!=="SÍ")return;
+
+ const hospApp=radio("interApetitoHosp");
+ if(hospApp){
+  if(hospApp==="CONSERVADO")setRadio("apetito","CONSERVADO");
+  else if(hospApp==="DISMINUIDO")setRadio("apetito","DISMINUIDO");
+  else if(hospApp==="AUSENTE")setRadio("apetito","AUSENTE");
+ }
+
+ const hospPct=num(val("interConsumoHosp"));
+ if(hospPct!==null){
+  if($("consumoExacto"))$("consumoExacto").value=Math.max(0,Math.min(100,hospPct));
+  const nearest=[100,75,50,25,0].reduce((a,b)=>Math.abs(b-hospPct)<Math.abs(a-hospPct)?b:a,100);
+  setRadio("consumoDieta",`${nearest}%`);
+ }
+
+ if(radio("interComiaTodoCasa")==="SÍ"&&$("interConsumoCasa")&&!val("interConsumoCasa"))
+  $("interConsumoCasa").value="100";
+ if(radio("interComeTodoHosp")==="SÍ"&&$("interConsumoHosp")&&!val("interConsumoHosp"))
+  $("interConsumoHosp").value="100";
+}
+function interconsultaHomeLoss(){
+ if(radio("interconsulta")!=="SÍ")return {kg:null,pct:null,days:null};
+ const habitual=num(val("interPesoHabitual")),ingreso=num(val("interPesoIngreso"));
+ let kg=num(val("interPerdidaCasaKg"));
+ if(kg===null&&habitual!==null&&ingreso!==null&&habitual>ingreso)kg=habitual-ingreso;
+ const pct=(habitual!==null&&habitual>0&&kg!==null)?kg/habitual*100:null;
+ return {kg,pct,days:num(val("interPerdidaCasaDias")),habitual,ingreso};
+}
+function interconsultaHospitalLoss(){
+ if(radio("interconsulta")!=="SÍ")return {kg:null,pct:null,days:null};
+ const ingreso=num(val("interPesoIngreso")),actual=getWeight();
+ let kg=num(val("interPerdidaHospKg"));
+ if(kg===null&&ingreso!==null&&actual!==null&&ingreso>actual)kg=ingreso-actual;
+ const pct=(ingreso!==null&&ingreso>0&&kg!==null)?kg/ingreso*100:null;
+ return {kg,pct,days:num(val("interDiasHospital")),ingreso,actual};
+}
+function interconsultaNarrative(){
+ if(radio("interconsulta")!=="SÍ")return "";
+ const p=[];
+
+ const casaApp=radio("interApetitoCasa")||"NO DOCUMENTADO";
+ const casaDias=num(val("interApetitoCasaDias"));
+ const casaPct=num(val("interConsumoCasa"));
+ const casaTodo=radio("interComiaTodoCasa");
+ let casa=`ANTES DEL INGRESO, REFIERE APETITO ${casaApp}`;
+ if(casaApp!=="CONSERVADO"&&casaDias!==null)casa+=` DURANTE ${one(casaDias)} DÍA(S)`;
+ if(casaPct!==null)casa+=` Y CONSUMO APROXIMADO DEL ${one(casaPct)}% DE SU ALIMENTACIÓN HABITUAL`;
+ else if(casaTodo)casa+=casaTodo==="SÍ"?" Y REFIERE CONSUMIR LA TOTALIDAD DE SUS ALIMENTOS":" Y REFIERE NO CONSUMIR LA TOTALIDAD DE SUS ALIMENTOS";
+
+ const loss=interconsultaHomeLoss(),lostCasa=radio("interPerdioPesoCasa");
+ if(lostCasa==="SÍ"){
+  if(loss.kg!==null)casa+=`; PÉRDIDA DE PESO PREVIA AL INGRESO DE ${one(loss.kg)} KG`;
+  else casa+="; REFIERE PÉRDIDA DE PESO PREVIA AL INGRESO";
+  if(loss.pct!==null)casa+=` (${one(loss.pct)}%)`;
+  if(loss.days!==null)casa+=` EN ${one(loss.days)} DÍA(S)`;
+ }else if(lostCasa==="NO")casa+="; NO REFIERE PÉRDIDA DE PESO PREVIA AL INGRESO";
+ else if(lostCasa==="NO SABE")casa+="; DESCONOCE SI PRESENTÓ PÉRDIDA DE PESO PREVIA";
+ p.push(casa+".");
+
+ const hospApp=radio("interApetitoHosp")||"NO DOCUMENTADO";
+ const hospDias=num(val("interApetitoHospDias"));
+ const hospPct=num(val("interConsumoHosp"));
+ const hospTodo=radio("interComeTodoHosp");
+ let hosp=`DURANTE LA HOSPITALIZACIÓN, REFIERE APETITO ${hospApp}`;
+ if(hospApp!=="CONSERVADO"&&hospDias!==null)hosp+=` DURANTE ${one(hospDias)} DÍA(S)`;
+ if(importedRoute()==="NPO"){
+  hosp+="; ACTUALMENTE EN NPO SEGÚN PRESCRIPCIÓN";
+ }else if(hospPct!==null){
+  hosp+=` Y CONSUMO APROXIMADO DEL ${one(hospPct)}% DE LA DIETA HOSPITALARIA`;
+ }else if(hospTodo){
+  hosp+=hospTodo==="SÍ"?" Y REFIERE CONSUMIR LA TOTALIDAD DE LA DIETA HOSPITALARIA":" Y REFIERE NO CONSUMIR LA TOTALIDAD DE LA DIETA HOSPITALARIA";
+ }
+
+ const hl=interconsultaHospitalLoss(),lostHosp=radio("interPerdioPesoHosp");
+ if(lostHosp==="SÍ"){
+  if(hl.kg!==null)hosp+=`; PÉRDIDA DE PESO INTRAHOSPITALARIA DE ${one(hl.kg)} KG`;
+  else hosp+="; REFIERE PÉRDIDA DE PESO DURANTE LA HOSPITALIZACIÓN";
+  if(hl.pct!==null)hosp+=` (${one(hl.pct)}%)`;
+ }else if(lostHosp==="NO")hosp+="; NO REFIERE PÉRDIDA DE PESO DURANTE LA HOSPITALIZACIÓN";
+ else if(lostHosp==="NO SABE")hosp+="; DESCONOCE SI HA PRESENTADO PÉRDIDA DE PESO INTRAHOSPITALARIA";
+ p.push(hosp+".");
+
+ return `INTERCONSULTA NUTRICIONAL. ${p.join(" ")}`;
+}
+
 function valuation(){
  const x=consciousnessText(),p=[];
  p.push(`PACIENTE ${x.c}, ${x.o}${x.coll==="SÍ"?" Y COLABORA CON EL INTERROGATORIO NUTRICIONAL":" Y NO COLABORA CON EL INTERROGATORIO NUTRICIONAL"}.`);
  const comp=companionNarrative();if(comp)p.push(comp);
+ const inter=interconsultaNarrative();if(inter)p.push(inter);
 
  const route=importedRoute();
  if(route==="NPO")p.push("PACIENTE EN NPO SEGÚN PRESCRIPCIÓN IMPORTADA.");

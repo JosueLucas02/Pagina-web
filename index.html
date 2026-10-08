@@ -389,6 +389,267 @@ img,svg,table{
   }
 }
 
+
+/* ===== UX COMPACTA V54 ===== */
+#patientDataSection,
+#changesSection,
+#valuationSection{
+  overflow:hidden;
+}
+#patientDataSection .secHead,
+#changesSection .secHead,
+#valuationSection .secHead{
+  margin-bottom:7px;
+}
+.patient-identity-grid{
+  gap:6px;
+}
+.previousTitleRow{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:8px;
+}
+.miniStatus{
+  flex:0 0 auto;
+  font-size:7.5px;
+  font-weight:900;
+  letter-spacing:.04em;
+  padding:4px 6px;
+  border-radius:999px;
+  background:#fff3d6;
+  color:#7c5b16;
+  border:1px solid #ead9ae;
+}
+.previousCompact{
+  padding:8px;
+  background:#fffdf9;
+}
+.previousRaw{
+  background:#fff;
+  padding:7px 8px;
+  margin-top:7px;
+}
+.previousRaw summary{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  min-height:24px;
+  color:#536175;
+}
+.previousRaw summary::after{
+  content:"TOCAR";
+  font-size:7px;
+  color:var(--muted);
+  font-weight:800;
+}
+.diagnosisPlain{
+  margin-top:7px;
+  padding:9px;
+  border-radius:10px;
+  border:1px solid #cfe0f4;
+  background:#f5f9ff;
+}
+.diagnosisPlainHead{
+  display:flex;
+  justify-content:space-between;
+  gap:8px;
+  margin-bottom:6px;
+}
+.diagnosisPlainHead b{
+  display:block;
+  font-size:10px;
+  color:#244d7e;
+}
+.diagnosisPlainHead span{
+  display:block;
+  font-size:8px;
+  color:var(--muted);
+  margin-top:2px;
+}
+.dxStatus{
+  padding:7px 8px;
+  background:#e7f1ff;
+  border-radius:8px;
+  font-size:9px;
+  line-height:1.35;
+  font-weight:900;
+  color:#24588f;
+}
+.dxRenal{
+  margin-top:5px;
+  padding:7px 8px;
+  background:#eef8f4;
+  border:1px solid #cee7dc;
+  border-radius:8px;
+  font-size:8.5px;
+  line-height:1.35;
+  font-weight:800;
+  color:#24654f;
+}
+.dxMeaning{
+  margin-top:6px;
+  display:grid;
+  gap:4px;
+}
+.dxItem{
+  position:relative;
+  padding:5px 7px 5px 17px;
+  border-radius:7px;
+  background:white;
+  border:1px solid #e1e9f3;
+  font-size:8.7px;
+  line-height:1.35;
+  color:#33445b;
+}
+.dxItem::before{
+  content:"•";
+  position:absolute;
+  left:7px;
+  top:4px;
+  color:#2f67b2;
+  font-weight:900;
+}
+.dxCaution{
+  font-size:7.5px;
+  line-height:1.25;
+  color:#7c8797;
+  margin-top:6px;
+}
+#changesSection{
+  padding:8px 10px;
+  background:#fbfcfe;
+}
+#changesSection .secHead p{
+  display:none;
+}
+#changesSection .sourceText{
+  font-family:Inter,Segoe UI,Arial,sans-serif;
+  font-size:8.5px;
+  line-height:1.35;
+  padding:6px 7px;
+  background:#f5f7fa;
+  border-radius:8px;
+}
+#valuationSection{
+  display:flex;
+  flex-direction:column;
+}
+#valuationSection > *{order:4}
+#valuationSection > .secHead{order:0}
+#interconsultaToggle{
+  order:1!important;
+  background:#f5f9ff;
+  border-color:#d8e5f5!important;
+}
+#interconsultaBox{order:2!important}
+#stateBlock{order:3!important}
+#valuationSection .q{
+  margin-top:0;
+}
+#valuationSection .grid2{
+  gap:6px;
+}
+.interconsulta-toggle .qt{
+  color:#244d7e;
+}
+@media(max-width:650px){
+  .section{
+    padding:8px;
+    margin-bottom:6px;
+    border-radius:12px;
+  }
+  .secHead{
+    gap:7px;
+    margin-bottom:7px;
+  }
+  .step{
+    width:24px;
+    height:24px;
+    flex-basis:24px;
+    border-radius:7px;
+    font-size:9px;
+  }
+  .secHead h2{
+    font-size:13.5px;
+  }
+  .secHead p{
+    font-size:8.5px;
+    margin-top:2px;
+  }
+  .patient-identity-grid{
+    grid-template-columns:1fr 1fr!important;
+    gap:6px!important;
+  }
+  .patient-identity-grid > div:nth-child(4),
+  .patient-identity-grid > div:nth-child(8){
+    grid-column:1/-1;
+  }
+  .label{
+    font-size:9px;
+    margin-bottom:3px;
+  }
+  input,select{
+    min-height:37px;
+    padding:7px 8px;
+    font-size:12px;
+    border-radius:8px;
+  }
+  textarea{
+    font-size:10px!important;
+  }
+  .q{
+    padding:7px;
+    border-radius:9px;
+  }
+  .qt{
+    font-size:10px;
+    margin-bottom:5px;
+  }
+  .chips{
+    gap:4px;
+  }
+  .chip span{
+    min-height:31px;
+    padding:6px 8px;
+    font-size:9.5px;
+  }
+  .note{
+    font-size:8.3px;
+  }
+  .sourceBox{
+    padding:7px;
+  }
+  .metrics{
+    grid-template-columns:1fr 1fr;
+    gap:5px;
+  }
+  .metric{
+    padding:6px;
+  }
+  .metric span{font-size:8px}
+  .metric b{font-size:10.5px}
+  #stateBlock{
+    grid-template-columns:1fr!important;
+  }
+  #interconsultaBox .card{
+    box-shadow:none;
+    border-radius:10px;
+  }
+  #interconsultaBox .secHead h3{
+    font-size:11px!important;
+  }
+  .diagnosisPlain{
+    padding:8px;
+  }
+  .dxStatus{
+    font-size:8.7px;
+  }
+  .dxItem{
+    font-size:8.4px;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -435,11 +696,11 @@ img,svg,table{
   </div>
   <div id="topPatientList" class="patientStripList"></div>
  </section>
- <section class="card section">
-  <div class="secHead"><div class="step">1</div><div><h2>Datos importados del Word</h2><p>Se pueden corregir si el documento viene con algún dato mal escrito.</p></div></div>
+ <section class="card section" id="patientDataSection">
+  <div class="secHead"><div class="step">1</div><div><h2>Paciente y diagnóstico importado</h2><p>Se pueden corregir si el documento viene con algún dato mal escrito.</p></div></div>
   <div id="noPatient" class="warn">Primero importa un Word y abre un paciente.</div>
   <div id="patientForm" class="hidden">
-   <div class="grid4">
+   <div class="grid4 patient-identity-grid">
     <div><label class="label">Área / servicio</label><input id="area"></div>
     <div id="ambienteWrap"><label class="label">Ambiente (AMB)</label><input id="ambiente"></div>
     <div id="camaWrap"><label class="label">Cama (C)</label><input id="cama"></div>
@@ -450,24 +711,40 @@ img,svg,table{
     <div><label class="label">Condición nutricional</label><select id="perfil" onchange="profileChanged()"><option value="adulto">Adulto</option><option value="adultomayor">Adulto mayor (≥60 años)</option><option value="renal">Renal / hemodiálisis</option><option value="embarazada">Embarazada</option><option value="posparto">Posparto / lactancia</option></select><div class="note">Se detecta automáticamente desde edad/texto del Word; puedes corregirlo aquí.</div></div>
    </div>
    <div style="margin-top:7px"><label class="label">Dieta importada</label><input id="dieta"></div><div class="note" id="headerModeNote" style="margin-top:6px"></div>
-   <div class="sourceBox" style="margin-top:8px">
-    <div class="srcTitle">Valoración anterior importada · autorrelleno para revaloración</div>
-    <textarea id="sourceText" style="min-height:115px;font:9.5px/1.35 Calibri,Arial,sans-serif" placeholder="Texto original..."></textarea>
-    <div class="note">Se reutilizan sus datos clínicos, pero el requerimiento nutricional y el plan se recalculan. La dieta del encabezado actual es la que manda.</div>
-    <div class="note" style="margin-top:6px"><b>Datos reconocidos automáticamente:</b> <span id="smartDetectedData">—</span></div>
+   <div class="sourceBox previousCompact" style="margin-top:7px">
+    <div class="previousTitleRow">
+     <div><div class="srcTitle">Valoración anterior importada</div><div class="note">La app usa estos datos para revaloración; la dieta actual del encabezado sigue mandando.</div></div>
+     <span class="miniStatus">IMPORTADO</span>
+    </div>
+
+    <details class="previousRaw">
+     <summary>Ver texto clínico original</summary>
+     <textarea id="sourceText" oninput="updateDiagnosisMeaning();scheduleSave()" style="min-height:105px;font:9.5px/1.35 Calibri,Arial,sans-serif;margin-top:7px" placeholder="Texto original..."></textarea>
+     <div class="note" style="margin-top:6px"><b>Datos reconocidos:</b> <span id="smartDetectedData">—</span></div>
+    </details>
+
+    <div class="diagnosisPlain">
+     <div class="diagnosisPlainHead">
+      <div><b>¿Qué significa el diagnóstico?</b><span>Explicado en palabras claras desde lo que dice el Word.</span></div>
+     </div>
+     <div id="diagnosisStatus" class="dxStatus">—</div>
+     <div id="diagnosisRenal" class="dxRenal hidden">—</div>
+     <div id="diagnosisMeaning" class="dxMeaning">No se ha detectado todavía un diagnóstico para explicar.</div>
+     <div class="dxCaution">Resumen del diagnóstico documentado. No cambia ni reemplaza el diagnóstico médico original.</div>
+    </div>
    </div>
   </div>
  </section>
 
  <div id="clinicalSections" class="hidden">
  <section class="card section" id="changesSection">
-  <div class="secHead"><div class="step">↻</div><div><h2>Cambios desde la valoración anterior</h2><p>Primero muestra qué cambió y qué puede requerir ajuste.</p></div></div>
+  <div class="secHead"><div class="step">↻</div><div><h2>Cambios detectados</h2><p>Solo muestra diferencias relevantes respecto a la valoración anterior.</p></div></div>
   <div id="changeSummary" class="sourceText" style="min-height:auto;max-height:none">SIN CAMBIOS DOCUMENTADOS.</div>
  </section>
- <section class="card section">
-  <div class="secHead"><div class="step">2</div><div><h2>Valoración al acercarte al paciente</h2><p>Orden clínico: conciencia → orientación → ingesta → tolerancia → síntomas → eliminación → movilidad.</p></div></div>
+ <section class="card section" id="valuationSection">
+  <div class="secHead"><div class="step">2</div><div><h2>Valoración actual</h2><p>Interconsulta → estado general → ingesta → tolerancia → síntomas → eliminación → movilidad.</p></div></div>
 
-  <div class="grid2">
+  <div id="stateBlock" class="grid2">
    <div class="q"><div class="qt">1. Estado de conciencia</div><div class="chips">
     <label class="chip"><input type="radio" name="conciencia" value="DESPIERTO/A" checked><span>Despierto/a</span></label>
     <label class="chip"><input type="radio" name="conciencia" value="SOMNOLIENTO/A"><span>Somnoliento/a</span></label>
@@ -505,7 +782,7 @@ img,svg,table{
    </div>
   </div>
 
-  <div class="q" style="margin-top:8px;border:1px solid var(--line);padding:10px;border-radius:12px">
+  <div id="interconsultaToggle" class="q interconsulta-toggle" style="margin-top:4px">
    <div class="qt">¿ES INTERCONSULTA NUTRICIONAL?</div>
    <div class="chips">
     <label class="chip"><input type="radio" name="interconsulta" value="NO" checked onchange="toggleInterconsulta();calculateAll()"><span>No</span></label>
@@ -998,7 +1275,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&
 const makeId=p=>`${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,9)}`;
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
 
-const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v53", FALLBACK_KEY="nutri_word_rounds_v53";
+const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v54", FALLBACK_KEY="nutri_word_rounds_v54";
 let db=null,currentRound=null,currentPatientId=null,history=[],loading=false,saveTimer=null;
 
 const simpleFields=["area","ambiente","cama","nombre","edad","cobertura","sexo","perfil","dieta","sourceText","alergia","intolerancia","ultima","consumoExacto","bristol","habito","hallazgo","peso","pesoEstimadoDoc","cb","cp","talla","talonRodilla","mediaEnvergadura","pesoPregestacional","edadGestacional","reqPerfil","cie10","plan","planObs","kcalKg","extraKcal","choPct","proPct","proKg","lipPct","clinicalProfile","renalSubtype","egfr","icuDay","hasIC","measuredEE","ibdActivity","pancreasType","surgeryScenario","suppName","suppMl","suppKcal","suppProtein","suppServings","acompanante","acompananteDetalle","informante","extremidadesDetalle","mExtSupDetalle","interApetitoCasaDias","interConsumoCasa","interPesoHabitual","interPesoIngreso","interPerdidaCasaKg","interPerdidaCasaDias","interApetitoHospDias","interConsumoHosp","interPerdidaHospKg","interDiasHospital"];
@@ -1571,6 +1848,7 @@ function applySmartClinicalData(d){
  const comp=d.nu.match(/ACOMPA[NÑ]AD[OA]\s+(?:DE|POR)\s+SU\s+(HIJO|HIJA|MADRE|PADRE|ESPOSO|ESPOSA|HERMANO|HERMANA|CUIDADOR(?:A)?)/);
  if(comp){let c=comp[1].replace("CUIDADORA","CUIDADOR/A").replace("CUIDADOR","CUIDADOR/A");setFieldFromPrevious("acompanante",c);}
  if($("smartDetectedData"))$("smartDetectedData").textContent=smartDetectedSummary(d);
+ if($("diagnosisMeaning"))updateDiagnosisMeaning();
 }
 function parsePreviousAnthropometry(){
  const d=parseSmartClinicalData();
@@ -1745,6 +2023,128 @@ function rebuildAllPatientNotes(){
   try{rebuildPatientNoteFromState(p);}catch(e){console.warn("No se pudo regenerar nota",p?.nombre,e);}
  }
 }
+
+function sourceDiagnosisUpper(){
+ return normalizedUpper(val("sourceText")||"");
+}
+function documentedGestationalAge(u){
+ const m=String(u||"").match(/EMBARAZO(?:\s+DE)?\s+(\d{1,2}(?:[.,]\d)?)\s*(?:SEMANAS|SG)\b/);
+ return m?m[1].replace(",","."):null;
+}
+function plainDiagnosisInfo(){
+ const u=sourceDiagnosisUpper();
+ const items=[];
+ let status="";
+ let renal="";
+
+ if(!u.trim()){
+  return {status:"SIN TEXTO CLÍNICO IMPORTADO",renal:"",items:["No hay texto suficiente para explicar el diagnóstico."]};
+ }
+
+ // ---------- ESTADO OBSTÉTRICO ----------
+ const ga=documentedGestationalAge(u);
+ const postpartum=/PUERPERIO|POSTPARTO|POST PARTO|POSTPARTO|POST CES[ÁA]REA|POSTCES[ÁA]REA/.test(u);
+ const abortion=/ABORTO ESPONT[ÁA]NEO|ABORTO INCOMPLETO|ABORTO RETENIDO/.test(u);
+ const currentPreg=/\bEMBARAZO\b/.test(u)&&!postpartum&&!abortion;
+
+ if(postpartum){
+  if(/PUERPERIO QUIR[ÚU]RGICO|POST CES[ÁA]REA|POSTCES[ÁA]REA|CES[ÁA]REA SEGMENTARIA/.test(u))
+   status="ESTADO OBSTÉTRICO: EL PARTO YA OCURRIÓ · PUERPERIO/POSTCESÁREA";
+  else
+   status="ESTADO OBSTÉTRICO: EL PARTO YA OCURRIÓ · PUERPERIO";
+ }else if(abortion){
+  status="ESTADO OBSTÉTRICO: EL TEXTO DOCUMENTA UN ABORTO; NO LO PRESENTA COMO EMBARAZO EN CURSO";
+ }else if(currentPreg){
+  status=ga
+   ?`ESTADO OBSTÉTRICO: EMBARAZO EN CURSO · ${ga} SEMANAS SEGÚN EL DOCUMENTO`
+   :"ESTADO OBSTÉTRICO: EMBARAZO EN CURSO SEGÚN EL DOCUMENTO";
+ }else if(val("sexo")==="F"){
+  status="ESTADO OBSTÉTRICO: EL TEXTO IMPORTADO NO PERMITE CONFIRMAR UN EMBARAZO ACTUAL";
+ }else{
+  status="RESUMEN DEL DIAGNÓSTICO IMPORTADO";
+ }
+
+ if(/FALSO TRABAJO DE PARTO/.test(u))
+  items.push("FALSO TRABAJO DE PARTO: presentó signos o contracciones parecidas al trabajo de parto, pero el diagnóstico documenta que no era un trabajo de parto verdadero.");
+ if(/TRABAJO DE PARTO EN FASE ACTIVA/.test(u))
+  items.push("TRABAJO DE PARTO EN FASE ACTIVA: al momento de esa valoración estaba cursando trabajo de parto activo.");
+ if(/RUPTURA PREMATURA DE (?:LAS )?MEMBRANAS/.test(u))
+  items.push("RUPTURA PREMATURA DE MEMBRANAS: se documenta ruptura de la bolsa amniótica antes del momento esperado o antes del trabajo de parto, según el contexto del diagnóstico.");
+ if(/PREECLAMPSIA/.test(u))
+  items.push("PREECLAMPSIA: el documento registra este trastorno hipertensivo asociado al embarazo.");
+ if(/HIPERTENSI[ÓO]N CR[ÓO]NICA/.test(u)&&/\bEMBARAZO\b/.test(u))
+  items.push("HIPERTENSIÓN CRÓNICA EN CONTEXTO DE EMBARAZO: la hipertensión ya estaba presente y debe considerarse como antecedente/enfermedad materna.");
+ if(/INFECCI[ÓO]N[^.;,+]{0,45}V[IÍ]AS URINARIAS[^.;,+]{0,30}EMBARAZO|INFECCI[ÓO]N URINARIA[^.;,+]{0,35}EMBARAZO/.test(u))
+  items.push("INFECCIÓN URINARIA EN EL EMBARAZO: se documenta una infección de las vías urinarias durante la gestación.");
+ else if(/\bIVU\b|INFECCI[ÓO]N (?:DE LAS )?V[IÍ]AS URINARIAS|PIELONEFRITIS/.test(u))
+  items.push("INFECCIÓN URINARIA: el documento registra infección de vías urinarias; si dice pielonefritis, compromete el riñón.");
+ if(/INFECCI[ÓO]N GENITAL/.test(u))
+  items.push("INFECCIÓN GENITAL: se documenta una infección del tracto genital; si aparece junto a embarazo, corresponde al contexto gestacional descrito.");
+ if(/HIDRONEFROSIS/.test(u))
+  items.push("HIDRONEFROSIS: hay dilatación del sistema urinario del riñón, generalmente relacionada con dificultad para el drenaje de orina.");
+ if(/LITIASIS RENAL/.test(u))
+  items.push("LITIASIS RENAL: se documentan cálculos/piedras en el riñón.");
+ if(/COLELITIASIS/.test(u))
+  items.push("COLELITIASIS: se documentan cálculos/piedras en la vesícula biliar.");
+ if(/OBESIDAD/.test(u))
+  items.push("OBESIDAD: está documentada como diagnóstico y debe considerarse para el peso de cálculo y los requerimientos.");
+ if(/DIABETES/.test(u))
+  items.push("DIABETES MELLITUS: el documento registra diabetes; la dieta, glucemia y función renal pueden modificar el manejo nutricional.");
+ if(/HIPERTENSI[ÓO]N ARTERIAL|HIPERTENSI[ÓO]N ESENCIAL/.test(u)&&!/HIPERTENSI[ÓO]N CR[ÓO]NICA[^.;]{0,35}EMBARAZO/.test(u))
+  items.push("HIPERTENSIÓN ARTERIAL: se documenta presión arterial alta como antecedente o diagnóstico.");
+ if(/INSUFICIENCIA CARDIACA|INSUFICIENCIA CARDÍACA/.test(u))
+  items.push("INSUFICIENCIA CARDÍACA: el corazón tiene dificultad para bombear de forma adecuada; en nutrición puede ser relevante el estado de volumen y la restricción de sodio indicada.");
+ if(/FIBRILACI[ÓO]N AURICULAR/.test(u))
+  items.push("FIBRILACIÓN AURICULAR: se documenta una alteración del ritmo cardíaco.");
+ if(/TRAUMA(?:TISMO)? CRANEOENCEF[ÁA]LICO|\bTCE\b/.test(u))
+  items.push("TRAUMATISMO CRANEOENCEFÁLICO: se documenta una lesión traumática de la cabeza/cerebro; la gravedad debe tomarse del diagnóstico clínico.");
+
+ // ---------- RIÑÓN / DIÁLISIS ----------
+ const stage=(u.match(/(?:ERC|ENFERMEDAD RENAL CR[ÓO]NICA)\s*(?:ESTADIO|STAGE)?\s*([1-5](?:A|B)?)/)||[])[1]||"";
+ const renalDx=/ENFERMEDAD RENAL CR[ÓO]NICA|\bERC\b|\bCKD\b|INSUFICIENCIA RENAL|LESI[ÓO]N RENAL AGUDA|\bAKI\b/.test(u);
+ const rejected=/NEGATIVA (?:DEL MISMO|A LA DI[ÁA]LISIS)|RECHAZA (?:LA )?(?:HEMODI[ÁA]LISIS|DI[ÁA]LISIS)|NO (?:SE )?REALIZA (?:HEMODI[ÁA]LISIS|DI[ÁA]LISIS)|SIN (?:HEMODI[ÁA]LISIS|DI[ÁA]LISIS)/.test(u);
+ const activeDialysis=!rejected && /EN HEMODI[ÁA]LISIS|RECIBE HEMODI[ÁA]LISIS|HEMODI[ÁA]LISIS CR[ÓO]NICA|PACIENTE DIAL[IÍ]TICO|EN DI[ÁA]LISIS|DI[ÁA]LISIS PERITONEAL/.test(u);
+
+ if(renalDx||/HEMODI[ÁA]LISIS|DI[ÁA]LISIS/.test(u)){
+  if(stage)renal=`FUNCIÓN RENAL DOCUMENTADA: ERC ESTADIO ${stage}. `;
+  else if(renalDx)renal="FUNCIÓN RENAL: HAY ENFERMEDAD/LESIÓN RENAL DOCUMENTADA. ";
+  else renal="FUNCIÓN RENAL: EL TEXTO MENCIONA TERAPIA DIALÍTICA. ";
+
+  if(rejected)renal+="EL TEXTO INDICA QUE LA DIÁLISIS NO SE ESTÁ REALIZANDO O FUE RECHAZADA.";
+  else if(activeDialysis)renal+="HAY DIÁLISIS ACTIVA DOCUMENTADA.";
+  else renal+="NO SE PUEDE CONFIRMAR DIÁLISIS ACTIVA SOLO CON ESTE TEXTO.";
+ }
+
+ // ---------- PROCEDIMIENTOS / POSPARTO ----------
+ if(/CES[ÁA]REA/.test(u)&&postpartum)
+  items.push("CESÁREA: el parto fue por vía quirúrgica; el texto actual corresponde al periodo posterior al nacimiento.");
+ if(/PUERPERIO FISIOL[ÓO]GICO/.test(u))
+  items.push("PUERPERIO FISIOLÓGICO: se documenta el periodo inmediato después del parto sin que esa frase, por sí sola, indique una complicación.");
+ if(/PUERPERIO QUIR[ÚU]RGICO/.test(u))
+  items.push("PUERPERIO QUIRÚRGICO: se encuentra en el periodo posterior al parto por cesárea.");
+ if(/LEGRADO UTERINO/.test(u))
+  items.push("LEGRADO UTERINO: se realizó un procedimiento para retirar contenido o restos del interior del útero, según el motivo indicado en el documento.");
+
+ if(/\bZ300\b|Z30\.?0\b|CONSEJO Y ASESORAMIENTO.*ANTICONCEPCI[ÓO]N/.test(u))
+  items.push("Z30.0 / CONSEJO SOBRE ANTICONCEPCIÓN: corresponde a orientación anticonceptiva; no es una enfermedad.");
+
+ if(!items.length)
+  items.push("La app reconoce el texto clínico, pero no encontró todavía un término de su diccionario que pueda traducir con seguridad. Puedes abrir el texto original para revisar el diagnóstico literal.");
+
+ return {status,renal,items:items.slice(0,7)};
+}
+function updateDiagnosisMeaning(){
+ const d=plainDiagnosisInfo();
+ if($("diagnosisStatus"))$("diagnosisStatus").textContent=d.status||"RESUMEN DEL DIAGNÓSTICO IMPORTADO";
+ if($("diagnosisRenal")){
+  $("diagnosisRenal").classList.toggle("hidden",!d.renal);
+  $("diagnosisRenal").textContent=d.renal||"";
+ }
+ if($("diagnosisMeaning")){
+  $("diagnosisMeaning").innerHTML=d.items.map(x=>`<div class="dxItem">${esc(x)}</div>`).join("");
+ }
+}
+
 function autofillPreviousAssessment(){
  const u=previousAssessmentUpper();
  if(!u)return;
@@ -3706,6 +4106,7 @@ function calculateAll(){
  if($("mLip"))$("mLip").textContent=c.lipG!==null?Math.round(c.lipG)+" g/día":"—";
  updateScreeningUI();
  updateClinicalUI();
+ updateDiagnosisMeaning();
  if($("interconsultaResumen")){
   const n=interconsultaNarrative();
   $("interconsultaResumen").textContent=n||"SE INTEGRARÁ AUTOMÁTICAMENTE EN VALORACIÓN NUTRICIONAL.";

@@ -723,7 +723,7 @@ img,svg,table{
     <div><label class="label">Sexo</label><select id="sexo" onchange="calculateHeelKnee();updatePreview()"><option value="M">Masculino</option><option value="F">Femenino</option></select></div>
     <div><label class="label">Condición nutricional</label><select id="perfil" onchange="profileChanged()"><option value="adulto">Adulto</option><option value="adultomayor">Adulto mayor (≥60 años)</option><option value="renal">Renal / hemodiálisis</option><option value="embarazada">Embarazada</option><option value="posparto">Posparto / lactancia</option></select><div class="note">Se detecta automáticamente desde edad/texto del Word; puedes corregirlo aquí.</div></div>
    </div>
-   <div style="margin-top:7px"><label class="label">Dieta importada</label><input id="dieta"></div><div class="note" id="headerModeNote" style="margin-top:6px"></div>
+   <div style="margin-top:7px"><label class="label">Dieta importada / actual</label><input id="dieta"><div class="note">Si el Word no trae dieta, aparecerá “DIETA NO REGISTRADA” para que ingreses la prescripción actual sin inventarla.</div></div><div class="note" id="headerModeNote" style="margin-top:6px"></div>
    <div class="sourceBox previousCompact" style="margin-top:7px">
     <div class="previousTitleRow">
      <div><div class="srcTitle">Valoración anterior importada</div><div class="note">La app usa estos datos para revaloración; la dieta actual del encabezado sigue mandando.</div></div>
@@ -1289,7 +1289,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&
 const makeId=p=>`${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,9)}`;
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
 
-const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v55", FALLBACK_KEY="nutri_word_rounds_v55";
+const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v56", FALLBACK_KEY="nutri_word_rounds_v56";
 let db=null,currentRound=null,currentPatientId=null,history=[],loading=false,saveTimer=null;
 
 const simpleFields=["area","ambiente","cama","nombre","edad","cobertura","sexo","perfil","dieta","sourceText","alergia","intolerancia","ultima","consumoExacto","bristol","habito","hallazgo","peso","pesoEstimadoDoc","cb","cp","talla","talonRodilla","mediaEnvergadura","pesoPregestacional","edadGestacional","reqPerfil","cie10","plan","planObs","kcalKg","extraKcal","choPct","proPct","proKg","lipPct","clinicalProfile","renalSubtype","egfr","icuDay","hasIC","measuredEE","ibdActivity","pancreasType","surgeryScenario","suppName","suppMl","suppKcal","suppProtein","suppServings","acompanante","acompananteDetalle","informante","extremidadesDetalle","mExtSupDetalle","interApetitoCasaDias","interConsumoCasa","interPesoHabitual","interPesoIngreso","interPerdidaCasaKg","interPerdidaCasaDias","interApetitoHospDias","interConsumoHosp","interPerdidaHospKg","interDiasHospital"];
@@ -1313,90 +1313,103 @@ function parseHeader(text){
  const original=String(text||"").trim();
  if(!original)return null;
 
- // ==========================================================
- // FORMATO HOSPITALARIO:
- // Acepta AMB 4 C2, AMB 2C1, AMB4C2, AMB 10 C4.
- // ==========================================================
  const compact=stripNumbering(original).replace(/\s+/g," ").trim();
- const amb=compact.match(/\bAMB\s*([A-Za-z0-9-]+?)\s*(?:CAMA\s*|C\s*)([A-Za-z0-9-]+)/i);
 
+ // ==========================================================
+ // HOSPITALIZACIÓN CON AMB/CAMA
+ // Acepta: AMB 4 C2, AMB 2C1, AMB3 C5, AMB15 C2, etc.
+ // ==========================================================
+ const amb=compact.match(/\bAMB\s*([A-Za-z0-9-]+?)\s*(?:CAMA\s*|C\s*)([A-Za-z0-9-]+)/i);
  if(amb){
-  const area=stripNumbering(compact.slice(0,amb.index).trim());
+  const prefix=stripNumbering(compact.slice(0,amb.index).trim());
   const tail=compact.slice(amb.index+amb[0].length).trim();
 
+  // ----------------------------------------------------------
+  // Formato completo (Gineco / hospitalización):
+  // NOMBRE + EDAD + COBERTURA + DIETA
+  // ----------------------------------------------------------
   const dm=tail.match(/\s+((?:DIETA\s+.*)|(?:NPO\b.*)|(?:SNG\b.*)|(?:(?:GENERAL|BLANDA|L[IÍ]QUIDA(?:\s+ESTRICTA|\s+AMPLIA)?|TIPO\s+PUR[ÉE]|HIPERPROTEICA|HIPOGL[ÚU]CIDA|HIPOGRASA|HIPOS[ÓO]DICA)\b.*))$/i);
-  if(!dm)return null;
 
-  const dieta=dm[1].trim();
-  const beforeDiet=tail.slice(0,dm.index).trim();
-  const ages=[...beforeDiet.matchAll(/(?:^|\s)(\d{1,3})(?=\s|$)/g)];
-  if(!ages.length)return null;
+  if(dm){
+   const dieta=dm[1].trim();
+   const beforeDiet=tail.slice(0,dm.index).trim();
+   const ages=[...beforeDiet.matchAll(/(?:^|\s)(\d{1,3})(?=\s|$)/g)];
 
-  const am=ages[ages.length-1];
-  const edad=am[1];
-  const nombre=beforeDiet.slice(0,am.index).trim();
-  const after=beforeDiet.slice(am.index+am[0].length).trim();
-  if(!nombre)return null;
+   if(ages.length){
+    const am=ages[ages.length-1];
+    const edad=am[1];
+    const nombre=beforeDiet.slice(0,am.index).trim().replace(/\*+$/g,"").trim();
+    const after=beforeDiet.slice(am.index+am[0].length).trim();
+    const cov=after.match(/^(MSP|SPATT|IESS|ISSPOL|ISSFA|PRIVADO|PARTICULAR|SEGURO(?:\s+[A-ZÁÉÍÓÚÑ]+)?)(?:\s|$)/i);
+    const cobertura=cov?cov[1].trim():(after?after.split(/\s+/)[0]:"");
 
-  const cov=after.match(/^(MSP|SPATT|IESS|ISSPOL|ISSFA|PRIVADO|PARTICULAR|SEGURO(?:\s+[A-ZÁÉÍÓÚÑ]+)?)(?:\s|$)/i);
-  const cobertura=cov?cov[1].trim():(after?after.split(/\s+/)[0]:"");
+    if(nombre){
+     return {
+      headerMode:"HOSPITAL",
+      headerVariant:"COMPLETO",
+      origin:prefix,
+      area:"",
+      ambiente:amb[1],
+      cama:amb[2],
+      nombre,edad,cobertura,dieta,
+      originalHeader:original
+     };
+    }
+   }
+  }
 
-  return {
-   headerMode:"HOSPITAL",
-   area,
-   ambiente:amb[1],
-   cama:amb[2],
-   nombre,edad,cobertura,dieta,
-   originalHeader:original
-  };
+  // ----------------------------------------------------------
+  // Formato Medicina Interna:
+  // [VIENE DE EMERGENCIA / INGRESO / FECHA] + AMB/CAMA + NOMBRE
+  // La edad y sexo vienen en el párrafo clínico.
+  // No exige cobertura ni dieta.
+  // ----------------------------------------------------------
+  let nombre=tail
+    .replace(/\*+/g," ")
+    .replace(/\s+/g," ")
+    .trim();
+
+  if(nombre && !/\b(?:PACIENTE|DIAGN[ÓO]STICO|ANTECEDENTES?)\b/i.test(nombre)){
+   return {
+    headerMode:"HOSPITAL",
+    headerVariant:"MEDICINA_INTERNA",
+    origin:prefix,
+    area:"",
+    ambiente:amb[1],
+    cama:amb[2],
+    nombre,
+    edad:"",
+    cobertura:"",
+    dieta:"",
+    originalHeader:original
+   };
+  }
  }
 
  // ==========================================================
- // FORMATO EMERGENCIA SIN AMB/CAMA
+ // EMERGENCIA SIN AMB/CAMA
  // ==========================================================
  let cols=original.split(/\t+/).map(x=>x.trim()).filter(Boolean);
  if(cols.length>=4 && /^\d{1,3}$/.test(cols[0])){
-  const ref=cols[0];
-  const nombre=cols[1]||"";
+  const ref=cols[0],nombre=cols[1]||"";
   const edad=(cols[2]||"").match(/\d{1,3}/)?.[0]||"";
   const cobertura=cols[3]||"";
   const tail=cols.slice(4).filter(x=>!/^X$/i.test(x)).join(" ").trim();
   let dieta=tail;
-
   if(!dieta){
    const all=cols.join(" ");
    const dm=all.match(/\b(NPO|SNG|DIETA\s+.+|HIPOGL[ÚU]CIDA(?:\s+HIPOS[ÓO]DICA)?|HIPOS[ÓO]DICA|HIPERPROTEICA|GENERAL|BLANDA|L[IÍ]QUIDA.*)$/i);
    dieta=dm?dm[1].trim():"";
   }
-
   if(nombre&&edad&&cobertura&&dieta){
-   return {
-    headerMode:"EMERGENCIA",
-    emergencyRef:ref,
-    area:"",
-    ambiente:"",
-    cama:"",
-    nombre,edad,cobertura,dieta,
-    originalHeader:original
-   };
+   return {headerMode:"EMERGENCIA",emergencyRef:ref,area:"",ambiente:"",cama:"",nombre,edad,cobertura,dieta,originalHeader:original};
   }
  }
 
  const flat=stripNumbering(original).replace(/\s+/g," ").trim();
  const em=flat.match(/^(\d{1,3})\s+(.+?)\s+(\d{1,3})\s+(MSP|SPATT|IESS|ISSPOL|ISSFA|PRIVADO|PARTICULAR)\s+(?:X\s+)?(NPO|SNG|DIETA\s+.+|HIPOGL[ÚU]CIDA(?:\s+HIPOS[ÓO]DICA)?|HIPOS[ÓO]DICA|HIPERPROTEICA|GENERAL|BLANDA|L[IÍ]QUIDA.*)$/i);
  if(em){
-  return {
-   headerMode:"EMERGENCIA",
-   emergencyRef:em[1],
-   area:"",
-   ambiente:"",
-   cama:"",
-   nombre:em[2].trim(),
-   edad:em[3],
-   cobertura:em[4].trim(),
-   dieta:em[5].trim(),
-   originalHeader:original
-  };
+  return {headerMode:"EMERGENCIA",emergencyRef:em[1],area:"",ambiente:"",cama:"",nombre:em[2].trim(),edad:em[3],cobertura:em[4].trim(),dieta:em[5].trim(),originalHeader:original};
  }
  return null;
 }
@@ -1451,7 +1464,7 @@ function maternityDefaultsFor(profile){
  return {};
 }
 function makeDefaultState(h,sourceText){
- const sex=inferSex(sourceText),age=parseInt(h.edad||"0",10),diet=validDietText(h.dieta)||"DIETA GENERAL";
+ const sex=inferSex(sourceText),age=parseInt(h.edad||"0",10),diet=validDietText(h.dieta)||"DIETA NO REGISTRADA";
  const profile=inferProfileFromText(sourceText,sex,age,diet);
  const state={area:h.area,ambiente:h.ambiente,cama:h.cama,nombre:h.nombre,edad:h.edad,cobertura:h.cobertura,sexo:sex,perfil:profile,dieta:diet,sourceText,
   alergia:"",intolerancia:"",ultima:"HOY",bristol:"4",habito:"REGULAR",hallazgo:"",peso:"",pesoEstimadoDoc:"",cb:"",cp:"",talla:"",talonRodilla:"",mediaEnvergadura:"",pesoPregestacional:"",edadGestacional:"",acompanante:"NO",acompananteDetalle:"",informante:"PACIENTE",extremidadesDetalle:"",mExtSupDetalle:"",nrsLoss3m:"NONE",mnaIntake3m:"NO",mnaLoss3m:"NONE",mnaStress3m:"YES",nrsEnfOverride:"AUTO",
@@ -1468,6 +1481,27 @@ function makeDefaultState(h,sourceText){
  if(profile==="posparto")state.reqPerfil="posparto";
  return state;
 }
+
+function inferAgeFromClinicalText(sourceText){
+ const u=normalizedUpper(sourceText||"");
+ const first=u.slice(0,700);
+ const patterns=[
+  /PACIENTE\s+(?:DE\s+SEXO\s+)?(?:FEMENIN[AO]|MASCULIN[AO])(?:\s+DE)?\s*(\d{1,3})\s+A[NÑ]OS?/,
+  /PACIENTE\s+(?:FEMENIN[AO]|MASCULIN[AO])\s+DE\s+(\d{1,3})\s+A[NÑ]OS?/,
+  /(?:FEMENIN[AO]|MASCULIN[AO])\s+DE\s+(\d{1,3})\s+A[NÑ]OS?/,
+  /\b(?:FEMENIN[AO]|MASCULIN[AO])\s+(\d{1,3})\s+A[NÑ]OS?/,
+  /\bDE\s+(\d{1,3})\s+A[NÑ]OS?(?:\s+DE\s+EDAD)?/
+ ];
+ for(const rx of patterns){
+  const m=first.match(rx);
+  if(m){
+   const a=Number(m[1]);
+   if(a>=0&&a<=120)return String(a);
+  }
+ }
+ return "";
+}
+
 function parseParagraphs(paras,fileName){
  const clean=paras.map(x=>String(x||"").trim()).filter(x=>x!=="");
  let prefix=[],patients=[],current=null,section="",serviceSection="";
@@ -1478,15 +1512,16 @@ function parseParagraphs(paras,fileName){
   if(h){
    if(current)patients.push(current);
 
-   // Si el encabezado no trae área escrita, tomar la sección real del Word.
-   if(!h.area)h.area=section||serviceSection||(h.headerMode==="EMERGENCIA"?"EMERGENCIA":"");
+   // En encabezados de Medicina Interna, "INGRESO", "VIENE DE UCI",
+   // "VIENE DE EMERGENCIA" o una fecha NO reemplazan el área real.
+   if(!h.area)h.area=serviceSection||section||(h.headerMode==="EMERGENCIA"?"EMERGENCIA":"");
 
-   current={...h,id:makeId("patient"),section:h.area||section||serviceSection,sourceParas:[],completed:false,touched:false};
+   current={...h,id:makeId("patient"),section:h.area||serviceSection||section,sourceParas:[],completed:false,touched:false};
    continue;
   }
 
   const norm=normalizedUpper(t);
-  const explicitService=/^(?:GINECO(?:\s+\d+)?|CIRUG[IÍ]A(?:\s+\d+)?|MEDICINA(?:\s+\d+)?|PEDIATR[IÍ]A(?:\s+\d+)?|EMERGENCIA(?:\s+\d+)?)$/.test(norm);
+  const explicitService=/^(?:GINECO(?:\s+\d+)?|CIRUG[IÍ]A(?:\s+\d+)?|MEDICINA(?:\s+INTERNA)?(?:\s+\d+)?|PEDIATR[IÍ]A(?:\s+\d+)?|EMERGENCIA(?:\s+\d+)?)$/.test(norm);
   const genericHeading=/^(?:INGRESOS|EGRESOS|OBSERVACI[ÓO]N|HOSPITALIZACI[ÓO]N)$/.test(norm);
   const emergencySection=/^(?:OBSERVACI[ÓO]N\s+CR[IÍ]TICA|OBSERVACI[ÓO]N\s+ADULTOS|CIRUG[IÍ]A\s+MENOR|OBSERVACI[ÓO]N\s+GINECOL[ÓO]GICA|EMERGENCIA(?:\s+.+)?)$/i.test(t);
 
@@ -1497,7 +1532,6 @@ function parseParagraphs(paras,fileName){
    continue;
   }
 
-  // "INGRESOS" no reemplaza GINECO/GINECO 2.
   if(genericHeading){
    if(!serviceSection)section=stripNumbering(t).trim();
    if(!current)prefix.push(t);
@@ -1535,7 +1569,16 @@ function parseParagraphs(paras,fileName){
  const date=prefix.map(parseDateText).find(Boolean)||today();
  patients=patients.map(p=>{
   const sourceText=p.sourceParas.join("\n\n");
-  return {...p,sourceText,state:makeDefaultState(p,sourceText)};
+  const edad=p.edad||inferAgeFromClinicalText(sourceText);
+  const sexo=inferSex(sourceText);
+  const dieta=validDietText(p.dieta)||"DIETA NO REGISTRADA";
+  const normalized={...p,edad,dieta,sourceText};
+  const state=makeDefaultState(normalized,sourceText);
+  state.edad=edad;
+  state.sexo=sexo;
+  state.dieta=dieta;
+  state.plan=dieta;
+  return {...normalized,state};
  });
 
  return {id:makeId("round"),date,fileName,prefix,patients,createdAt:Date.now(),updatedAt:Date.now()};

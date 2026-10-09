@@ -1289,7 +1289,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&
 const makeId=p=>`${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,9)}`;
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
 
-const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v56", FALLBACK_KEY="nutri_word_rounds_v56";
+const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v57", FALLBACK_KEY="nutri_word_rounds_v57";
 let db=null,currentRound=null,currentPatientId=null,history=[],loading=false,saveTimer=null;
 
 const simpleFields=["area","ambiente","cama","nombre","edad","cobertura","sexo","perfil","dieta","sourceText","alergia","intolerancia","ultima","consumoExacto","bristol","habito","hallazgo","peso","pesoEstimadoDoc","cb","cp","talla","talonRodilla","mediaEnvergadura","pesoPregestacional","edadGestacional","reqPerfil","cie10","plan","planObs","kcalKg","extraKcal","choPct","proPct","proKg","lipPct","clinicalProfile","renalSubtype","egfr","icuDay","hasIC","measuredEE","ibdActivity","pancreasType","surgeryScenario","suppName","suppMl","suppKcal","suppProtein","suppServings","acompanante","acompananteDetalle","informante","extremidadesDetalle","mExtSupDetalle","interApetitoCasaDias","interConsumoCasa","interPesoHabitual","interPesoIngreso","interPerdidaCasaKg","interPerdidaCasaDias","interApetitoHospDias","interConsumoHosp","interPerdidaHospKg","interDiasHospital"];
@@ -1608,10 +1608,20 @@ async function importWord(event){
   if(currentRound)await persistRound();
   flash("Leyendo Word...");
   const paras=await docxParagraphs(file),round=parseParagraphs(paras,file.name);
-  if(!round.patients.length)throw new Error("No se detectaron pacientes. La app acepta hospitalización con AMB/CAMA y Emergencia con número, nombre, edad, cobertura y dieta.");
-  currentRound=round;currentPatientId=null;await persistRound();renderRound();renderHistory();openPatient(round.patients[0].id);
-  flash(`${round.patients.length} pacientes detectados`);
- }catch(e){alert("No pude interpretar ese Word: "+e.message)}
+  if(!round.patients.length)throw new Error("No se detectaron pacientes. La app acepta hospitalización, Medicina Interna y Emergencia.");
+
+  currentRound=round;
+  currentPatientId=null;
+
+  const saved=await persistRound();
+  renderRound();renderHistory();openPatient(round.patients[0].id);
+
+  if(saved)flash(`${round.patients.length} pacientes detectados y guardados`);
+  else flash(`${round.patients.length} pacientes detectados · almacenamiento persistente no disponible`);
+ }catch(e){
+  console.error(e);
+  alert("No pude interpretar ese Word: "+e.message);
+ }
  event.target.value="";
 }
 
@@ -1620,10 +1630,94 @@ function initDB(){return new Promise(resolve=>{if(!("indexedDB" in window)){reso
 function idbPut(o){return new Promise(resolve=>{if(!db){resolve(false);return}try{const tx=db.transaction(STORE,"readwrite");tx.objectStore(STORE).put(o);tx.oncomplete=()=>resolve(true);tx.onerror=()=>resolve(false)}catch(e){resolve(false)}})}
 function idbGetAll(){return new Promise(resolve=>{if(!db){resolve([]);return}try{const tx=db.transaction(STORE,"readonly"),r=tx.objectStore(STORE).getAll();r.onsuccess=()=>resolve(r.result||[]);r.onerror=()=>resolve([])}catch(e){resolve([])}})}
 function idbDelete(id){return new Promise(resolve=>{if(!db){resolve(false);return}try{const tx=db.transaction(STORE,"readwrite");tx.objectStore(STORE).delete(id);tx.oncomplete=()=>resolve(true);tx.onerror=()=>resolve(false)}catch(e){resolve(false)}})}
-function fallback(){try{return JSON.parse(localStorage.getItem(FALLBACK_KEY)||"[]")}catch(e){return[]}}
-function saveFallback(r){let a=fallback(),i=a.findIndex(x=>x.id===r.id);if(i>=0)a[i]=r;else a.push(r);localStorage.setItem(FALLBACK_KEY,JSON.stringify(a))}
-function syncCache(){if(currentRound)localStorage.setItem(CACHE_KEY,JSON.stringify(currentRound))}
-function loadCache(){try{return repairRound(JSON.parse(localStorage.getItem(CACHE_KEY)||"null"))}catch(e){return null}}
+
+function safeLocalSet(key,value){
+ try{
+  localStorage.setItem(key,value);
+  return true;
+ }catch(e){
+  console.warn("localStorage lleno o no disponible; se continúa con IndexedDB.",e);
+  return false;
+ }
+}
+function safeLocalRemove(key){
+ try{localStorage.removeItem(key)}catch(e){}
+}
+function roundCacheMeta(r){
+ if(!r)return null;
+ return {
+  id:r.id||"",
+  date:r.date||"",
+  fileName:r.fileName||"",
+  updatedAt:r.updatedAt||Date.now(),
+  patientCount:Array.isArray(r.patients)?r.patients.length:0
+ };
+}
+function legacyStorageKeys(){
+ const keys=[];
+ try{
+  for(let i=0;i<localStorage.length;i++){
+   const k=localStorage.key(i);
+   if(/^nutri_word_round_current_v\d+$/i.test(k)||/^nutri_word_rounds_v\d+$/i.test(k))keys.push(k);
+  }
+ }catch(e){}
+ return keys;
+}
+async function migrateLegacyLocalStorageToIndexedDB(){
+ if(!db)return;
+ const keys=legacyStorageKeys().filter(k=>k!==CACHE_KEY&&k!==FALLBACK_KEY);
+ for(const key of keys){
+  let raw=null,data=null,allSaved=true,found=false;
+  try{
+   raw=localStorage.getItem(key);
+   if(!raw)continue;
+   data=JSON.parse(raw);
+  }catch(e){continue}
+
+  const rounds=Array.isArray(data)?data:(data&&Array.isArray(data.rounds)?data.rounds:(data?.patients?[data]:[]));
+  if(!rounds.length)continue;
+
+  for(const r of rounds){
+   if(!r?.id)continue;
+   found=true;
+   const ok=await idbPut(repairRound(r));
+   if(!ok){allSaved=false;break}
+  }
+  // Solo se elimina la copia pesada DESPUÉS de confirmar que IndexedDB la recibió.
+  if(found&&allSaved)safeLocalRemove(key);
+ }
+}
+
+function fallback(){
+ try{
+  const d=JSON.parse(localStorage.getItem(FALLBACK_KEY)||"[]");
+  return Array.isArray(d)?d:[];
+ }catch(e){return[]}
+}
+function saveFallback(r){
+ // IndexedDB es el almacenamiento principal.
+ // Solo intentar copia completa si IndexedDB no está disponible.
+ if(db||!r)return true;
+ const a=fallback();
+ const i=a.findIndex(x=>x.id===r.id);
+ if(i>=0)a[i]=r;else a.push(r);
+ return safeLocalSet(FALLBACK_KEY,JSON.stringify(a));
+}
+function syncCache(){
+ if(!currentRound)return true;
+ // localStorage guarda SOLO un puntero pequeño. Nunca vuelve a duplicar el Word completo.
+ return safeLocalSet(CACHE_KEY,JSON.stringify(roundCacheMeta(currentRound)));
+}
+function loadCache(){
+ try{
+  const d=JSON.parse(localStorage.getItem(CACHE_KEY)||"null");
+  if(!d)return null;
+  // Compatibilidad por si alguna versión anterior dejó accidentalmente una ronda completa.
+  if(Array.isArray(d.patients))return repairRound(d);
+  if(d.id)return history.find(x=>x.id===d.id)||null;
+  return null;
+ }catch(e){return null}
+}
 function repairPatient(p){
  if(!p)return p;
  const d=patientDietText(p);
@@ -1651,8 +1745,26 @@ function repairPatient(p){
  return p;
 }
 function repairRound(r){if(!r)return r;if(Array.isArray(r.patients))r.patients=r.patients.map(repairPatient);return r;}
-async function loadHistory(){const a=await idbGetAll(),b=fallback(),m=new Map();[...b,...a].forEach(x=>x?.id&&m.set(x.id,repairRound(x)));history=[...m.values()].sort((x,y)=>(y.date||"").localeCompare(x.date||"")||(y.updatedAt||0)-(x.updatedAt||0))}
-async function persistRound(){if(!currentRound)return;currentRound.updatedAt=Date.now();syncCache();saveFallback(currentRound);await idbPut(currentRound);await loadHistory()}
+async function loadHistory(){
+ const a=await idbGetAll();
+ const b=db?[]:fallback();
+ const m=new Map();
+ [...b,...a].forEach(x=>x?.id&&m.set(x.id,repairRound(x)));
+ history=[...m.values()].sort((x,y)=>(y.date||"").localeCompare(x.date||"")||(y.updatedAt||0)-(x.updatedAt||0));
+}
+async function persistRound(){
+ if(!currentRound)return false;
+ currentRound.updatedAt=Date.now();
+
+ let saved=false;
+ if(db)saved=await idbPut(currentRound);
+ else saved=saveFallback(currentRound);
+
+ // Esto es solo metadata pequeña; si falla NO se considera error del guardado principal.
+ syncCache();
+ await loadHistory();
+ return saved;
+}
 async function saveRound(show=true){syncWorkingPatient();await persistRound();renderHistory();if(show)flash("Ronda guardada")}
 function scheduleSave(){
  clearTimeout(saveTimer);
@@ -1710,7 +1822,22 @@ function renderHistory(){
  arr.slice(0,60).forEach(r=>{const d=document.createElement("div");d.className="history";d.innerHTML=`<strong>${esc(r.date||"")} · ${esc(r.fileName||"Ronda")}</strong><small>${(r.patients||[]).length} pacientes</small><div class="pacts"><button class="btn small soft" data-a="o">Abrir</button><button class="btn small danger" data-a="d">Eliminar</button></div>`;d.querySelector('[data-a="o"]').onclick=()=>openRound(r.id);d.querySelector('[data-a="d"]').onclick=()=>deleteRound(r.id);box.appendChild(d)})
 }
 async function openRound(id){syncWorkingPatient();if(currentRound)await persistRound();const r=history.find(x=>x.id===id);if(!r)return;currentRound=JSON.parse(JSON.stringify(r));currentPatientId=null;renderRound();if(currentRound.patients.length)openPatient(currentRound.patients[0].id);flash("Ronda abierta")}
-async function deleteRound(id){if(!confirm("¿Eliminar esta ronda guardada?"))return;await idbDelete(id);localStorage.setItem(FALLBACK_KEY,JSON.stringify(fallback().filter(x=>x.id!==id)));if(currentRound?.id===id){currentRound=null;currentPatientId=null;showNoPatient()}await loadHistory();renderHistory();renderRound()}
+async function deleteRound(id){
+ if(!confirm("¿Eliminar esta ronda guardada?"))return;
+ await idbDelete(id);
+
+ if(!db){
+  const remaining=fallback().filter(x=>x.id!==id);
+  safeLocalSet(FALLBACK_KEY,JSON.stringify(remaining));
+ }
+
+ if(currentRound?.id===id){
+  currentRound=null;currentPatientId=null;
+  safeLocalRemove(CACHE_KEY);
+  showNoPatient();
+ }
+ await loadHistory();renderHistory();renderRound();
+}
 function showNoPatient(){$("noPatient").classList.remove("hidden");$("patientForm").classList.add("hidden");$("clinicalSections").classList.add("hidden");$("preview").textContent=""}
 
 function setRadioFromPrevious(name,value){
@@ -5314,7 +5441,25 @@ function downloadPdfRound(round,name){
 
 /* Backups */
 async function exportBackup(){syncWorkingPatient();await persistRound();const blob=new Blob([JSON.stringify({version:1,rounds:history},null,2)],{type:"application/json"});downloadBlob(blob,`Respaldo_Rondas_Word_${today()}.json`)}
-async function importBackup(event){const f=event.target.files?.[0];if(!f)return;try{const d=JSON.parse(await f.text()),arr=Array.isArray(d)?d:d.rounds;if(!Array.isArray(arr))throw new Error();for(const r of arr){saveFallback(r);await idbPut(r)}await loadHistory();renderHistory();flash(`${arr.length} ronda(s) importadas`)}catch(e){alert("Respaldo no válido")}event.target.value=""}
+async function importBackup(event){
+ const f=event.target.files?.[0];if(!f)return;
+ try{
+  const d=JSON.parse(await f.text()),arr=Array.isArray(d)?d:d.rounds;
+  if(!Array.isArray(arr))throw new Error();
+
+  let ok=0;
+  for(const r of arr){
+   const rr=repairRound(r);
+   const saved=db?await idbPut(rr):saveFallback(rr);
+   if(saved)ok++;
+  }
+  await loadHistory();renderHistory();
+  flash(`${ok}/${arr.length} ronda(s) importadas`);
+ }catch(e){
+  alert("Respaldo no válido");
+ }
+ event.target.value="";
+}
 
 /* Eventos */
 document.addEventListener("input",e=>{
@@ -5338,10 +5483,19 @@ window.addEventListener("beforeunload",()=>{
 });
 
 async function boot(){
- await initDB();await loadHistory();const cache=loadCache();
- if(cache?.id)currentRound=cache;else if(history.length)currentRound=JSON.parse(JSON.stringify(history[0]));
+ await initDB();
+
+ // Recupera datos de versiones anteriores antes de limpiar sus copias pesadas.
+ await migrateLegacyLocalStorageToIndexedDB();
+ await loadHistory();
+
+ const cache=loadCache();
+ if(cache?.id)currentRound=cache;
+ else if(history.length)currentRound=JSON.parse(JSON.stringify(history[0]));
+
  renderHistory();renderRound();
- if(currentRound?.patients?.length)openPatient(currentRound.patients[0].id);else showNoPatient();
+ if(currentRound?.patients?.length)openPatient(currentRound.patients[0].id);
+ else showNoPatient();
 }
 boot();
 </script>

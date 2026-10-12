@@ -1124,12 +1124,10 @@ img,svg,table{
   <div id="renalClinicalBox" class="q hidden" style="margin-top:8px">
    <div class="qt">Situación renal</div>
    <select id="renalSubtype" onchange="this.dataset.manual='1';calculateAll()">
-    <option value="CKD_STABLE">ERC estable, sin enfermedad aguda/crítica y sin KRT</option>
-    <option value="DIALYSIS_STABLE">Hemodiálisis / diálisis crónica estable</option>
-    <option value="AKI_NONCRIT">AKI o AKI sobre ERC, no crítico</option>
-    <option value="CRIT_NO_KRT">AKI/ERC + enfermedad crítica, sin KRT</option>
-    <option value="CRIT_IHD">Crítico + KRT intermitente</option>
-    <option value="CRIT_CKRT">Crítico + CKRT / PIKRT</option>
+    <option value="NO_DIALYSIS">Sin diálisis activa · 0,8 g/kg</option>
+    <option value="HEMODIALYSIS">Hemodiálisis · 1,2–1,5 g/kg</option>
+    <option value="PERITONEAL_DIALYSIS">Diálisis peritoneal · 1,5–2,0 g/kg</option>
+    <option value="CONTINUOUS_DIALYSIS">Diálisis continua · 2,0–2,5 g/kg</option>
    </select>
    <div id="renalAutoHint" class="note" style="margin-top:6px"></div>
    <div style="margin-top:7px"><label class="label">eGFR si se conoce</label><input id="egfr" type="number" step="0.1" placeholder="ml/min/1.73 m²" oninput="calculateAll()"></div>
@@ -1289,7 +1287,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&
 const makeId=p=>`${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,9)}`;
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
 
-const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v57", FALLBACK_KEY="nutri_word_rounds_v57";
+const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v58", FALLBACK_KEY="nutri_word_rounds_v58";
 let db=null,currentRound=null,currentPatientId=null,history=[],loading=false,saveTimer=null;
 
 const simpleFields=["area","ambiente","cama","nombre","edad","cobertura","sexo","perfil","dieta","sourceText","alergia","intolerancia","ultima","consumoExacto","bristol","habito","hallazgo","peso","pesoEstimadoDoc","cb","cp","talla","talonRodilla","mediaEnvergadura","pesoPregestacional","edadGestacional","reqPerfil","cie10","plan","planObs","kcalKg","extraKcal","choPct","proPct","proKg","lipPct","clinicalProfile","renalSubtype","egfr","icuDay","hasIC","measuredEE","ibdActivity","pancreasType","surgeryScenario","suppName","suppMl","suppKcal","suppProtein","suppServings","acompanante","acompananteDetalle","informante","extremidadesDetalle","mExtSupDetalle","interApetitoCasaDias","interConsumoCasa","interPesoHabitual","interPesoIngreso","interPerdidaCasaKg","interPerdidaCasaDias","interApetitoHospDias","interConsumoHosp","interPerdidaHospKg","interDiasHospital"];
@@ -3009,19 +3007,34 @@ function dialysisTreatmentStatus(){
  const refused=negativePatterns.some(rx=>rx.test(u));
  const required=/REQUERIMIENTO\s+DIAL[IÍ]TICO|INDICACI[ÓO]N\s+DE\s+(?:HEMODI[ÁA]LISIS|DI[ÁA]LISIS)|REQUIERE\s+(?:HEMODI[ÁA]LISIS|DI[ÁA]LISIS)/.test(u);
 
- const ckrt=/\bCKRT\b|\bCRRT\b|\bPIKRT\b|HEMOFILTRACI[ÓO]N\s+CONTINUA|HEMODIAFILTRACI[ÓO]N\s+CONTINUA/.test(u);
- const intermittent=/HEMODI[ÁA]LISIS\s+(?:INTERMITENTE|CR[ÓO]NICA)|\bIHD\b|KRT\s+INTERMITENTE/.test(u);
- const activeGeneral=/EN\s+HEMODI[ÁA]LISIS|RECIBE\s+HEMODI[ÁA]LISIS|SE\s+REALIZA\s+HEMODI[ÁA]LISIS|PACIENTE\s+DIAL[IÍ]TICO|DI[ÁA]LISIS\s+PERITONEAL|EN\s+DI[ÁA]LISIS|\bKRT\b/.test(u);
+ const peritoneal=/DI[ÁA]LISIS\s+PERITONEAL|\bDPCA\b|\bCAPD\b|\bAPD\b|DI[ÁA]LISIS\s+PERITONEAL\s+AMBULATORIA/.test(u);
+ const continuous=/\bCKRT\b|\bCRRT\b|\bCVVH\b|\bCVVHD\b|\bCVVHDF\b|HEMOFILTRACI[ÓO]N\s+CONTINUA|HEMODIAFILTRACI[ÓO]N\s+CONTINUA/.test(u);
+ const hemodialysis=/HEMODI[ÁA]LISIS|\bIHD\b|KRT\s+INTERMITENTE|DI[ÁA]LISIS\s+INTERMITENTE/.test(u);
 
- const active=!refused&&(ckrt||intermittent||activeGeneral);
- let label="SIN DIÁLISIS/KRT ACTUAL DOCUMENTADA";
- if(refused&&required)label="REQUIERE DIÁLISIS/KRT, PERO NO SE REALIZA / FUE RECHAZADA";
- else if(refused)label="DIÁLISIS/KRT NEGADA O NO REALIZADA";
- else if(ckrt)label="CKRT/PIKRT ACTIVA";
- else if(intermittent)label="HEMODIÁLISIS/KRT INTERMITENTE ACTIVA";
- else if(active)label="DIÁLISIS/KRT ACTIVA";
+ const active=!refused&&(peritoneal||continuous||hemodialysis||/PACIENTE\s+DIAL[IÍ]TICO|EN\s+DI[ÁA]LISIS|\bKRT\b/.test(u));
+ let modality="NONE";
+ if(active){
+  if(continuous)modality="CONTINUOUS";
+  else if(peritoneal)modality="PERITONEAL";
+  else modality="HEMODIALYSIS";
+ }
 
- return {active,refused,required,ckrt,intermittent,label};
+ let label="SIN DIÁLISIS ACTIVA DOCUMENTADA";
+ if(refused&&required)label="REQUIERE DIÁLISIS, PERO NO SE REALIZA / FUE RECHAZADA";
+ else if(refused)label="DIÁLISIS NEGADA O NO REALIZADA";
+ else if(modality==="CONTINUOUS")label="DIÁLISIS/KRT CONTINUA ACTIVA";
+ else if(modality==="PERITONEAL")label="DIÁLISIS PERITONEAL ACTIVA";
+ else if(modality==="HEMODIALYSIS")label="HEMODIÁLISIS ACTIVA";
+
+ return {
+  active,refused,required,
+  modality,
+  ckrt:modality==="CONTINUOUS",
+  peritoneal:modality==="PERITONEAL",
+  hemodialysis:modality==="HEMODIALYSIS",
+  intermittent:modality==="HEMODIALYSIS",
+  label
+ };
 }
 function renalFunctionContext(){
  const u=backgroundClinicalText(),activeDx=activeDiagnosisText(),area=normalizedUpper(val("area")),egfr=parsedEgfr();
@@ -3042,18 +3055,36 @@ function diseaseFlagsBaseCritical(){
  return /\bUCI\b|\bICU\b/.test(area)||/VENTILACION MECANICA ACTUAL|VENTILACIÓN MECÁNICA ACTUAL|CHOQUE SEPTICO|CHOQUE SÉPTICO|SHOCK SEPTICO|SHOCK SÉPTICO/.test(active);
 }
 function autoRenalSubtype(){
- const r=renalFunctionContext();
-
- if(r.critical&&r.dialysis)return r.ckrt?"CRIT_CKRT":"CRIT_IHD";
- if(r.critical&&!r.dialysis)return "CRIT_NO_KRT";
- if(r.aki&&!r.critical)return "AKI_NONCRIT";
- if(r.dialysis)return "DIALYSIS_STABLE";
- return "CKD_STABLE";
+ const r=renalFunctionContext(),ds=r.dialysisStatus;
+ if(!ds.active)return "NO_DIALYSIS";
+ if(ds.modality==="CONTINUOUS")return "CONTINUOUS_DIALYSIS";
+ if(ds.modality==="PERITONEAL")return "PERITONEAL_DIALYSIS";
+ return "HEMODIALYSIS";
 }
 function resolvedRenalSubtype(){
  const el=$("renalSubtype");
- if(el?.dataset?.manual==="1")return val("renalSubtype")||autoRenalSubtype();
- return autoRenalSubtype();
+ const auto=autoRenalSubtype();
+ if(!el)return auto;
+
+ const map={
+  CKD_STABLE:"NO_DIALYSIS",
+  AKI_NONCRIT:"NO_DIALYSIS",
+  CRIT_NO_KRT:"NO_DIALYSIS",
+  DIALYSIS_STABLE:"HEMODIALYSIS",
+  CRIT_IHD:"HEMODIALYSIS",
+  CRIT_CKRT:"CONTINUOUS_DIALYSIS"
+ };
+
+ let current=val("renalSubtype")||auto;
+ current=map[current]||current;
+ const allowed=["NO_DIALYSIS","HEMODIALYSIS","PERITONEAL_DIALYSIS","CONTINUOUS_DIALYSIS"];
+ if(!allowed.includes(current))current=auto;
+
+ if(el.dataset.manual!=="1"){
+  el.value=auto;
+  return auto;
+ }
+ return current;
 }
 function diseaseFlags(){
  const all=backgroundClinicalText(),active=activeDiagnosisText(),area=normalizedUpper(val("area")),egfr=parsedEgfr();
@@ -3590,62 +3621,59 @@ function guidelineEngine(){
     :day<=7?"UCI días 4–7: progresión energética dentro del rango ASPEN.":"UCI >7 días: aproximación a 25 kcal/kg si no hay calorimetría y la tolerancia es adecuada."];
   }
  }else if(cp==="RENAL"){
-  source="ESPEN Kidney Disease Practical Guideline 2024";
   const rc=renalFunctionContext(),r=resolvedRenalSubtype(),ds=rc.dialysisStatus;
+  source="PROTOCOLO RENAL CONFIGURADO + ESPEN KIDNEY DISEASE PRACTICAL 2024";
+
   if($("renalSubtype")&&$("renalSubtype").dataset.manual!=="1")$("renalSubtype").value=r;
 
-  // Peso de referencia: si hay edema/sobrecarga o estado crítico,
-  // evitar que el peso hídrico sobrestime el requerimiento.
-  if((cx.edema||cx.ascites||rc.critical)&&ideal){eW=ideal;pW=ideal;}
+  // PESO DE CÁLCULO:
+  // edema/ascitis/sobrecarga hídrica -> evitar usar peso actual edematizado.
+  if((cx.edema||cx.ascites)&&ideal){eW=ideal;pW=ideal;}
   else{eW=actual;pW=actual;}
 
-  // La enfermedad renal o la diálisis por sí solas NO aumentan automáticamente
-  // el gasto energético. Sin calorimetría se individualiza 20–30 kcal/kg
-  // según fase aguda, estabilidad, riesgo y comorbilidades.
+  // ENERGÍA:
+  // ESPEN renal recomienda calorimetría indirecta cuando esté disponible.
+  // Sin calorimetría, 20–30 kcal/kg es un punto de partida poblacional.
+  // En la app se usa 25 kcal/kg si está clínicamente estable y 30 kcal/kg
+  // si hay enfermedad activa, riesgo nutricional, malnutrición o estrés.
   kMin=20;kMax=30;
   if(rc.critical)kChosen=25;
-  else if(mod.malnutrition||mod.nutritionRisk||mod.stress.level!=="BAJO")kChosen=30;
+  else if(mod.malnutrition||mod.nutritionRisk||mod.stress.level!=="BAJO"||(mod.intake!==null&&mod.intake<75))kChosen=30;
   else kChosen=25;
 
-  if(r==="CKD_STABLE"){
-   pMin=.6;pMax=.8;
-   pChosen=(mod.stress.level==="BAJO"&&!mod.nutritionRisk&&!mod.malnutrition)?.8:.8;
+  // PROTEÍNA SEGÚN MODALIDAD RENAL SOLICITADA.
+  if(r==="NO_DIALYSIS"){
+   pMin=pMax=pChosen=.8;
    reason=[
-    `${ds.label}. ERC hospitalizada sin enfermedad crítica y SIN KRT ACTIVA: 0,6–0,8 g proteína/kg/día; se usa 0,8 g/kg como meta hospitalaria.`
+    `${ds.label}. PROTOCOLO CONFIGURADO: SIN DIÁLISIS ACTIVA = 0,8 G PROTEÍNA/KG/DÍA.`
    ];
-  }else if(r==="DIALYSIS_STABLE"){
-   pMin=pMax=pChosen=1.2;
+  }else if(r==="HEMODIALYSIS"){
+   pMin=1.2;pMax=1.5;
+   pChosen=mod.stress.level==="ALTO"||mod.malnutrition||mod.muscle?1.5:
+           (mod.nutritionRisk||(mod.intake!==null&&mod.intake<75)?1.3:1.2);
    reason=[
-    `${ds.label}. ERC/falla renal con KRT crónica estable: ≥1,2 g proteína/kg/día por pérdidas y mayores necesidades.`
+    `${ds.label}. PROTOCOLO CONFIGURADO: HEMODIÁLISIS = 1,2–1,5 G/KG/DÍA; SE SELECCIONAN ${one(pChosen)} G/KG SEGÚN CATABOLISMO, RIESGO, INGESTA Y MASA MUSCULAR.`
    ];
-  }else if(r==="AKI_NONCRIT"){
-   pMin=.8;pMax=1.0;pChosen=1.0;
+  }else if(r==="PERITONEAL_DIALYSIS"){
+   pMin=1.5;pMax=2.0;
+   pChosen=mod.stress.level==="ALTO"||mod.malnutrition||mod.muscle?2.0:
+           (mod.nutritionRisk||(mod.intake!==null&&mod.intake<75)?1.7:1.5);
    reason=[
-    `${ds.label}. AKI o AKI sobre ERC no crítica: 0,8–1,0 g proteína/kg/día.`
+    `${ds.label}. PROTOCOLO CONFIGURADO: DIÁLISIS PERITONEAL = 1,5–2,0 G/KG/DÍA; SE SELECCIONAN ${one(pChosen)} G/KG SEGÚN PÉRDIDAS Y ESTADO CATABÓLICO.`
    ];
-  }else if(r==="CRIT_NO_KRT"){
-   pMin=1.0;pMax=1.3;
-   pChosen=mod.stress.level==="ALTO"?1.3:1.1;
+  }else if(r==="CONTINUOUS_DIALYSIS"){
+   pMin=2.0;pMax=2.5;
+   pChosen=mod.stress.level==="ALTO"||mod.malnutrition||mod.muscle?2.5:
+           (mod.nutritionRisk||(mod.intake!==null&&mod.intake<75)?2.2:2.0);
    reason=[
-    `${ds.label}. Enfermedad renal + enfermedad crítica SIN KRT: iniciar alrededor de 1,0 g/kg y progresar hasta 1,3 g/kg si tolera.`
-   ];
-  }else if(r==="CRIT_IHD"){
-   pMin=1.3;pMax=1.5;
-   pChosen=mod.stress.level==="ALTO"?1.5:1.3;
-   reason=[
-    `${ds.label}. Paciente crítico con KRT intermitente: 1,3–1,5 g proteína/kg/día.`
-   ];
-  }else if(r==="CRIT_CKRT"){
-   pMin=1.5;pMax=1.7;
-   pChosen=mod.stress.level==="ALTO"?1.7:1.5;
-   reason=[
-    `${ds.label}. Paciente crítico con CKRT/PIKRT: 1,5–1,7 g proteína/kg/día por pérdidas asociadas a la terapia.`
+    `${ds.label}. PROTOCOLO CONFIGURADO: DIÁLISIS CONTINUA = 2,0–2,5 G/KG/DÍA; SE SELECCIONAN ${one(pChosen)} G/KG SEGÚN CATABOLISMO Y PÉRDIDAS DE LA TERAPIA.`
    ];
   }
 
-  if(rc.egfr!==null)reason.push(`eGFR/TFG documentada: ${one(rc.egfr)} ml/min/1,73 m².`);
-  if(ds.required&&!ds.active)reason.push("Existe indicación/requerimiento dialítico, pero NO se contabiliza como paciente en diálisis mientras la terapia no se esté realizando.");
- }else if(cp==="HEPATICO"){
+  reason.push(`ENERGÍA: ${one(kChosen)} KCAL/KG POR ${rc.critical?"ESTADO CRÍTICO / EVITAR SOBREALIMENTACIÓN":(mod.nutritionRisk||mod.malnutrition||mod.stress.level!=="BAJO"?"ENFERMEDAD/RIESGO NUTRICIONAL":"ESTABILIDAD CLÍNICA")}.`);
+  if(rc.egfr!==null)reason.push(`TFG/eGFR DOCUMENTADA: ${one(rc.egfr)} ML/MIN/1,73 M².`);
+  if(ds.required&&!ds.active)reason.push("HAY INDICACIÓN DE DIÁLISIS, PERO NO SE CUENTA COMO DIÁLISIS ACTIVA HASTA QUE REALMENTE SE REALICE.");
+}else if(cp==="HEPATICO"){
   // Si además hay obesidad, joint ESPEN/UEG propone ABW con 33% del exceso.
   eW=mod.obesity?(adj33||actual):actual;pW=mod.obesity?(adj33||actual):actual;
   kMin=30;kMax=35;kChosen=(mod.malnutrition||mod.muscle)?35:30;
@@ -3779,81 +3807,96 @@ function proteinDecisionFactors(g){
  return parts;
 }
 function whyEnergyText(g){
- const basis=weightBasisLabel(g).replace(/^\s+/,"").toLowerCase()||"peso";
- if(g.kChosen===null)return "SE USA GASTO ENERGÉTICO MEDIDO POR CALORIMETRÍA INDIRECTA.";
- let t=`SE SELECCIONARON ${one(g.kChosen)} KCAL/KG DENTRO DEL RANGO ${one(g.kMin)}–${one(g.kMax)} KCAL/KG PARA ${guideLabel(g.cp).toUpperCase()}, USANDO ${basis.toUpperCase()}.`;
- t+=` LA SELECCIÓN CONSIDERÓ: ${energyClinicalFactors(g.mod).join(", ")}.`;
- if(g.energyCheck?.low!==null&&g.energyCheck?.high!==null)
-  t+=` ESO EQUIVALE A UN RANGO TOTAL DE ${Math.round(g.energyCheck.low)}–${Math.round(g.energyCheck.high)} KCAL/DÍA; LA META FINAL ES ${Math.round(g.goalKcal)} KCAL/DÍA.`;
- if(g.mod.obesity)t+=" EN OBESIDAD SE UTILIZA EL PESO DE CÁLCULO INDICADO PARA EVITAR SOBRESTIMACIÓN.";
+ const basis=weightBasisLabel(g).replace(/^\s+/,"").toUpperCase()||"PESO";
+ if(g.kChosen===null)return "SE USA EL GASTO ENERGÉTICO MEDIDO POR CALORIMETRÍA INDIRECTA.";
+
+ const factors=energyClinicalFactors(g.mod).join(", ");
+ let why="";
+ if(g.cp==="RENAL"){
+  why=g.kChosen>=30
+   ?"SE USAN 30 KCAL/KG POR ENFERMEDAD ACTIVA, RIESGO NUTRICIONAL, INGESTA REDUCIDA O CATABOLISMO."
+   :"SE USAN 25 KCAL/KG POR ESTABILIDAD CLÍNICA O PARA EVITAR SOBREALIMENTACIÓN; EN RENAL LA CALORIMETRÍA ES PREFERIBLE SI ESTÁ DISPONIBLE.";
+ }else if(g.kChosen<=25){
+  why="SE USA EL EXTREMO BAJO DEL RANGO POR ESTABILIDAD CLÍNICA Y AUSENCIA DE MAYOR DEMANDA ENERGÉTICA DOCUMENTADA.";
+ }else if(g.kChosen>=35){
+  why="SE USA UN OBJETIVO ALTO SOLO POR MAYOR DEMANDA DOCUMENTADA, COMO MALNUTRICIÓN, BAJO PESO, HERIDA O CATABOLISMO DEL PERFIL.";
+ }else{
+  why="SE USA UN OBJETIVO INTERMEDIO/ALTO POR ENFERMEDAD ACTIVA O RIESGO NUTRICIONAL.";
+ }
+
+ let t=`${why} CÁLCULO: ${one(g.eW)} KG × ${one(g.kChosen)} KCAL/KG${g.extra?` + ${Math.round(g.extra)} KCAL`:""} = ${Math.round(g.goalKcal)} KCAL/DÍA. PESO UTILIZADO: ${basis}.`;
+ if(Number.isFinite(g.kMin)&&Number.isFinite(g.kMax))
+  t+=` RANGO DEL PERFIL: ${one(g.kMin)}–${one(g.kMax)} KCAL/KG.`;
+ t+=` FACTORES DETECTADOS: ${factors}.`;
  return t;
 }
 function whyProteinText(g){
+ if(g.cp==="RENAL"){
+  const r=resolvedRenalSubtype(),label={
+   NO_DIALYSIS:"SIN DIÁLISIS",
+   HEMODIALYSIS:"HEMODIÁLISIS",
+   PERITONEAL_DIALYSIS:"DIÁLISIS PERITONEAL",
+   CONTINUOUS_DIALYSIS:"DIÁLISIS CONTINUA"
+  }[r]||r;
+  return `${label}: RANGO CONFIGURADO ${one(g.pMin)}–${one(g.pMax)} G/KG/DÍA${g.pMin===g.pMax?"":""}. SE ELIGIERON ${one(g.pChosen)} G/KG/DÍA SEGÚN CATABOLISMO, INGESTA, RIESGO NUTRICIONAL Y DEPLECIÓN MUSCULAR. TOTAL: ${one(g.pW)} KG × ${one(g.pChosen)} = ${one(g.proteinG)} G PROTEÍNA/DÍA.`;
+ }
+
  const factors=proteinDecisionFactors(g).join(", ");
- const renal=renalFunctionContext();
- let t=`La guía permite ${one(g.pMin)}–${one(g.pMax)} g/kg y la app seleccionó ${one(g.pChosen)} g/kg según ${factors}.`;
- if(Math.abs(g.pMax-g.pMin)>=0.2&&!["RENAL","UCI"].includes(g.cp))
-  t+=" La selección se hace en pasos de 0,1 g/kg dentro del rango, no saltando siempre de 1,2 a 1,5.";
- if(renal.impaired)t+=" La función renal detectada prevalece sobre la regla general.";
- else if((num(val("edad"))||0)>=60)t+=" En adulto mayor la edad sola no es motivo para restringir proteína; se ajusta si existe enfermedad renal.";
- return t;
+ return `RANGO ${one(g.pMin)}–${one(g.pMax)} G/KG/DÍA. SE ELIGIERON ${one(g.pChosen)} G/KG SEGÚN ${factors}. TOTAL: ${one(g.pW)} KG × ${one(g.pChosen)} = ${one(g.proteinG)} G/DÍA.`;
 }
 function whyCarbText(c,g){
- if(c.choReason)return c.choReason;
- return `CARBOHIDRATOS ${one(c.cho)}% SEGÚN LA ENERGÍA, PROTEÍNA Y LÍPIDOS DEFINIDOS PARA EL PERFIL CLÍNICO.`;
+ if(c.choReason)return `${c.choReason} TOTAL: ${one(c.choG)} G/DÍA (${one(c.cho)}% DE ${Math.round(c.kcal)} KCAL).`;
+ return `CARBOHIDRATOS ${one(c.cho)}% = ${one(c.choG)} G/DÍA. SE CALCULAN DESPUÉS DE FIJAR PROTEÍNA Y LÍPIDOS SEGÚN EL PERFIL CLÍNICO.`;
 }
 function appliedGuidesText(g){
  const map={
-  GENERAL:["ESPEN Hospital Nutrition 2021","ESPEN Polymorbid Practical 2024"],
-  MALNUTRICION:["ESPEN Polymorbid Update 2023 / Practical 2024"],
-  GERIATRIA:["ESPEN Geriatrics Practical 2022","ESPEN Polymorbid Practical 2024"],
-  DEMENCIA:["ESPEN Dementia Update 2024","ESPEN Geriatrics 2022"],
-  ONCOLOGIA:["ESPEN Clinical Nutrition in Cancer 2021"],
-  CIRUGIA:["ESPEN Clinical Nutrition in Surgery Update 2025"],
-  TRAUMA:["ESPEN Hospital Nutrition","ASPEN Critical Care si progresa a UCI"],
-  UCI:["ASPEN Adult Critical Care 2022","ESPEN ICU"],
-  RENAL:["ESPEN Kidney Disease Practical 2024","ESPEN Polymorbid Practical 2024"],
-  HEPATICO:["ESPEN Liver Disease 2019","Joint ESPEN/UEG Obesity 2022 si hay obesidad"],
-  PANCREATITIS:["ESPEN Acute/Chronic Pancreatitis"],
-  IBD:["ESPEN IBD Update 2023","Joint ESPEN/UEG Obesity 2022 si hay obesidad"],
-  INTESTINAL:["ESPEN Chronic Intestinal Failure Update 2023"],
-  OBESIDAD:["ESPEN Hospital Nutrition 2021","Joint ESPEN/UEG Obesity 2022"],
-  NEURO:["ESPEN Neurology","ESPEN Hospital Nutrition"],
-  DIABETES:["ESPEN Hospital Nutrition","ADA hospital nutrition principles"],
-  CARDIACO:["ESPEN Hospital Nutrition","ESPEN Polymorbid Practical 2024"],
-  RESPIRATORIO:["ESPEN Hospital Nutrition","ESPEN Polymorbid Practical 2024"],
-  INFECCION:["ESPEN Hospital Nutrition","ESPEN Polymorbid Practical 2024"],
-  HERIDAS:["ESPEN Geriatrics cuando aplica","ESPEN Hospital Nutrition"],
-  QUEMADOS:["ASPEN Critical Care","ESPEN ICU"],
-  EMBARAZO:["Esquema materno configurado del servicio"],
-  POSPARTO:["Esquema materno configurado del servicio"]
+  GENERAL:["ESPEN HOSPITAL NUTRITION 2021"],
+  MALNUTRICION:["ESPEN POLYMORBID / HOSPITAL NUTRITION"],
+  GERIATRIA:["ESPEN GERIATRICS 2022"],
+  DEMENCIA:["ESPEN DEMENTIA UPDATE 2024","ESPEN GERIATRICS 2022"],
+  ONCOLOGIA:["ESPEN CANCER 2021"],
+  CIRUGIA:["ESPEN SURGERY"],
+  TRAUMA:["ESPEN HOSPITAL NUTRITION"],
+  UCI:["ASPEN ADULT CRITICAL CARE","ESPEN ICU"],
+  RENAL:["ESPEN KIDNEY DISEASE PRACTICAL 2024","PROTOCOLO RENAL CONFIGURADO POR MODALIDAD"],
+  HEPATICO:["ESPEN LIVER DISEASE"],
+  PANCREATITIS:["ESPEN PANCREATITIS"],
+  IBD:["ESPEN IBD"],
+  INTESTINAL:["ESPEN CHRONIC INTESTINAL FAILURE"],
+  OBESIDAD:["ESPEN HOSPITAL NUTRITION"],
+  NEURO:["ESPEN NEUROLOGY / HOSPITAL NUTRITION"],
+  DIABETES:["ESPEN HOSPITAL NUTRITION"],
+  CARDIACO:["ESPEN HOSPITAL NUTRITION"],
+  RESPIRATORIO:["ESPEN HOSPITAL NUTRITION"],
+  INFECCION:["ESPEN HOSPITAL NUTRITION"],
+  HERIDAS:["ESPEN HOSPITAL NUTRITION / GERIATRICS"],
+  QUEMADOS:["ASPEN/ESPEN CRITICAL CARE"],
+  EMBARAZO:["ESQUEMA MATERNO CONFIGURADO DEL SERVICIO"],
+  POSPARTO:["ESQUEMA MATERNO CONFIGURADO DEL SERVICIO"]
  };
- return `Biblioteca ESPEN vigente revisada 30-08-2026 · ${[...new Set(map[g.cp]||[g.source])].join(" · ")}`;
+ return (map[g.cp]||[g.source]).join(" · ");
 }
 
 function whyLipidText(c,g){
- if(c.fatReason)return c.fatReason;
- return `LÍPIDOS ${one(c.lip)}%: SE AJUSTAN SEGÚN DIETA, TOLERANCIA DIGESTIVA, PERFIL CARDIOMETABÓLICO/RENAL Y PORCENTAJE PROTEICO; NO SE USAN COMO SIMPLE RESIDUO DE LOS CHO.`;
+ const base=c.fatReason||"LOS LÍPIDOS SE FIJAN SEGÚN DIETA Y CUADRO CLÍNICO; NO SON UN RESIDUO AUTOMÁTICO.";
+ return `${base} TOTAL: ${one(c.lipG)} G/DÍA (${one(c.lip)}% DE ${Math.round(c.kcal)} KCAL).`;
 }
 function renalSafetyText(g){
- const age=num(val("edad"))||0,rc=renalFunctionContext(),ds=rc.dialysisStatus;
+ const rc=renalFunctionContext(),ds=rc.dialysisStatus;
+ if(!rc.impaired)return "SIN MODIFICADOR RENAL DETECTADO.";
 
- if(rc.impaired){
-  const eg=rc.egfr!==null?`TFG/eGFR ${one(rc.egfr)} ml/min/1,73 m². `:"";
-  if(ds.active){
-   if(ds.ckrt)return `${eg}${ds.label}: proteína ajustada a terapia continua; no aplicar restricción de ERC estable.`;
-   return `${eg}${ds.label}: proteína ajustada por pérdidas de diálisis/KRT.`;
-  }
-  if(ds.required&&!ds.active)
-   return `${eg}${ds.label}: se calcula como SIN KRT ACTIVA hasta que la terapia realmente se realice.`;
-  return `${eg}SIN DIÁLISIS/KRT ACTUAL DOCUMENTADA: se aplica la pauta renal correspondiente al estado clínico.`;
- }
+ const eg=rc.egfr!==null?` TFG/eGFR ${one(rc.egfr)} ML/MIN/1,73 M².`:"";
+ if(ds.required&&!ds.active)
+  return `${ds.label}.${eg} LA APP LO CALCULA COMO SIN DIÁLISIS ACTIVA HASTA QUE LA TERAPIA REALMENTE SE REALICE.`;
 
- if(age>=60){
-  if(rc.egfr!==null)return `TFG/eGFR ${one(rc.egfr)} ml/min/1,73 m². No se restringe proteína únicamente por edad.`;
-  return "No hay TFG/eGFR documentada. La edad por sí sola no justifica reducir proteína.";
- }
- return "Sin modificador renal detectado en los datos disponibles.";
+ const r=resolvedRenalSubtype(),label={
+  NO_DIALYSIS:"SIN DIÁLISIS",
+  HEMODIALYSIS:"HEMODIÁLISIS",
+  PERITONEAL_DIALYSIS:"DIÁLISIS PERITONEAL",
+  CONTINUOUS_DIALYSIS:"DIÁLISIS CONTINUA"
+ }[r]||r;
+
+ return `${label}.${eg} PROTEÍNA CONFIGURADA: ${one(g.pMin)}${g.pMin===g.pMax?"":"–"+one(g.pMax)} G/KG/DÍA.`;
 }
 function requirementSanity(){
  const g=guidelineEngine(),b=calculationsBase(),c=calculations(),k=g.goalKcal;
@@ -4106,12 +4149,10 @@ function nrsAnyWeightLossLast3Months(){
 }
 function nrsInitialScreeningExact(){
  const b=calculationsBase(),dis=nrsDiseaseScoreExact(),intake=nrsWeeklyIntakePercent();
- const area=normalizedUpper(val("area")),active=activeDiagnosisText();
  const bmi=Number.isFinite(b.imc)&&b.imc<20.5;
  const loss=nrsAnyWeightLossLast3Months();
  const reduced=intake!==null&&intake<100&&importedRoute()!=="NPO";
- const severe=/\bUCI\b|\bICU\b/.test(area)||diseaseFlagsBaseCritical()||dis.score>=3||
-   /TRAUMATISMO CRANEOENCEF[ÁA]LICO|TRASPLANTE DE M[ÉE]DULA [ÓO]SEA/.test(active);
+ const severe=dis.score>=3;
  return {bmi,loss,reduced,severe,positive:bmi||loss||reduced||severe};
 }
 function nrsNutritionalScoreExact(){
@@ -4131,28 +4172,31 @@ function nrsNutritionalScoreExact(){
 }
 function nrsDiseaseScoreExact(){
  const a=activeDiagnosisText(),all=backgroundClinicalText(),area=normalizedUpper(val("area"));
- const apache=all.match(/APACHE\s*(?:II)?\s*[:=]?\s*(\d+)/);
- const apacheN=apache?Number(apache[1]):null;
 
- if(/TRAUMATISMO CRANEOENCEF[ÁA]LICO|TCE SEVERO|TRASPLANTE DE M[ÉE]DULA [ÓO]SEA|TRANSPLANTE DE M[ÉE]DULA [ÓO]SEA/.test(a))
-  return {score:3,label:"SEVERIDAD 3: PROTOTIPO NRS-2002"};
- if((/\bUCI\b|\bICU\b/.test(area)||diseaseFlagsBaseCritical())&&apacheN!==null&&apacheN>10)
-  return {score:3,label:`SEVERIDAD 3: UCI CON APACHE II ${apacheN}`};
+ // 3 PUNTOS: enfermedad grave / alto estrés metabólico.
+ // Regla configurada: UCI o ventilación mecánica = 3.
+ if(/\bUCI\b|\bICU\b/.test(area)||
+    /VENTILACI[ÓO]N MEC[ÁA]NICA|VENTILADO|INTUBACI[ÓO]N OROTRAQUEAL|TUBO ENDOTRAQUEAL/.test(all)||
+    /TRAUMATISMO CRANEOENCEF[ÁA]LICO|TCE SEVERO|TRASPLANTE DE M[ÉE]DULA [ÓO]SEA|TRANSPLANTE DE M[ÉE]DULA [ÓO]SEA/.test(a))
+   return {score:3,label:"GRAVEDAD 3: ENFERMEDAD GRAVE / UCI / VENTILACIÓN MECÁNICA"};
 
- if(/CIRUG[IÍ]A ABDOMINAL MAYOR|LAPAROTOM[IÍ]A|ACV|ICTUS|ACCIDENTE CEREBROVASCULAR|LEUCEMIA|LINFOMA|NEOPLASIA HEMATOL[ÓO]GICA/.test(a))
-  return {score:2,label:"SEVERIDAD 2: PROTOTIPO NRS-2002"};
- if(/NEUMON[IÍ]A SEVERA|SEPSIS|SHOCK S[ÉE]PTICO|CHOQUE S[ÉE]PTICO|INFECCI[ÓO]N SEVERA/.test(a))
-  return {score:2,label:"SEVERIDAD 2: INFECCIÓN/ESTRÉS MODERADO-SEVERO"};
+ // 2 PUNTOS: enfermedad moderada.
+ if(/CIRUG[IÍ]A ABDOMINAL MAYOR|LAPAROTOM[IÍ]A|ACV|ICTUS|ACCIDENTE CEREBROVASCULAR/.test(a))
+   return {score:2,label:"GRAVEDAD 2: CIRUGÍA MAYOR / EVENTO NEUROLÓGICO"};
+ if(/NEUMON[IÍ]A|SEPSIS|SHOCK S[ÉE]PTICO|CHOQUE S[ÉE]PTICO|INFECCI[ÓO]N SEVERA/.test(a))
+   return {score:2,label:"GRAVEDAD 2: NEUMONÍA / INFECCIÓN MODERADA-SEVERA"};
+ if(/TUMOR|NEOPLAS|C[ÁA]NCER|CARCINOMA|LEUCEMIA|LINFOMA/.test(a))
+   return {score:2,label:"GRAVEDAD 2: TUMOR / NEOPLASIA"};
  if(/POLITRAUMA|TRAUMA PENETRANTE|HEMOT[ÓO]RAX TRAUM[ÁA]TICO|FRACTURAS M[ÚU]LTIPLES/.test(a))
-  return {score:2,label:"SEVERIDAD 2 ESTIMADA POR PROTOTIPO NRS-2002"};
+   return {score:2,label:"GRAVEDAD 2: TRAUMA MODERADO-SEVERO"};
 
- if(/FRACTURA DE CADERA|HEMODI[ÁA]LISIS|DI[ÁA]LISIS|CIRROSIS|EPOC|DIABETES|ONCOLOG|C[ÁA]NCER/.test(all))
-  return {score:1,label:"SEVERIDAD 1: PROTOTIPO NRS-2002"};
+ // 1 PUNTO: enfermedad crónica con complicación aguda.
+ if(/CIRROSIS|EPOC|HEMODI[ÁA]LISIS|DI[ÁA]LISIS CR[ÓO]NICA|DIABETES|ENFERMEDAD RENAL CR[ÓO]NICA|\bERC\b/.test(all))
+   return {score:1,label:"GRAVEDAD 1: ENFERMEDAD CRÓNICA / COMPLICACIÓN AGUDA"};
+ if(/FRACTURA DE CADERA/.test(a))
+   return {score:1,label:"GRAVEDAD 1: FRACTURA DE CADERA"};
 
- if(/\bUCI\b|\bICU\b/.test(area)||diseaseFlagsBaseCritical())
-  return {score:2,label:"UCI SIN APACHE >10 DOCUMENTADO: SEVERIDAD 2 PROVISIONAL"};
-
- return {score:0,label:"SEVERIDAD 0: REQUERIMIENTOS NORMALES SEGÚN NRS-2002"};
+ return {score:0,label:"GRAVEDAD 0: REQUERIMIENTOS NUTRICIONALES NORMALES"};
 }
 function automaticNRS2002(){
  const b=calculationsBase(),initial=nrsInitialScreeningExact();
@@ -4212,18 +4256,17 @@ function updateScreeningUI(){
  }
 
  const n=automaticNRS2002();
+ if($("adultRiskResult"))$("adultRiskResult").textContent=`NRS-2002: ${n.total} PUNTOS`;
+ if($("adultStressResult"))$("adultStressResult").textContent=n.total>=3?"CON RIESGO NUTRICIONAL":"SIN RIESGO NUTRICIONAL";
+
  if(!n.finalPerformed){
-  if($("adultRiskResult"))$("adultRiskResult").textContent="NRS-2002: 0 PUNTOS";
-  if($("adultStressResult"))$("adultStressResult").textContent="SIN RIESGO NUTRICIONAL";
   if($("screenReasonText"))$("screenReasonText").textContent=
-   `NRS-2002 INICIAL: IMC <20,5 ${n.initial.bmi?"SÍ":"NO"} · PÉRDIDA DE PESO 3 MESES ${n.initial.loss?"SÍ":"NO"} · INGESTA REDUCIDA ÚLTIMA SEMANA ${n.initial.reduced?"SÍ":"NO"} · ENFERMEDAD GRAVE ${n.initial.severe?"SÍ":"NO"}.`;
+   `CRIBADO INICIAL NEGATIVO. IMC <20,5: ${n.initial.bmi?"SÍ":"NO"} · PÉRDIDA DE PESO EN 3 MESES: ${n.initial.loss?"SÍ":"NO"} · INGESTA REDUCIDA ÚLTIMA SEMANA: ${n.initial.reduced?"SÍ":"NO"} · ENFERMEDAD GRAVE: ${n.initial.severe?"SÍ":"NO"}. RESULTADO: SIN RIESGO NUTRICIONAL SEGÚN NRS-2002 (0 PUNTOS). REPETIR SEMANALMENTE.`;
   return;
  }
 
- if($("adultRiskResult"))$("adultRiskResult").textContent=`NRS-2002: ${n.total} PUNTOS`;
- if($("adultStressResult"))$("adultStressResult").textContent=n.total>=3?"CON RIESGO NUTRICIONAL":"SIN RIESGO NUTRICIONAL";
  if($("screenReasonText"))$("screenReasonText").textContent=
-  `NRS-2002 FINAL: ESTADO NUTRICIONAL ${n.nut} + GRAVEDAD DE ENFERMEDAD ${n.dis}${n.agePt?` + EDAD ≥70 (${n.agePt})`:""} = ${n.total} PUNTOS. ${n.disReason}.`;
+  `NRS-2002 = ESTADO NUTRICIONAL ${n.nut} + GRAVEDAD DE ENFERMEDAD ${n.dis}${n.agePt?` + EDAD ≥70 (${n.agePt})`:""} = ${n.total} PUNTOS. ${n.disReason}. ${n.total<3?"SIN RIESGO NUTRICIONAL INMEDIATO; REPETIR SEMANALMENTE.":"CON RIESGO NUTRICIONAL; INICIAR PLAN DE CUIDADOS NUTRICIONALES."}`;
 }
 
 function macroClinicalContext(dietText){
@@ -4249,97 +4292,95 @@ function macroTargets(kcal,proteinG,profile,dietText){
  const ctx=macroClinicalContext(dietText),cp=ctx.cp,mod=modifierState();
  const proteinKcal=proteinG*4;
  const proPct=proteinKcal/kcal*100;
- let fatPct=35,choPct=null,fatReason="",choReason="";
  const flags=[];
 
- // La proteína se calcula primero por g/kg. Después se decide la fracción grasa
- // según el cuadro clínico; los CHO completan la energía.
- if(profile==="embarazada"||profile==="posparto"){
-  fatPct=30;
-  fatReason="GESTACIÓN/POSPARTO: SE MANTIENE UN APORTE LIPÍDICO MODERADO DE 30% Y SE RESPETA PRIMERO LA PROTEÍNA CALCULADA.";
- }else if(ctx.explicitLowFat){
+ let fatPct,choPct,fatReason="",choReason="";
+
+ // 1. FIJAR LÍPIDOS SEGÚN EL CUADRO, NO COMO RESIDUO.
+ if(ctx.explicitLowFat){
   fatPct=25;
-  flags.push("HIPOGRASA EXPLÍCITA");
-  fatReason="PRESCRIPCIÓN HIPOGRASA EXPLÍCITA: OBJETIVO OPERATIVO 25% DE LÍPIDOS; LOS CHO COMPLETAN LA ENERGÍA DESPUÉS DE LA PROTEÍNA.";
- }else if(ctx.pancreatitis){
+  flags.push("HIPOGRASA");
+  fatReason="DIETA HIPOGRASA EXPLÍCITA: LÍPIDOS 25% COMO OBJETIVO OPERATIVO; EL RESTO SE DISTRIBUYE ENTRE PROTEÍNA Y CHO.";
+ }else if(ctx.pancreatitis||ctx.biliary&&ctx.giIntolerance){
   fatPct=25;
-  flags.push("PANCREATITIS · BAJO EN GRASA");
-  fatReason="PANCREATITIS: PARA VÍA ORAL SE PRIORIZA DIETA BLANDA BAJA EN GRASA; SE USA 25% COMO OBJETIVO OPERATIVO DE LA APP.";
- }else if(ctx.soft&&(ctx.biliary||ctx.giSurgery||ctx.giIntolerance)){
+  flags.push("DIGESTIVO BAJO EN GRASA");
+  fatReason="PANCREATITIS / PATOLOGÍA BILIAR CON INTOLERANCIA: LÍPIDOS 25% PARA MODERAR LA CARGA GRASA.";
+ }else if(ctx.soft&&(ctx.giSurgery||ctx.giIntolerance)){
   fatPct=30;
-  flags.push("BLANDA + INDICACIÓN DIGESTIVA");
-  fatReason="DIETA BLANDA CON INDICACIÓN DIGESTIVA/BILIAR O INTOLERANCIA: SE MODERA LA GRASA A 30%. BLANDA POR SÍ SOLA NO SE INTERPRETA AUTOMÁTICAMENTE COMO HIPOGRASA.";
+  flags.push("BLANDA + TOLERANCIA DIGESTIVA");
+  fatReason="DIETA BLANDA CON CIRUGÍA O INTOLERANCIA DIGESTIVA: LÍPIDOS 30%. BLANDA SOLA NO SIGNIFICA HIPOGRASA.";
  }else if(cp==="CARDIACO"||ctx.f.cardiac||ctx.f.diabetes||mod.obesity){
   fatPct=30;
-  flags.push("LÍPIDOS MODERADOS");
-  fatReason="CARDIOMETABÓLICO/OBESIDAD: SE EVITA QUE LOS LÍPIDOS SUBAN POR SIMPLE DIFERENCIA MATEMÁTICA; OBJETIVO 30% SALVO OTRA PRESCRIPCIÓN.";
+  flags.push("CARDIOMETABÓLICO");
+  fatReason="PERFIL CARDIOMETABÓLICO/OBESIDAD: LÍPIDOS 30% PARA EVITAR UNA CARGA GRASA ALTA.";
  }else if(cp==="RENAL"){
-  fatPct=35;
+  const rs=resolvedRenalSubtype();
+  fatPct=(rs==="PERITONEAL_DIALYSIS"||rs==="CONTINUOUS_DIALYSIS")?30:35;
   flags.push("RENAL");
-  fatReason="PERFIL RENAL: LA PROTEÍNA CAMBIA SEGÚN KRT/DIÁLISIS; LOS LÍPIDOS SE MANTIENEN EN 35% Y LOS CHO APORTAN EL RESTO, EVITANDO LÍPIDOS EXCESIVOS POR LA RESTRICCIÓN PROTEICA.";
- }else if(cp==="HEPATICO"&&ctx.cholestasis){
+  fatReason=rs==="PERITONEAL_DIALYSIS"||rs==="CONTINUOUS_DIALYSIS"
+   ?`PERFIL RENAL CON PROTEÍNA ALTA (${one(proPct)}% DE LA ENERGÍA): LÍPIDOS 30% PARA EVITAR DESPLAZAR DEMASIADO LOS CHO.`
+   :"PERFIL RENAL: LÍPIDOS 35%; LOS CHO COMPLETAN LA ENERGÍA DESPUÉS DE RESPETAR LA PROTEÍNA RENAL.";
+ }else if(profile==="embarazada"||profile==="posparto"){
   fatPct=30;
-  flags.push("COLESTASIS");
-  fatReason="HEPATOBILIAR CON COLESTASIS: SE MODERA EL APORTE LIPÍDICO A 30% Y SE INDIVIDUALIZA SEGÚN TOLERANCIA/MALABSORCIÓN.";
+  fatReason="GESTACIÓN/POSPARTO: LÍPIDOS 30% Y EL RESTO SE AJUSTA CON CHO RESPETANDO LA PROTEÍNA.";
  }else if(cp==="GENERAL"&&!mod.nutritionRisk&&mod.stress.level==="BAJO"){
   fatPct=30;
-  fatReason="DIETA ESTÁNDAR HOSPITALARIA: SE USA 30% DE LÍPIDOS, DENTRO DEL RANGO ESPEN 30–35%.";
+  fatReason="PACIENTE ESTABLE / DIETA ESTÁNDAR: LÍPIDOS 30%, DENTRO DEL PATRÓN ESPEN 30–35%.";
  }else{
   fatPct=35;
-  fatReason="PACIENTE HOSPITALIZADO CON ENFERMEDAD/RIESGO: SE USA 35% DE LÍPIDOS, EN EL LÍMITE INFERIOR DEL RANGO ESPEN 35–40%, PARA EVITAR EXCESO DE GRASA.";
+  fatReason="PACIENTE HOSPITALIZADO CON ENFERMEDAD O RIESGO: LÍPIDOS 35%, DENTRO DEL PATRÓN DE DIETA HOSPITALARIA.";
  }
 
- // Hipo-glúcida explícita: 45% es objetivo inicial, pero no se fuerza a costa
- // de producir un porcentaje lipídico excesivo. Si hacen conflicto dos órdenes,
- // se prioriza seguridad y coherencia energética.
+ // 2. CHO según dieta / enfermedad.
  if(ctx.lowCarb){
-  flags.push("HIPOGLÚCIDA");
-  const desiredCho=45;
-  const neededFat=100-proPct-desiredCho;
-  if(ctx.lowFatClinical){
-   choPct=100-proPct-fatPct;
-   choReason=`HAY INDICACIÓN HIPOGLÚCIDA Y BAJA EN GRASA AL MISMO TIEMPO. CON LA PROTEÍNA EN ${one(proPct)}%, SE PRIORIZA NO ELEVAR LA GRASA; LOS CHO QUEDAN EN ${one(choPct)}%.`;
-  }else if(neededFat<=40&&neededFat>=30){
+  const desired=45;
+  const neededFat=100-proPct-desired;
+  if(neededFat>=25&&neededFat<=40&&!ctx.lowFatClinical){
+   choPct=desired;
    fatPct=neededFat;
-   choPct=desiredCho;
-   choReason=`PRESCRIPCIÓN HIPOGLÚCIDA: CHO 45%. LA GRASA SE AJUSTA A ${one(fatPct)}% PARA QUE PROTEÍNA + CHO + LÍPIDOS SUMEN 100%.`;
-   fatReason=`EL PORCENTAJE LIPÍDICO RESULTA DE RESPETAR CHO 45% Y LA PROTEÍNA CALCULADA, SIN SUPERAR 40%.`;
+   choReason=`DIETA HIPOGLÚCIDA: CHO 45%. CON PROTEÍNA ${one(proPct)}%, LOS LÍPIDOS QUEDAN EN ${one(fatPct)}% PARA SUMAR 100%.`;
+   fatReason=`LÍPIDOS ${one(fatPct)}% PARA MANTENER CHO 45% SIN SALIR DEL RANGO HOSPITALARIO.`;
   }else{
-   fatPct=clampMacro(neededFat,30,40);
    choPct=100-proPct-fatPct;
-   choReason=`LA ORDEN ES HIPOGLÚCIDA, PERO FORZAR 45% DE CHO LLEVARÍA LOS LÍPIDOS A ${one(neededFat)}%. SE LIMITA LA GRASA A ${one(fatPct)}% Y LOS CHO QUEDAN EN ${one(choPct)}% PARA MANTENER COHERENCIA CLÍNICA.`;
+   choReason=`HAY INDICACIÓN HIPOGLÚCIDA, PERO LA PROTEÍNA Y EL OBJETIVO LIPÍDICO TIENEN PRIORIDAD CLÍNICA; CHO QUEDAN EN ${one(choPct)}%.`;
+  }
+ }else{
+  choPct=100-proPct-fatPct;
+ }
+
+ // 3. Mantener rangos razonables sin romper la proteína calculada.
+ // Estándar ESPEN: CHO 50–60, grasa 30–35.
+ // Hospital: CHO 45–50, grasa 35–40.
+ const hospitalPattern=cp!=="GENERAL"||mod.nutritionRisk||mod.stress.level!=="BAJO"||ctx.hyperProtein;
+
+ if(!ctx.explicitLowFat&&!ctx.pancreatitis&&!ctx.lowCarb){
+  const choMin=hospitalPattern?45:50;
+  const choMax=hospitalPattern?55:60;
+
+  if(choPct<choMin){
+   const candidateFat=100-proPct-choMin;
+   if(candidateFat>=25&&candidateFat<=40){fatPct=candidateFat;choPct=choMin;}
+  }else if(choPct>choMax){
+   const candidateFat=100-proPct-choMax;
+   if(candidateFat>=25&&candidateFat<=40){fatPct=candidateFat;choPct=choMax;}
   }
  }
 
- if(choPct===null)choPct=100-proPct-fatPct;
-
- // Seguridad final. La grasa no debe convertirse en el "residuo" sin control.
- if(!ctx.explicitLowFat&&!ctx.pancreatitis){
-  if(fatPct>40){fatPct=40;choPct=100-proPct-fatPct;}
-  if(fatPct<25){fatPct=25;choPct=100-proPct-fatPct;}
- }
- if(choPct<40&&!ctx.lowCarb){
-  const targetCho=40;
-  fatPct=100-proPct-targetCho;
-  if(fatPct>=25&&fatPct<=40)choPct=targetCho;
- }
- if(choPct>60){
-  const targetCho=60;
-  const candidateFat=100-proPct-targetCho;
-  if(candidateFat>=25&&candidateFat<=40){fatPct=candidateFat;choPct=targetCho;}
- }
+ // Límites de seguridad de la app.
+ if(fatPct<20){fatPct=20;choPct=100-proPct-fatPct;}
+ if(fatPct>40){fatPct=40;choPct=100-proPct-fatPct;}
+ if(choPct<35){choPct=35;fatPct=100-proPct-choPct;}
+ if(choPct>60){choPct=60;fatPct=100-proPct-choPct;}
 
  if(!choReason){
-  if(ctx.soft&&!ctx.lowFatClinical)
-   choReason=`DIETA BLANDA DETECTADA COMO MODIFICACIÓN DE TEXTURA, NO COMO HIPOGRASA AUTOMÁTICA. CHO ${one(choPct)}% DESPUÉS DE FIJAR PROTEÍNA Y ${one(fatPct)}% DE LÍPIDOS SEGÚN EL CUADRO CLÍNICO.`;
-  else
-   choReason=`CHO ${one(choPct)}%: COMPLETAN LA ENERGÍA DESPUÉS DE FIJAR PROTEÍNA (${one(proPct)}%) Y LÍPIDOS (${one(fatPct)}%) SEGÚN EL PERFIL CLÍNICO.`;
+  choReason=`CHO ${one(choPct)}%: RESULTAN DESPUÉS DE FIJAR PRIMERO LA PROTEÍNA (${one(proPct)}%) Y LOS LÍPIDOS (${one(fatPct)}%) SEGÚN DIETA Y ENFERMEDAD.`;
  }
 
  const choG=kcal*choPct/100/4;
  const lipG=kcal*fatPct/100/9;
  const macroKcal=proteinG*4+choG*4+lipG*9;
- const reason=`PROTEÍNA ${one(proPct)}% + CHO ${one(choPct)}% + LÍPIDOS ${one(fatPct)}% = 100%.`;
+ const reason=`PROTEÍNA ${one(proPct)}% + CHO ${one(choPct)}% + LÍPIDOS ${one(fatPct)}% = ${one(proPct+choPct+fatPct)}%.`;
+
  return {choPct,proPct,lipPct:fatPct,choG,lipG,macroKcal,reason,fatReason,choReason,flags};
 }
 function calculations(){

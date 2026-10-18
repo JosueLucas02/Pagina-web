@@ -1287,7 +1287,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&
 const makeId=p=>`${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,9)}`;
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
 
-const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v60", FALLBACK_KEY="nutri_word_rounds_v60";
+const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v61", FALLBACK_KEY="nutri_word_rounds_v61";
 let db=null,currentRound=null,currentPatientId=null,history=[],loading=false,saveTimer=null;
 
 const simpleFields=["area","ambiente","cama","nombre","edad","cobertura","sexo","perfil","dieta","sourceText","alergia","intolerancia","ultima","consumoExacto","bristol","habito","hallazgo","peso","pesoEstimadoDoc","cb","cp","talla","talonRodilla","mediaEnvergadura","pesoPregestacional","edadGestacional","reqPerfil","cie10","plan","planObs","kcalKg","extraKcal","choPct","proPct","proKg","lipPct","clinicalProfile","renalSubtype","egfr","icuDay","hasIC","measuredEE","ibdActivity","pancreasType","surgeryScenario","suppName","suppMl","suppKcal","suppProtein","suppServings","acompanante","acompananteDetalle","informante","extremidadesDetalle","mExtSupDetalle","interApetitoCasaDias","interConsumoCasa","interPesoHabitual","interPesoIngreso","interPerdidaCasaKg","interPerdidaCasaDias","interApetitoHospDias","interConsumoHosp","interPerdidaHospKg","interDiasHospital"];
@@ -1511,23 +1511,32 @@ function maternalStatusFromText(sourceText){
  const dx=diagnosisFromSourceForProfile(sourceText);
  const first=full.slice(0,2600);
 
- // -------- POSPARTO / PUERPERIO: máxima prioridad --------
+ // ==========================================================
+ // 1. PARTO YA OCURRIDO / PUERPERIO: PRIORIDAD MÁXIMA
+ // ==========================================================
  const ppStrong=/\bPU[ÉE]RPERA\b|\bPUERPERIO\b|\bPOSPARTO\b|\bPOSTPARTO\b|POST\s+PARTO|POST[-\s]*CES[ÁA]REA|POSTCES[ÁA]REA|POSTQUIR[ÚU]RGIC[OA][^.;]{0,100}CES[ÁA]REA|POSTOPERATORI[OA][^.;]{0,100}CES[ÁA]REA|MADRE\s+LACTANTE|LACTANCIA\s+MATERNA\s+ACTIVA|SE\s+ENCUENTRA\s+AMAMANTANDO|AMAMANTA\s+ACTUALMENTE/i;
- const partoRealizado=/PARTO\s+(?:EUT[ÓO]CICO|DIST[ÓO]CICO|VAGINAL|POR\s+CES[ÁA]REA)[^.;]{0,120}(?:REALIZADO|ATENDIDO|CULMINADO|OBTENI[ÉE]NDOSE|RN|RECI[ÉE]N\s+NACID[OA])|CES[ÁA]REA\s+(?:REALIZADA|SEGMENTARIA)[^.;]{0,120}(?:RN|RECI[ÉE]N\s+NACID[OA]|OBTENI[ÉE]NDOSE)/i;
 
- if(ppStrong.test(focus)||ppStrong.test(first)||partoRealizado.test(focus)){
-  const hit=(focus.match(ppStrong)||first.match(ppStrong)||focus.match(partoRealizado)||[])[0]||"PUERPERIO/POSP PARTO";
-  return {status:"posparto",reason:`ESTADO ACTUAL POSPARTO DETECTADO POR: ${hit}`};
+ // Frases que significan que el nacimiento YA OCURRIÓ.
+ // "PARTO POR CESÁREA..." tiene prioridad sobre "EMBARAZO DE 41 SEMANAS".
+ const deliveryDone=/\bPARTO\s+POR\s+CES[ÁA]REA\b|\bCES[ÁA]REA\s+DE\s+EMERGENCIA\b|\bCES[ÁA]REA\s+REALIZADA\b|\bPARTO\s+(?:EUT[ÓO]CICO|DIST[ÓO]CICO|VAGINAL)\b(?!\s+EN\s+FASE)|\bOBTENI[ÉE]NDOSE\s+(?:RN|RECI[ÉE]N\s+NACID[OA])\b|\bRECI[ÉE]N\s+NACID[OA]\s+(?:VIVO|VIVA)\b/i;
+
+ if(ppStrong.test(focus)||ppStrong.test(first)||deliveryDone.test(focus)||deliveryDone.test(dx)){
+  const hit=(focus.match(ppStrong)||first.match(ppStrong)||focus.match(deliveryDone)||dx.match(deliveryDone)||[])[0]||"PARTO YA REALIZADO";
+  return {status:"posparto",reason:`PARTO YA OCURRIDO / PUERPERIO DETECTADO POR: ${hit}`};
  }
 
- // -------- EMBARAZO FINALIZADO / NO GESTANTE --------
+ // ==========================================================
+ // 2. EMBARAZO FINALIZADO SIN PUERPERIO OBSTÉTRICO ACTUAL
+ // ==========================================================
  const ended=/POST[-\s]*ABORTO|ABORTO\s+(?:INCOMPLETO|RETENIDO|ESPONT[ÁA]NEO|CONSUMADO)|EMBARAZO\s+ECT[ÓO]PICO[^.;]{0,100}(?:OPERADO|RESUELTO|POSTQUIR[ÚU]RGICO)|HISTERECTOM[IÍ]A|SALPINGOOFORECTOM[IÍ]A\s+BILATERAL/i;
  if(ended.test(focus)){
   const hit=(focus.match(ended)||[])[0]||"EMBARAZO FINALIZADO / CIRUGÍA GINECOLÓGICA";
   return {status:"none",reason:`NO HAY EMBARAZO ACTUAL: ${hit}`};
  }
 
- // -------- EMBARAZO ACTUAL: exigir evidencia fuerte --------
+ // ==========================================================
+ // 3. EMBARAZO EN CURSO: SOLO SI NO HAY PARTO YA REALIZADO
+ // ==========================================================
  const gestAge=/\b(?:EMBARAZO|GESTACI[ÓO]N)\s+DE\s+\d{1,2}(?:[.,]\d+)?\s+SEMANAS?|\b\d{1,2}(?:[.,]\d+)?\s+SEMANAS?\s+DE\s+GESTACI[ÓO]N\b|\bEDAD\s+GESTACIONAL\s*[:=]?\s*\d{1,2}(?:[.,]\d+)?/i;
  const gestante=/\bGESTANTE\b|EMBARAZO\s+(?:ACTUAL|EN\s+CURSO)|PACIENTE\s+EMBARAZADA/i;
  const obstetricDx=/FALSO\s+TRABAJO\s+DE\s+PARTO|AMENAZA\s+DE\s+PARTO|TRABAJO\s+DE\s+PARTO\s+EN\s+FASE\s+ACTIVA|PREECLAMPSIA|ECLAMPSIA|RUPTURA\s+PREMATURA\s+DE\s+(?:LAS\s+)?MEMBRANAS|PLACENTA\s+PREVIA|OLIGOHIDRAMNIOS|POLIHIDRAMNIOS|HIPEREMESIS\s+GRAV[IÍ]DICA|INFECCI[ÓO]N[^.;+]{0,70}EN\s+EL\s+EMBARAZO/i;
@@ -1537,13 +1546,10 @@ function maternalStatusFromText(sourceText){
   return {status:"embarazada",reason:`EMBARAZO EN CURSO DETECTADO POR: ${hit}`};
  }
 
- // Si hay diagnóstico actual y contiene "embarazo" en contexto actual, también cuenta.
- if(dx && /\bEMBARAZO\b/.test(dx) && !ended.test(dx) && !ppStrong.test(dx)){
+ if(dx && /\bEMBARAZO\b/.test(dx) && !ended.test(dx) && !ppStrong.test(dx) && !deliveryDone.test(dx)){
   return {status:"embarazada",reason:"EL DIAGNÓSTICO ACTUAL INDICA EMBARAZO"};
  }
 
- // Evitar falsos positivos por antecedentes obstétricos:
- // G2 P1, FUM antigua, cesárea previa, embarazo previo, etc. NO bastan.
  return {status:"none",reason:"SIN EVIDENCIA ACTUAL DE EMBARAZO O PUERPERIO"};
 }
 
@@ -2368,32 +2374,47 @@ function plainDiagnosisInfo(){
   };
  }
 
- // Mostrar siempre el diagnóstico ACTUAL que realmente se extrajo.
  const literal=dx;
-
- // ---------- SITUACIÓN GENERAL / OBSTÉTRICA ----------
+ const maternal=maternalStatusFromText(val("sourceText")||"");
  const ga=documentedGestationalAge(dx);
- const postpartum=/PUERPERIO|POSTPARTO|POST PARTO|POST CES[ÁA]REA|POSTCES[ÁA]REA/.test(dx);
- const abortion=/ABORTO ESPONT[ÁA]NEO|ABORTO INCOMPLETO|ABORTO RETENIDO/.test(dx);
- const currentPreg=/\bEMBARAZO\b/.test(dx)&&!postpartum&&!abortion;
- const postop=/POSTQUIR[ÚU]RGICO|POSTOPERATORIO/.test(dx);
 
- if(postop)status="DIAGNÓSTICO ACTUAL: POSTQUIRÚRGICO / POSTOPERATORIO";
- else if(postpartum){
-  status=/PUERPERIO QUIR[ÚU]RGICO|POST CES[ÁA]REA|POSTCES[ÁA]REA/.test(dx)
-   ?"ESTADO ACTUAL: EL PARTO YA OCURRIÓ · PUERPERIO/POSTCESÁREA"
-   :"ESTADO ACTUAL: EL PARTO YA OCURRIÓ · PUERPERIO";
- }else if(abortion){
-  status="ESTADO ACTUAL: EL DIAGNÓSTICO DOCUMENTA UN ABORTO; NO LO PRESENTA COMO EMBARAZO EN CURSO";
- }else if(currentPreg){
+ if(maternal.status==="posparto"){
+  status=ga
+   ?`ESTADO ACTUAL: PUÉRPERA / POSPARTO · EMBARAZO FINALIZADO A LAS ${ga} SEMANAS SEGÚN EL DIAGNÓSTICO`
+   :"ESTADO ACTUAL: PUÉRPERA / POSPARTO · EL PARTO YA OCURRIÓ";
+ }else if(maternal.status==="embarazada"){
   status=ga
    ?`ESTADO ACTUAL: EMBARAZO EN CURSO · ${ga} SEMANAS SEGÚN EL DIAGNÓSTICO`
    :"ESTADO ACTUAL: EMBARAZO EN CURSO SEGÚN EL DIAGNÓSTICO";
+ }else if(/POSTQUIR[ÚU]RGICO|POSTOPERATORIO/.test(dx)){
+  status="DIAGNÓSTICO ACTUAL: POSTQUIRÚRGICO / POSTOPERATORIO";
  }else{
   status="DIAGNÓSTICO ACTUAL DETECTADO";
  }
 
- // ---------- CIRUGÍA GINECOLÓGICA ----------
+ // -------- PARTO / CESÁREA --------
+ if(/\bPARTO\s+POR\s+CES[ÁA]REA\b|\bCES[ÁA]REA\s+DE\s+EMERGENCIA\b/.test(dx))
+  items.push("PARTO POR CESÁREA DE EMERGENCIA: el nacimiento ya ocurrió mediante cesárea; por lo tanto, la paciente se encuentra en etapa puerperal/posparto, no en embarazo activo.");
+
+ if(/\bEMBARAZO\s+DE\s+\d{1,2}(?:[.,]\d+)?\s+SEMANAS?\b/.test(dx) && maternal.status==="posparto")
+  items.push(`EMBARAZO DE ${ga||""} SEMANAS: indica la edad gestacional que tenía al momento del parto; no significa que continúe embarazada después de la cesárea.`);
+
+ if(/OLIGOHIDRAMNIOS/.test(dx))
+  items.push("OLIGOHIDRAMNIOS: durante el embarazo se documentó una cantidad disminuida de líquido amniótico.");
+
+ if(/ANOMAL[IÍ]A\s+DE\s+LA\s+FRECUENCIA\s+CARD[IÍ]ACA\s+FETAL|FRECUENCIA\s+CARD[IÍ]ACA\s+FETAL/.test(dx))
+  items.push("ALTERACIÓN DE LA FRECUENCIA CARDÍACA FETAL: se documentó un cambio anormal en la frecuencia cardíaca del bebé, lo que puede justificar vigilancia estrecha y, según el contexto, una cesárea de emergencia.");
+
+ if(/CONTRACCIONES\s+UTERINAS\s+HIPERT[ÓO]NICAS/.test(dx))
+  items.push("CONTRACCIONES UTERINAS HIPERTÓNICAS, INCOORDINADAS Y PROLONGADAS: las contracciones fueron demasiado intensas/prolongadas o poco coordinadas, complicando el trabajo de parto.");
+
+ if(/PRIMIGESTA\s+JUVENIL/.test(dx))
+  items.push("PRIMIGESTA JUVENIL: corresponde a una paciente joven que cursó su primer embarazo.");
+
+ if(/ASESOR[IÍ]A\s+EN\s+LA\s+ANTICONCEPCI[ÓO]N|CONSEJO\s+Y\s+ASESORAMIENTO.*ANTICONCEPCI[ÓO]N|\bZ30\.?0\b|\bZ300\b/.test(dx))
+  items.push("ASESORÍA EN ANTICONCEPCIÓN: corresponde a consejería para planificación anticonceptiva; no es una enfermedad.");
+
+ // -------- CIRUGÍA GINECOLÓGICA --------
  if(/POSTQUIR[ÚU]RGICO INMEDIATO/.test(dx))
   items.push("POSTQUIRÚRGICO INMEDIATO: se encuentra en el periodo inmediato después de una cirugía.");
 
@@ -2406,10 +2427,6 @@ function plainDiagnosisInfo(){
 
  if(/SALPINGOOFERECTOM[IÍ]A BILATERAL|SALPINGO[\s-]*OOFORECTOM[IÍ]A BILATERAL/.test(dx))
   items.push("SALPINGOOFORECTOMÍA BILATERAL: se retiraron quirúrgicamente ambas trompas de Falopio y ambos ovarios.");
- else if(/OOFORECTOM[IÍ]A BILATERAL/.test(dx))
-  items.push("OOFORECTOMÍA BILATERAL: se retiraron quirúrgicamente ambos ovarios.");
- else if(/SALPINGECTOM[IÍ]A BILATERAL/.test(dx))
-  items.push("SALPINGECTOMÍA BILATERAL: se retiraron quirúrgicamente ambas trompas de Falopio.");
 
  if(/LEIOMIOMA INTRAMURAL GIGANTE DEL [ÚU]TERO/.test(dx))
   items.push("LEIOMIOMA INTRAMURAL GIGANTE DEL ÚTERO: se documenta un mioma uterino de gran tamaño localizado dentro de la pared muscular del útero; fue el motivo indicado para la cirugía.");
@@ -2419,31 +2436,37 @@ function plainDiagnosisInfo(){
  if(/\bANEMIA\b/.test(dx))
   items.push("ANEMIA: el diagnóstico documenta anemia. Para conocer su gravedad hay que revisar hemoglobina, hematocrito y la causa indicada en la historia clínica.");
 
- // ---------- EMBARAZO / PUERPERIO ----------
+ // -------- OTRAS CONDICIONES OBSTÉTRICAS --------
  if(/FALSO TRABAJO DE PARTO/.test(dx))
   items.push("FALSO TRABAJO DE PARTO: presentó signos o contracciones similares al trabajo de parto, pero el diagnóstico indica que no era un trabajo de parto verdadero.");
- if(/TRABAJO DE PARTO EN FASE ACTIVA/.test(dx))
+
+ if(/TRABAJO DE PARTO EN FASE ACTIVA/.test(dx) && maternal.status!=="posparto")
   items.push("TRABAJO DE PARTO EN FASE ACTIVA: se encontraba cursando trabajo de parto activo.");
+
  if(/RUPTURA PREMATURA DE (?:LAS )?MEMBRANAS/.test(dx))
   items.push("RUPTURA PREMATURA DE MEMBRANAS: se documenta ruptura de la bolsa amniótica antes del momento esperado o antes del trabajo de parto, según el contexto descrito.");
+
  if(/PREECLAMPSIA/.test(dx))
   items.push("PREECLAMPSIA: el diagnóstico registra un trastorno hipertensivo asociado al embarazo.");
+
  if(/INFECCI[ÓO]N[^.;,+]{0,45}V[IÍ]AS URINARIAS[^.;,+]{0,30}EMBARAZO|INFECCI[ÓO]N URINARIA[^.;,+]{0,35}EMBARAZO/.test(dx))
   items.push("INFECCIÓN URINARIA EN EL EMBARAZO: se documenta una infección de las vías urinarias durante la gestación.");
  else if(/\bIVU\b|INFECCI[ÓO]N (?:DE LAS )?V[IÍ]AS URINARIAS|PIELONEFRITIS/.test(dx))
   items.push("INFECCIÓN URINARIA: se documenta infección de las vías urinarias; si especifica pielonefritis, existe compromiso renal.");
+
  if(/INFECCI[ÓO]N GENITAL/.test(dx))
   items.push("INFECCIÓN GENITAL: se documenta una infección del tracto genital.");
- if(/CES[ÁA]REA/.test(dx)&&postpartum)
-  items.push("CESÁREA: el parto fue por vía quirúrgica y el diagnóstico actual corresponde al periodo posterior al nacimiento.");
+
  if(/PUERPERIO FISIOL[ÓO]GICO/.test(dx))
   items.push("PUERPERIO FISIOLÓGICO: se encuentra en el periodo inmediato posterior al parto y esa frase no describe por sí sola una complicación.");
+
  if(/PUERPERIO QUIR[ÚU]RGICO/.test(dx))
   items.push("PUERPERIO QUIRÚRGICO: se encuentra en el periodo posterior a un parto por cesárea.");
+
  if(/LEGRADO UTERINO/.test(dx))
   items.push("LEGRADO UTERINO: se realizó un procedimiento para retirar contenido o restos del interior del útero, según la causa indicada en el diagnóstico.");
 
- // ---------- RENAL ----------
+ // -------- RENAL --------
  const stage=(dx.match(/(?:ERC|ENFERMEDAD RENAL CR[ÓO]NICA)\s*(?:ESTADIO|STAGE)?\s*([1-5](?:A|B)?)/)||[])[1]||"";
  const renalDx=/ENFERMEDAD RENAL CR[ÓO]NICA|\bERC\b|\bCKD\b|INSUFICIENCIA RENAL|LESI[ÓO]N RENAL AGUDA|\bAKI\b/.test(dx);
  const rejected=/NEGATIVA (?:DEL MISMO|A LA DI[ÁA]LISIS)|RECHAZA (?:LA )?(?:HEMODI[ÁA]LISIS|DI[ÁA]LISIS)|NO (?:SE )?REALIZA (?:HEMODI[ÁA]LISIS|DI[ÁA]LISIS)|SIN (?:HEMODI[ÁA]LISIS|DI[ÁA]LISIS)/.test(full);
@@ -2459,7 +2482,7 @@ function plainDiagnosisInfo(){
   else renal+="NO SE PUEDE CONFIRMAR DIÁLISIS ACTIVA SOLO CON EL TEXTO DISPONIBLE.";
  }
 
- // ---------- OTROS DIAGNÓSTICOS ACTUALES ----------
+ // -------- OTROS --------
  if(/HIDRONEFROSIS/.test(dx))
   items.push("HIDRONEFROSIS: se documenta dilatación del sistema urinario del riñón, generalmente relacionada con dificultad para el drenaje de orina.");
  if(/LITIASIS RENAL/.test(dx))
@@ -2472,26 +2495,17 @@ function plainDiagnosisInfo(){
   items.push("DIABETES MELLITUS: aparece como parte del diagnóstico actual; requiere considerar control glucémico y función renal en el manejo nutricional.");
  if(/HIPERTENSI[ÓO]N ARTERIAL|HIPERTENSI[ÓO]N ESENCIAL|HIPERTENSI[ÓO]N CR[ÓO]NICA/.test(dx))
   items.push("HIPERTENSIÓN: aparece como parte del diagnóstico actual y debe considerarse en el manejo clínico/nutricional.");
- if(/INSUFICIENCIA CARDIACA|INSUFICIENCIA CARDÍACA/.test(dx))
-  items.push("INSUFICIENCIA CARDÍACA: el corazón tiene dificultad para bombear de forma adecuada; el estado de volumen y el sodio pueden ser relevantes en el manejo nutricional.");
- if(/FIBRILACI[ÓO]N AURICULAR/.test(dx))
-  items.push("FIBRILACIÓN AURICULAR: se documenta una alteración del ritmo cardíaco.");
- if(/TRAUMA(?:TISMO)? CRANEOENCEF[ÁA]LICO|\bTCE\b/.test(dx))
-  items.push("TRAUMATISMO CRANEOENCEFÁLICO: se documenta una lesión traumática de la cabeza/cerebro.");
-
- if(/\bZ300\b|Z30\.?0\b|CONSEJO Y ASESORAMIENTO.*ANTICONCEPCI[ÓO]N/.test(dx))
-  items.push("Z30.0 / CONSEJO SOBRE ANTICONCEPCIÓN: corresponde a orientación anticonceptiva; no es una enfermedad.");
 
  if(!items.length){
   const comps=diagnosisComponents();
   if(comps.length){
-   comps.slice(0,6).forEach(c=>items.push(`${c}: este componente está escrito en el diagnóstico actual, pero todavía no tiene una traducción específica en el diccionario de la app.`));
+   comps.slice(0,7).forEach(c=>items.push(`${c}: este componente está escrito en el diagnóstico actual, pero todavía no tiene una traducción específica en el diccionario de la app.`));
   }else{
    items.push("Se detectó el diagnóstico actual, pero todavía no hay una traducción específica segura para sus términos.");
   }
  }
 
- return {status,renal,literal,items:items.slice(0,9)};
+ return {status,renal,literal,items:items.slice(0,10)};
 }
 function updateDiagnosisMeaning(){
  const d=plainDiagnosisInfo();
@@ -2719,46 +2733,31 @@ function openPatient(id){
   syncCache();
   persistRound();
  }
- let p=currentRound?.patients.find(x=>x.id===id);if(!p)return;
- p=migrateLegacyPatientState(p);
- const idx=currentRound.patients.findIndex(x=>x.id===id);
- if(idx>=0)currentRound.patients[idx]=p;
-
+ const p=currentRound?.patients.find(x=>x.id===id);if(!p)return;
+ repairPatient(p);
  currentPatientId=id;
+
+ // Recalcular condición desde el texto del PACIENTE actual antes de pintar.
+ if(p.state?._profileManual!==true){
+  let sx=p.state?.sexo||inferSex(p.sourceText||"");
+  const age=parseInt(p.state?.edad||p.edad||0,10);
+  const det=detectPatientProfile(p.sourceText||"",sx,age,patientDietText(p));
+  if(det.profile==="embarazada"||det.profile==="posparto")sx="F";
+  p.state.sexo=sx;
+  p.state.perfil=det.profile;
+  p.state._profileAutoReason=det.reason;
+  p.state._profileConfidence=det.confidence;
+ }
+
  restoreState(p.state);
  toggleHeaderModeUI(p);
  $("noPatient").classList.add("hidden");$("patientForm").classList.remove("hidden");$("clinicalSections").classList.remove("hidden");
-
- if($("sourceText"))$("sourceText").value=p.sourceText||p.state?.sourceText||"";
- if($("dieta"))$("dieta").value=patientDietText(p);
-
- const fp=patientSourceFingerprint(p);
- const mustRefill=p.state?._sourceFingerprint!==fp;
-
- // Un Word nuevo/actualizado vuelve a poblar todos los datos clínicos.
- // Si es el mismo Word, conserva las correcciones manuales del usuario.
- if(mustRefill){
-  loading=true;
-  try{autofillPreviousAssessment();}
-  finally{loading=false;}
-  if($("dieta"))$("dieta").value=patientDietText(p);
-  if($("plan"))$("plan").value=patientDietText(p);
- }
-
- if($("hallazgo")){
-  $("hallazgo").value=cleanLegacyHallazgo(val("hallazgo"));
-  if(/\bEDEMA\b/.test(normalizedUpper(val("hallazgo"))))setRadioFromPrevious("edemaFisico","SÍ");
- }
-
+ toggleInterconsulta();
+ updateDiagnosisMeaning();
+ updateProfileDetectionNote();
  calculateAll();
- p.state=captureState();
- p.state._autofilledFromPrevious=true;
- p.state._sourceFingerprint=fp;
- p.state._migratedV36=true;
- p.note=nutritionNote();
-
- renderRound();updatePreview();
- window.scrollTo({top:0,behavior:"smooth"});
+ updatePreview();
+ renderPatientStrip();
 }
 function captureState(){const s={};simpleFields.forEach(id=>s[id]=val(id));radios.forEach(n=>s["r_"+n]=radio(n));checks.forEach(id=>s[id]=chk(id));return s}
 function restoreState(s){

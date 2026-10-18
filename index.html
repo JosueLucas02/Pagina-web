@@ -721,7 +721,7 @@ img,svg,table{
     <div><label class="label">Edad</label><input id="edad" type="number" oninput="syncAgeProfile();calculateHeelKnee();calculateAll()"></div>
     <div><label class="label">Cobertura</label><input id="cobertura"></div>
     <div><label class="label">Sexo</label><select id="sexo" onchange="calculateHeelKnee();updatePreview()"><option value="M">Masculino</option><option value="F">Femenino</option></select></div>
-    <div><label class="label">Condición nutricional</label><select id="perfil" onchange="profileChanged()"><option value="adulto">Adulto</option><option value="adultomayor">Adulto mayor (≥60 años)</option><option value="renal">Renal / hemodiálisis</option><option value="embarazada">Embarazada</option><option value="posparto">Posparto / lactancia</option></select><div class="note">Se detecta automáticamente desde edad/texto del Word; puedes corregirlo aquí.</div></div>
+    <div><label class="label">Condición nutricional</label><select id="perfil" onchange="profileChanged()"><option value="adulto">Adulto</option><option value="adultomayor">Adulto mayor (≥60 años)</option><option value="renal">Renal / hemodiálisis</option><option value="embarazada">Embarazada</option><option value="posparto">Puérpera / posparto / lactancia</option></select><div id="profileDetectionNote" class="note">Detectando condición desde el diagnóstico actual...</div><button type="button" class="secondary miniBtn" onclick="resetProfileToAuto()" style="margin-top:4px">↻ Detectar de nuevo</button></div>
    </div>
    <div style="margin-top:7px"><label class="label">Dieta importada / actual</label><input id="dieta"><div class="note">Si el Word no trae dieta, aparecerá “DIETA NO REGISTRADA” para que ingreses la prescripción actual sin inventarla.</div></div><div class="note" id="headerModeNote" style="margin-top:6px"></div>
    <div class="sourceBox previousCompact" style="margin-top:7px">
@@ -732,7 +732,7 @@ img,svg,table{
 
     <details class="previousRaw">
      <summary>Ver texto clínico original</summary>
-     <textarea id="sourceText" oninput="updateDiagnosisMeaning();scheduleSave()" style="min-height:105px;font:9.5px/1.35 Calibri,Arial,sans-serif;margin-top:7px" placeholder="Texto original..."></textarea>
+     <textarea id="sourceText" oninput="updateDiagnosisMeaning();updateProfileDetectionNote();scheduleSave()" style="min-height:105px;font:9.5px/1.35 Calibri,Arial,sans-serif;margin-top:7px" placeholder="Texto original..."></textarea>
      <div class="note" style="margin-top:6px"><b>Datos reconocidos:</b> <span id="smartDetectedData">—</span></div>
     </details>
 
@@ -1287,7 +1287,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&
 const makeId=p=>`${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,9)}`;
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
 
-const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v58", FALLBACK_KEY="nutri_word_rounds_v58";
+const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v59", FALLBACK_KEY="nutri_word_rounds_v59";
 let db=null,currentRound=null,currentPatientId=null,history=[],loading=false,saveTimer=null;
 
 const simpleFields=["area","ambiente","cama","nombre","edad","cobertura","sexo","perfil","dieta","sourceText","alergia","intolerancia","ultima","consumoExacto","bristol","habito","hallazgo","peso","pesoEstimadoDoc","cb","cp","talla","talonRodilla","mediaEnvergadura","pesoPregestacional","edadGestacional","reqPerfil","cie10","plan","planObs","kcalKg","extraKcal","choPct","proPct","proKg","lipPct","clinicalProfile","renalSubtype","egfr","icuDay","hasIC","measuredEE","ibdActivity","pancreasType","surgeryScenario","suppName","suppMl","suppKcal","suppProtein","suppServings","acompanante","acompananteDetalle","informante","extremidadesDetalle","mExtSupDetalle","interApetitoCasaDias","interConsumoCasa","interPesoHabitual","interPesoIngreso","interPerdidaCasaKg","interPerdidaCasaDias","interApetitoHospDias","interConsumoHosp","interPerdidaHospKg","interDiasHospital"];
@@ -1412,9 +1412,14 @@ function parseHeader(text){
  return null;
 }
 function inferSex(text){
- const u=normalizedUpper(text);
+ const u=normalizedUpper(text||"");
  if(/\bFEMENIN[AO]\b/.test(u)||/SEXO\s+FEMENINO/.test(u))return "F";
  if(/\bMASCULIN[AO]\b/.test(u)||/SEXO\s+MASCULINO/.test(u))return "M";
+
+ // Si el Word no escribió el sexo pero hay evidencia obstétrica actual,
+ // no dejar que el valor por defecto masculino rompa la clasificación.
+ const mat=typeof maternalStatusFromText==="function"?maternalStatusFromText(text):{status:"none"};
+ if(mat.status==="embarazada"||mat.status==="posparto")return "F";
  return "M";
 }
 function defaultTimes(diet){
@@ -1443,12 +1448,106 @@ function patientDietText(p){
         dietFromOriginalHeader(p?.originalHeader)||
         "DIETA NO REGISTRADA";
 }
-function inferProfileFromText(sourceText,sex,age,diet=""){
+function diagnosisFromSourceForProfile(sourceText){
+ const raw=normalizedUpper(sourceText||"").replace(/\*/g," ");
+ if(!raw)return "";
+
+ // Solo bloque previo a la valoración nutricional.
+ const stop=/\b(?:EXAMEN F[IÍ]SICO|VALORACI[ÓO]N NUTRICIONAL|VALORACI[ÓO]N ANTROPOM[EÉ]TRICA|TAMIZAJE NUTRICIONAL|DIAGN[ÓO]STICO NUTRICIONAL|REQUERIMIENTO NUTRICIONAL|PLAN DIETOTERAP[EÉ]UTICO)\s*:/i;
+ const sm=stop.exec(raw);
+ const clinical=(sm?raw.slice(0,sm.index):raw).trim();
+
+ // Busca diagnóstico ACTUAL explícito. No usa antecedentes como diagnóstico.
+ const markers=[
+  /\bDIAGN[ÓO]STICO\s+POSTQUIR[ÚU]RGICO\s*[:.]?\s*/gi,
+  /\bDIAGN[ÓO]STICO\s+POSTOPERATORIO\s*[:.]?\s*/gi,
+  /\bDIAGN[ÓO]STICO\s+POSTPARTO\s*[:.]?\s*/gi,
+  /\bIMPRESI[ÓO]N\s+DIAGN[ÓO]STIC[AO]S?\s*[:.]?\s*/gi,
+  /\bIDX\s*[:.]?\s*/gi,
+  /\bIDG\s*[:.]?\s*/gi,
+  /\bID\s*[:.]?\s*/gi,
+  /\bBAJO\s+LOS\s+DIAGN[ÓO]STICOS?(?:\s+DE)?\s*[:.]?\s*/gi,
+  /\bDIAGN[ÓO]STICOS?\s*[:.]?\s*/gi,
+  /\bDX\s*[:.]?\s*/gi
+ ];
+ let best=null;
+ for(const rx of markers){
+  let m;
+  while((m=rx.exec(clinical))!==null){
+   if(!best||m.index>best.index)best={index:m.index,end:rx.lastIndex};
+  }
+ }
+ if(!best)return "";
+ let dx=clinical.slice(best.end).trim();
+ dx=dx.split(/\s*(?:\/\/|\*\*)\s*(?:SUPERVISAD|CASO SUPERVISAD|VALORAD|PESO\b|TALLA\b)/i)[0].trim();
+ dx=dx.split(/\b(?:SUPERVISADO POR|SUPERVISADA POR|CASO SUPERVISADO|CASO VALORADO POR)\b/i)[0].trim();
+ return dx.replace(/^[\-–—:\s]+|[\s,;:.]+$/g,"").trim();
+}
+
+function maternalStatusFromText(sourceText){
+ const full=normalizedUpper(sourceText||"");
+ const dx=diagnosisFromSourceForProfile(sourceText);
+ // Si existe diagnóstico actual, tiene prioridad. El inicio del texto se usa
+ // para frases de estado actual cuando el Word no pone ID/IDX.
+ const first=full.slice(0,2200);
+ const focus=dx||first;
+
+ const pp=/PU[ÉE]RPERA|PUERPERIO|POSPARTO|POSTPARTO|POST\s+PARTO|POST[-\s]*CES[ÁA]REA|POSTCES[ÁA]REA|POSTQUIR[ÚU]RGIC[OA][^.;]{0,90}CES[ÁA]REA|POSTOPERATORI[OA][^.;]{0,90}CES[ÁA]REA|PARTO\s+(?:EUT[ÓO]CICO|DIST[ÓO]CICO|VAGINAL)[^.;]{0,80}(?:REALIZADO|ATENDIDO|CULMINADO)?|MADRE\s+LACTANTE|LACTANCIA\s+MATERNA\s+ACTIVA|SE\s+ENCUENTRA\s+AMAMANTANDO/i;
+ const pg=/\bGESTANTE\b|EMBARAZO\s+(?:ACTUAL|EN\s+CURSO|DE\s+\d{1,2}(?:[.,]\d+)?\s+SEMANAS?)|\d{1,2}(?:[.,]\d+)?\s+SEMANAS?\s+DE\s+GESTACI[ÓO]N|GESTACI[ÓO]N\s+DE\s+\d{1,2}(?:[.,]\d+)?\s+SEMANAS?|EDAD\s+GESTACIONAL\s*[:=]?\s*\d{1,2}(?:[.,]\d+)?|CONTROL(?:ES)?\s+PRENATALES?\s+(?:ACTUALES?|EN\s+CURSO)/i;
+ const pgDx=/FALSO\s+TRABAJO\s+DE\s+PARTO|AMENAZA\s+DE\s+PARTO|TRABAJO\s+DE\s+PARTO\s+EN\s+FASE\s+ACTIVA|PREECLAMPSIA|ECLAMPSIA|RUPTURA\s+PREMATURA\s+DE\s+(?:LAS\s+)?MEMBRANAS|PLACENTA\s+PREVIA|OLIGOHIDRAMNIOS|POLIHIDRAMNIOS|HIPEREMESIS\s+GRAV[IÍ]DICA|INFECCI[ÓO]N[^.;+]{0,60}EN\s+EL\s+EMBARAZO/i;
+ const ended=/POST[-\s]*ABORTO|ABORTO\s+(?:INCOMPLETO|RETENIDO|ESPONT[ÁA]NEO|CONSUMADO)|EMBARAZO\s+ECT[ÓO]PICO[^.;]{0,80}(?:OPERADO|RESUELTO|POSTQUIR[ÚU]RGICO)|HISTERECTOM[IÍ]A/i;
+
+ // 1. Puerperio manda sobre palabras históricas de embarazo.
+ if(pp.test(focus)||pp.test(first)){
+  const hit=(focus.match(pp)||first.match(pp)||[])[0]||"PUERPERIO/POSP PARTO";
+  return {status:"posparto",reason:`PUÉRPERA/POSP PARTO DETECTADO POR: ${hit}`};
+ }
+
+ // 2. Si el diagnóstico actual indica embarazo terminado, no clasificar gestante.
+ if(dx&&ended.test(dx)){
+  const hit=(dx.match(ended)||[])[0]||"EMBARAZO FINALIZADO / CIRUGÍA GINECOLÓGICA";
+  return {status:"none",reason:`NO ES EMBARAZO ACTUAL: ${hit}`};
+ }
+
+ // 3. Embarazo: exigir evidencia actual fuerte.
+ if(pg.test(focus)||(!dx&&pg.test(first))||(dx&&pgDx.test(dx))){
+  const hit=(focus.match(pg)||dx.match(pgDx)||[])[0]||"EVIDENCIA OBSTÉTRICA ACTUAL";
+  return {status:"embarazada",reason:`EMBARAZO EN CURSO DETECTADO POR: ${hit}`};
+ }
+
+ // 4. "EMBARAZO" solo, si está dentro del DIAGNÓSTICO ACTUAL sí cuenta.
+ if(dx&&/\bEMBARAZO\b/.test(dx)&&!ended.test(dx)){
+  return {status:"embarazada",reason:"EL DIAGNÓSTICO ACTUAL INDICA EMBARAZO"};
+ }
+
+ return {status:"none",reason:"SIN EVIDENCIA ACTUAL DE EMBARAZO O PUERPERIO"};
+}
+
+function detectPatientProfile(sourceText,sex,age,diet=""){
+ const maternal=maternalStatusFromText(sourceText);
+
+ // Estado obstétrico tiene prioridad sobre enfermedad renal para decidir
+ // el FORMATO de valoración. La enfermedad renal igualmente se detecta
+ // después en el motor clínico y modifica requerimientos.
+ if(maternal.status==="posparto")
+  return {profile:"posparto",reason:maternal.reason,confidence:"ALTA"};
+ if(maternal.status==="embarazada")
+  return {profile:"embarazada",reason:maternal.reason,confidence:"ALTA"};
+
  const u=normalizedUpper(`${sourceText||""} ${diet||""}`);
- if(sex==="F"&&(u.includes("PUERPER")||u.includes("POSPART")||u.includes("POSTPART")||u.includes("LACTANCIA MATERNA")||u.includes("RECIEN NACID")||u.includes("RECIÉN NACID")))return "posparto";
- if(sex==="F"&&(u.includes("GESTANTE")||u.includes("EMBARAZ")||u.includes("GESTACION")||u.includes("GESTACIÓN")))return "embarazada";
- if(u.includes("RENAL")||u.includes("HEMODIAL")||u.includes("DIALISIS")||u.includes("DIÁLISIS"))return "renal";
- return age>=60?"adultomayor":"adulto";
+ if(/ENFERMEDAD RENAL|INSUFICIENCIA RENAL|\bERC\b|\bCKD\b|\bAKI\b|HEMODI[ÁA]LISIS|DI[ÁA]LISIS|REQUERIMIENTO DIAL[IÍ]TICO/.test(u))
+  return {profile:"renal",reason:"ENFERMEDAD RENAL / DIÁLISIS DETECTADA EN EL DOCUMENTO",confidence:"ALTA"};
+
+ const a=Number(age)||0;
+ return {
+  profile:a>=60?"adultomayor":"adulto",
+  reason:a>=60?"SIN ESTADO OBSTÉTRICO ACTUAL; EDAD ≥60 AÑOS":"SIN ESTADO OBSTÉTRICO ACTUAL; VALORACIÓN DE ADULTO",
+  confidence:"MEDIA"
+ };
+}
+
+function inferProfileFromText(sourceText,sex,age,diet=""){
+ return detectPatientProfile(sourceText,sex,age,diet).profile;
 }
 function maternityDefaultsFor(profile){
  if(profile==="posparto")return {
@@ -1462,17 +1561,23 @@ function maternityDefaultsFor(profile){
  return {};
 }
 function makeDefaultState(h,sourceText){
- const sex=inferSex(sourceText),age=parseInt(h.edad||"0",10),diet=validDietText(h.dieta)||"DIETA NO REGISTRADA";
- const profile=inferProfileFromText(sourceText,sex,age,diet);
+ let sex=inferSex(sourceText),age=parseInt(h.edad||"0",10),diet=validDietText(h.dieta)||"DIETA NO REGISTRADA";
+ const detected=detectPatientProfile(sourceText,sex,age,diet);
+ if(detected.profile==="embarazada"||detected.profile==="posparto")sex="F";
+ const profile=detected.profile;
+
  const state={area:h.area,ambiente:h.ambiente,cama:h.cama,nombre:h.nombre,edad:h.edad,cobertura:h.cobertura,sexo:sex,perfil:profile,dieta:diet,sourceText,
+  _profileManual:false,_profileAutoReason:detected.reason,_profileConfidence:detected.confidence,
   alergia:"",intolerancia:"",ultima:"HOY",bristol:"4",habito:"REGULAR",hallazgo:"",peso:"",pesoEstimadoDoc:"",cb:"",cp:"",talla:"",talonRodilla:"",mediaEnvergadura:"",pesoPregestacional:"",edadGestacional:"",acompanante:"NO",acompananteDetalle:"",informante:"PACIENTE",extremidadesDetalle:"",mExtSupDetalle:"",nrsLoss3m:"NONE",mnaIntake3m:"NO",mnaLoss3m:"NONE",mnaStress3m:"YES",nrsEnfOverride:"AUTO",
   reqPerfil:"general",cie10:"Z71.3 – VIGILANCIA Y ASESORAMIENTO DE LA DIETA",plan:diet,planObs:"",kcalKg:"30",extraKcal:"0",choPct:"55",proPct:"15",proKg:"1.3",lipPct:"30"};
+
  Object.assign(state,{
   r_conciencia:"DESPIERTO/A",r_orientacion:"ORIENTADO/A",r_colabora:"SÍ",r_apetito:"CONSERVADO",r_consumoDieta:"100%",r_viaoral:(/^NPO\b/i.test(diet)||/^SNG\b/i.test(diet))?"NO APLICA":"TOLERA",r_masticacion:"SIN INCONVENIENTES",r_deglucion:"SIN INCONVENIENTES",r_diuresis:"CONSERVADA",r_flatos:"SÍ",r_deambula:"SIN ASISTENCIA",
   r_tieneAlergia:"NO",r_tieneIntolerancia:"NO",r_lactancia:"NO APLICA",r_facie:"CÁLIDA",r_temporal:"BIEN DEFINIDO / SIN DEPLECIÓN",r_periorb:"CONSERVADA",r_dientes:"COMPLETAS",r_mucosa:"HIDRATADA",r_piel:"HIDRATADA",r_clavicula:"NO PROMINENTES",r_extremidades:"SIMÉTRICAS",r_masaMuscular:"CONSERVADA",r_masaGrasa:"CONSERVADA",r_abdomen:"BLANDO, DEPRESIBLE, NO DOLOROSO A LA PALPACIÓN",r_edemaFisico:"NO",r_ojos:"SIN HALLAZGOS",r_modoPeso:"ACTUAL",r_modoTalla:"TALLA",
   r_mFacie:"SEMICÁLIDA",r_mTemporal:"DEFINIDO",r_mPeriorb:"COLORACIÓN UNIFORME, SIN OJERAS, NI HUNDIMIENTOS",r_mDientes:"COMPLETAS",r_mHidratacion:"SEMIHIDRATADAS",r_mClavicula:"MÚSCULO BIEN DEFINIDO RODEANDO EL HUESO. NO PROMINENTE",r_mAbdomen:"BLANDO, DEPRESIBLE NO DOLOROSO A LA PALPACIÓN",r_mExtSup:"SIMÉTRICAS",r_mTricipital:"TEJIDO GRASO Y MASA MUSCULAR NORMAL EVIDENTE ENTRE LOS PLIEGUES DE PIEL PELLIZCADOS",r_mCuadriceps:"REDONDEADO Y BIEN DESARROLLADO",r_mPatelar:"MÚSCULOS SOBRESALEN. RÓTULA NO PROMINENTE",r_mGemelos:"GEMELOS BIEN DESARROLLADOS",r_mEdema:"NO",
   aNausea:false,aVomito:false,aDolor:false,aDistension:false,aDiarrea:false,aEstreni:false,aMelena:false
  });
+
  Object.assign(state,maternityDefaultsFor(profile));
  if(profile==="renal")state.reqPerfil="renal";
  if(profile==="embarazada")state.reqPerfil="embarazo";
@@ -1723,17 +1828,26 @@ function repairPatient(p){
  p.state=p.state||{};
  p.state.dieta=d;
 
- if(!p.headerMode){
-  p.headerMode=(p.ambiente||p.cama)?"HOSPITAL":"EMERGENCIA";
- }
+ if(!p.headerMode)p.headerMode=(p.ambiente||p.cama)?"HOSPITAL":"EMERGENCIA";
 
  if(p.headerMode==="EMERGENCIA"){
-  p.ambiente="";
-  p.cama="";
+  p.ambiente="";p.cama="";
   if(!p.area)p.area=p.section||"EMERGENCIA";
-  p.state.ambiente="";
-  p.state.cama="";
+  p.state.ambiente="";p.state.cama="";
   if(!p.state.area)p.state.area=p.area;
+ }
+
+ // Corrige automáticamente clasificaciones antiguas erróneas.
+ // Si el usuario ya cambió la condición manualmente, NO la toca.
+ if(p.state._profileManual!==true){
+  let sx=p.state.sexo||inferSex(p.sourceText||"");
+  const age=parseInt(p.state.edad||p.edad||0,10);
+  const det=detectPatientProfile(p.sourceText||"",sx,age,d);
+  if(det.profile==="embarazada"||det.profile==="posparto")sx="F";
+  p.state.sexo=sx;
+  p.state.perfil=det.profile;
+  p.state._profileAutoReason=det.reason;
+  p.state._profileConfidence=det.confidence;
  }
 
  if(!p.state.perfil){
@@ -1783,6 +1897,9 @@ function syncWorkingPatient(){
  ns._autofilledFromPrevious=true;
  ns._sourceFingerprint=oldState._sourceFingerprint||patientSourceFingerprint(p);
  ns._migratedV36=true;
+ ns._profileManual=oldState._profileManual===true;
+ ns._profileAutoReason=oldState._profileAutoReason||"";
+ ns._profileConfidence=oldState._profileConfidence||"";
  p.state=ns;p.note=nutritionNote();p.touched=true;p.updatedAt=Date.now();
 }
 
@@ -2637,7 +2754,7 @@ function restoreState(s){
   if($("hasIC")&&!val("hasIC"))$("hasIC").value="NO";
   if($("ibdActivity")&&!val("ibdActivity"))$("ibdActivity").value="ACTIVA";
   if($("pancreasType")&&!val("pancreasType"))$("pancreasType").value="AGUDA";
-  syncAgeProfile();updateProfileVisibility();applyMaternityDefaults(val("perfil"),false);
+  syncAgeProfile();updateProfileVisibility();applyMaternityDefaults(val("perfil"),false);updateProfileDetectionNote();
   toggleAlergia(false);toggleIntolerancia(false);toggleCompanion();toggleExtremityDetail();toggleMaternityExtremityDetail();toggleInterconsulta();
   toggleWeightMode(false);toggleHeightMode(false);updateNpoVisibility();updateBowelHabit();autoRequirementProfile();calculateAll();
  }finally{loading=false}
@@ -2691,12 +2808,67 @@ function importedTimes(diet=val("dieta")){
  if(importedRoute(diet)==="NPO")return "N/A";
  return (u.includes("HIPERPROTEICA")||u.includes("HIPOGLUCIDA"))?"6":"5";
 }
-function syncAgeProfile(){
- const age=num(val("edad")),p=val("perfil");
- if(age!==null&&(p==="adulto"||p==="adultomayor"||!p)){
-  $("perfil").value=age>=60?"adultomayor":"adulto";
+
+function currentProfileDetection(){
+ const source=val("sourceText")||"";
+ let sex=val("sexo")||inferSex(source);
+ const age=num(val("edad"))||0;
+ return detectPatientProfile(source,sex,age,val("dieta"));
+}
+function updateProfileDetectionNote(){
+ if(!$("profileDetectionNote"))return;
+ const p=currentRound?.patients?.find(x=>x.id===currentPatientId);
+ const manual=p?.state?._profileManual===true;
+ if(manual){
+  $("profileDetectionNote").textContent=`CORRECCIÓN MANUAL: ${($("perfil")?.selectedOptions?.[0]?.textContent||val("perfil")).toUpperCase()}. La app no la cambiará automáticamente.`;
+  return;
  }
- updateProfileVisibility();autoRequirementProfile();
+ const d=currentProfileDetection();
+ const label={embarazada:"EMBARAZADA",posparto:"PUÉRPERA / POSPARTO",renal:"RENAL",adultomayor:"ADULTO MAYOR",adulto:"ADULTO"}[d.profile]||d.profile;
+ $("profileDetectionNote").textContent=`AUTOMÁTICO: ${label} · ${d.reason}`;
+}
+function applyDetectedProfile(force=false){
+ const p=currentRound?.patients?.find(x=>x.id===currentPatientId);
+ if(!p||!$("perfil"))return;
+ if(!force&&p.state?._profileManual===true){updateProfileDetectionNote();return}
+
+ const d=currentProfileDetection();
+ $("perfil").value=d.profile;
+ if(d.profile==="embarazada"||d.profile==="posparto")$("sexo").value="F";
+
+ p.state=p.state||{};
+ p.state._profileManual=false;
+ p.state._profileAutoReason=d.reason;
+ p.state._profileConfidence=d.confidence;
+ p.state.perfil=d.profile;
+ p.state.sexo=val("sexo");
+
+ updateProfileVisibility();
+ autoRequirementProfile();
+ updateProfileDetectionNote();
+}
+function resetProfileToAuto(){
+ const p=currentRound?.patients?.find(x=>x.id===currentPatientId);
+ if(p?.state)p.state._profileManual=false;
+ applyDetectedProfile(true);
+ calculateAll();updatePreview();scheduleSave();
+}
+
+function syncAgeProfile(){
+ const p=currentRound?.patients?.find(x=>x.id===currentPatientId);
+ if(p?.state?._profileManual===true){
+  updateProfileVisibility();autoRequirementProfile();updateProfileDetectionNote();return;
+ }
+
+ // Recalcular desde diagnóstico actual primero. Solo usa edad para adulto/adulto mayor
+ // cuando NO hay embarazo, puerperio o renal.
+ if(currentPatientId)applyDetectedProfile(false);
+ else{
+  const age=num(val("edad")),current=val("perfil");
+  if(age!==null&&(current==="adulto"||current==="adultomayor"||!current))
+   $("perfil").value=age>=60?"adultomayor":"adulto";
+  updateProfileVisibility();autoRequirementProfile();
+ }
 }
 function autoRequirementProfile(){
  const p=val("perfil");
@@ -2719,10 +2891,21 @@ function applyMaternityDefaults(profile,force=false){
 function profileChanged(){
  if(loading){updateProfileVisibility();return}
  const p=val("perfil");
- if(p==="embarazada"||p==="posparto"){
-  $("sexo").value="F";applyMaternityDefaults(p,true);
+ const patient=currentRound?.patients?.find(x=>x.id===currentPatientId);
+
+ if(patient){
+  patient.state=patient.state||{};
+  patient.state._profileManual=true;
+  patient.state.perfil=p;
+  patient.state._profileAutoReason="CORREGIDO MANUALMENTE POR EL USUARIO";
  }
- updateProfileVisibility();autoRequirementProfile();calculateAll();updatePreview();
+
+ if(p==="embarazada"||p==="posparto"){
+  $("sexo").value="F";
+  applyMaternityDefaults(p,true);
+ }
+ updateProfileVisibility();autoRequirementProfile();updateProfileDetectionNote();
+ calculateAll();updatePreview();scheduleSave();
 }
 function updateProfileVisibility(){
  const p=val("perfil"),mat=p==="embarazada"||p==="posparto",age=num(val("edad"))||0,older=age>=60;
@@ -4417,6 +4600,7 @@ function calculateAll(){
  updateScreeningUI();
  updateClinicalUI();
  updateDiagnosisMeaning();
+ updateProfileDetectionNote();
  if($("interconsultaResumen")){
   const n=interconsultaNarrative();
   $("interconsultaResumen").textContent=n||"SE INTEGRARÁ AUTOMÁTICAMENTE EN VALORACIÓN NUTRICIONAL.";

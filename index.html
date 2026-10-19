@@ -884,6 +884,76 @@ body{padding-bottom:92px}
  .bottom{grid-template-columns:1fr 1fr;margin-bottom:88px}
 }
 
+
+/* ===== ACCIONES PACIENTE + NRS V63 ===== */
+.patientActionStrip{
+ position:sticky;
+ top:calc(var(--appTop) + 38px);
+ z-index:43;
+ display:grid;
+ grid-template-columns:1fr 1.25fr;
+ gap:5px;
+ margin:0 0 6px;
+ padding:5px;
+ border:1px solid #d5e0eb;
+ border-radius:10px;
+ background:rgba(255,255,255,.97);
+ box-shadow:0 4px 13px rgba(35,52,70,.08);
+ backdrop-filter:blur(10px);
+}
+.patientActionStrip button{
+ min-height:38px;
+ border-radius:9px;
+ border:1px solid transparent;
+ padding:5px 7px;
+ font-size:9.2px;
+ font-weight:900;
+}
+.patientSaveTop{
+ background:#e8f1ff;
+ color:#215d9f;
+ border-color:#c8dbf4!important;
+}
+.patientNextTop{
+ background:#20835f;
+ color:white;
+}
+.nrsIntakeQuick{
+ margin-top:6px;
+ padding:6px;
+ border:1px solid #cfe0f4;
+ border-radius:8px;
+ background:#f5f9ff;
+}
+.nrsIntakeQuick .qt{color:#24588f}
+.nrsIntakeQuick .chips{
+ display:grid;
+ grid-template-columns:repeat(2,minmax(0,1fr));
+}
+.nrsIntakeQuick .chip span{
+ width:100%;
+ height:100%;
+ border-radius:7px;
+ white-space:normal;
+ line-height:1.15;
+}
+@media(max-width:650px){
+ .patientActionStrip{
+  top:calc(var(--appTop) + 35px);
+  padding:4px;
+  margin-bottom:4px;
+ }
+ .patientActionStrip button{
+  min-height:39px;
+  font-size:9px;
+ }
+ .mobileActionBar{
+  bottom:58px;
+ }
+ body{padding-bottom:150px}
+ .bottom{margin-bottom:145px}
+}
+
 </style>
 </head>
 <body>
@@ -939,6 +1009,10 @@ body{padding-bottom:92px}
   <button type="button" data-sec="engineSection" onclick="jumpToSection('engineSection')">6 Requer.</button>
   <button type="button" data-sec="previewSection" onclick="jumpToSection('previewSection')">7 Vista</button>
  </nav>
+ <div id="patientActionStrip" class="patientActionStrip hidden">
+  <button type="button" class="patientSaveTop" onclick="saveCurrentPatient(false,true)">💾 Guardar paciente</button>
+  <button type="button" class="patientNextTop" onclick="completeAndNext()">✓ Guardar + siguiente paciente</button>
+ </div>
  <section class="card section" id="patientDataSection">
   <div class="secHead"><div class="step">1</div><div><h2>Paciente y diagnóstico importado</h2><p>Se pueden corregir si el documento viene con algún dato mal escrito.</p></div></div>
   <div id="noPatient" class="warn">Primero importa un Word y abre un paciente.</div>
@@ -1108,7 +1182,18 @@ body{padding-bottom:92px}
     <label class="chip"><input type="radio" name="consumoDieta" value="25%"><span>25%</span></label>
     <label class="chip"><input type="radio" name="consumoDieta" value="0%"><span>0%</span></label>
    </div>
-   <div style="margin-top:6px"><label class="label">Consumo exacto %</label><input id="consumoExacto" type="number" min="0" max="100" step="1" placeholder="Se completa desde el Word, ej. 80" oninput="calculateAll()"></div>
+   <div style="margin-top:6px"><label class="label">Consumo exacto %</label><input id="consumoExacto" type="number" min="0" max="100" step="1" placeholder="Se completa desde el Word, ej. 80" oninput="syncNrsBandFromExact();calculateAll()"></div>
+   <div class="nrsIntakeQuick">
+    <div class="qt">NRS-2002 · ingesta en la última semana comparada con lo habitual</div>
+    <div class="chips">
+     <label class="chip"><input type="radio" name="nrsIntakeBand" value="UNKNOWN" checked onchange="applyNrsIntakeBand()"><span>Preguntar</span></label>
+     <label class="chip"><input type="radio" name="nrsIntakeBand" value="FULL" onchange="applyNrsIntakeBand()"><span>Igual / normal · 0 pt</span></label>
+     <label class="chip"><input type="radio" name="nrsIntakeBand" value="MILD" onchange="applyNrsIntakeBand()"><span>Come menos · 50–75% · 1 pt</span></label>
+     <label class="chip"><input type="radio" name="nrsIntakeBand" value="MODERATE" onchange="applyNrsIntakeBand()"><span>25–50% · 2 pt</span></label>
+     <label class="chip"><input type="radio" name="nrsIntakeBand" value="SEVERE" onchange="applyNrsIntakeBand()"><span>0–25% · 3 pt</span></label>
+    </div>
+    <div class="note">No se asigna 1 punto solo por estar hospitalizado. Si realmente come menos que en casa, marca “Come menos” y el NRS suma 1 punto.</div>
+   </div>
    </div>
    <div id="viaOralBox" class="q"><div class="qt">5. Tolerancia de la vía oral</div><div class="chips">
     <label class="chip"><input type="radio" name="viaoral" value="TOLERA" checked><span>Tolera</span></label>
@@ -1547,11 +1632,11 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&
 const makeId=p=>`${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,9)}`;
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
 
-const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v62", FALLBACK_KEY="nutri_word_rounds_v62";
+const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v63", FALLBACK_KEY="nutri_word_rounds_v63";
 let db=null,currentRound=null,currentPatientId=null,history=[],loading=false,saveTimer=null;
 
 const simpleFields=["area","ambiente","cama","nombre","edad","cobertura","sexo","perfil","dieta","sourceText","alergia","intolerancia","ultima","consumoExacto","bristol","habito","hallazgo","peso","pesoEstimadoDoc","cb","cp","talla","talonRodilla","mediaEnvergadura","pesoPregestacional","edadGestacional","reqPerfil","cie10","plan","planObs","kcalKg","extraKcal","choPct","proPct","proKg","lipPct","clinicalProfile","renalSubtype","egfr","icuDay","hasIC","measuredEE","ibdActivity","pancreasType","surgeryScenario","suppName","suppMl","suppKcal","suppProtein","suppServings","acompanante","acompananteDetalle","informante","extremidadesDetalle","mExtSupDetalle","interApetitoCasaDias","interConsumoCasa","interPesoHabitual","interPesoIngreso","interPerdidaCasaKg","interPerdidaCasaDias","interApetitoHospDias","interConsumoHosp","interPerdidaHospKg","interDiasHospital"];
-const radios=["conciencia","orientacion","colabora","apetito","consumoDieta","viaoral","masticacion","deglucion","diuresis","flatos","deambula","tieneAlergia","tieneIntolerancia","lactancia","facie","temporal","periorb","dientes","mucosa","piel","clavicula","extremidades","masaMuscular","masaGrasa","abdomen","edemaFisico","ojos","modoPeso","modoTalla","mFacie","mTemporal","mPeriorb","mDientes","mHidratacion","mClavicula","mAbdomen","mExtSup","mTricipital","mCuadriceps","mPatelar","mGemelos","mEdema","interconsulta","interApetitoCasa","interPerdioPesoCasa","interApetitoHosp","interPerdioPesoHosp","interComiaTodoCasa","interComeTodoHosp"];
+const radios=["conciencia","orientacion","colabora","apetito","consumoDieta","viaoral","masticacion","deglucion","diuresis","flatos","deambula","tieneAlergia","tieneIntolerancia","lactancia","facie","temporal","periorb","dientes","mucosa","piel","clavicula","extremidades","masaMuscular","masaGrasa","abdomen","edemaFisico","ojos","modoPeso","modoTalla","mFacie","mTemporal","mPeriorb","mDientes","mHidratacion","mClavicula","mAbdomen","mExtSup","mTricipital","mCuadriceps","mPatelar","mGemelos","mEdema","interconsulta","interApetitoCasa","interPerdioPesoCasa","interApetitoHosp","interPerdioPesoHosp","interComiaTodoCasa","interComeTodoHosp","nrsIntakeBand"];
 const checks=["aNausea","aVomito","aDolor","aDistension","aDiarrea","aEstreni","aMelena"];
 
 function flash(t){$("status").textContent=t;clearTimeout(flash.t);flash.t=setTimeout(()=>$("status").textContent="",2300)}
@@ -1840,7 +1925,7 @@ function inferProfileFromText(sourceText,sex,age,diet=""){
 }
 function maternityDefaultsFor(profile){
  if(profile==="posparto")return {
-  r_apetito:"AUMENTADO",r_consumoDieta:"100%",r_viaoral:"TOLERA",ultima:"AYER",bristol:"4",habito:"REGULAR",
+  r_apetito:"AUMENTADO",r_consumoDieta:"",r_viaoral:"TOLERA",ultima:"AYER",bristol:"4",habito:"REGULAR",
   r_lactancia:"BUEN AGARRE Y SUCCIÓN, BUENA PRODUCCIÓN",r_mFacie:"SEMIPÁLIDA",r_mTemporal:"DEFINIDO",r_mPeriorb:"COLORACIÓN UNIFORME, OJERAS LEVES, SIN HUNDIMIENTOS",r_mDientes:"COMPLETAS",r_mHidratacion:"SEMIHIDRATADAS",r_mClavicula:"MÚSCULO BIEN DEFINIDO RODEANDO EL HUESO. NO PROMINENTE",r_mAbdomen:"BLANDO, DEPRESIBLE, DOLOROSO A LA PALPACIÓN",r_mExtSup:"SIMÉTRICAS",r_mTricipital:"TEJIDO GRASO Y MASA MUSCULAR NORMAL EVIDENTE ENTRE LOS PLIEGUES DE PIEL PELLIZCADOS",r_mCuadriceps:"REDONDEADO Y BIEN DESARROLLADO",r_mPatelar:"MÚSCULOS SOBRESALEN. RÓTULA NO PROMINENTE",r_mGemelos:"GEMELOS BIEN DESARROLLADOS",r_mEdema:"NO",r_modoPeso:"ACTUAL",r_modoTalla:"TALLA"
  };
  if(profile==="embarazada")return {
@@ -2247,6 +2332,7 @@ function showNoPatient(){
  $("preview").textContent="";
  if($("mobileActionBar"))$("mobileActionBar").classList.add("hidden");
  if($("sectionQuickNav"))$("sectionQuickNav").classList.add("hidden");
+ if($("patientActionStrip"))$("patientActionStrip").classList.add("hidden");
 }
 
 function setRadioFromPrevious(name,value){
@@ -2434,7 +2520,14 @@ function applySmartClinicalData(d){
  if(d.sex)setFieldFromPrevious("sexo",d.sex);
  if(d.age!==null&&(!val("edad")||Number(val("edad"))<=0))setFieldFromPrevious("edad",d.age);
  if(typeof syncAgeProfile==="function")syncAgeProfile();
- if(d.intake!==null){setFieldFromPrevious("consumoExacto",d.intake);setRadioFromPrevious("consumoDieta",nearestIntakeChip(d.intake));}
+ if(d.intake!==null){
+  setFieldFromPrevious("consumoExacto",d.intake);
+  setRadioFromPrevious("consumoDieta",nearestIntakeChip(d.intake));
+  if(d.intake>75)setRadioFromPrevious("nrsIntakeBand","FULL");
+  else if(d.intake>50)setRadioFromPrevious("nrsIntakeBand","MILD");
+  else if(d.intake>25)setRadioFromPrevious("nrsIntakeBand","MODERATE");
+  else setRadioFromPrevious("nrsIntakeBand","SEVERE");
+ }
  if(d.lastStool)setFieldFromPrevious("ultima",d.lastStool);
  if(d.bristol!==null)setFieldFromPrevious("bristol",d.bristol);
  if(d.egfr!==null&&$("egfr")&&!val("egfr"))$("egfr").value=one(d.egfr);
@@ -3044,14 +3137,17 @@ function setupCompactSections(){
  }
 }
 function updateMobileActionBar(){
- const bar=$("mobileActionBar"),nav=$("sectionQuickNav");
+ const bar=$("mobileActionBar"),nav=$("sectionQuickNav"),topActions=$("patientActionStrip");
  if(!currentRound||!currentPatientId){
   if(bar)bar.classList.add("hidden");
   if(nav)nav.classList.add("hidden");
+  if(topActions)topActions.classList.add("hidden");
   return;
  }
  if(bar)bar.classList.remove("hidden");
  if(nav)nav.classList.remove("hidden");
+ if(topActions)topActions.classList.remove("hidden");
+
  const idx=currentRound.patients.findIndex(x=>x.id===currentPatientId);
  const p=currentRound.patients[idx];
  if($("mobilePatientPos"))$("mobilePatientPos").textContent=`${idx+1}/${currentRound.patients.length}`;
@@ -3716,9 +3812,37 @@ function clinicalStressState(){
  if(a&&a.length>8&&!f.psychiatric)return {level:"MODERADO",score:1};
  return {level:"BAJO",score:0};
 }
+
+function applyNrsIntakeBand(){
+ const band=radio("nrsIntakeBand")||"UNKNOWN";
+ const map={FULL:100,MILD:70,MODERATE:40,SEVERE:20};
+ if(band==="UNKNOWN"){
+  if($("consumoExacto"))$("consumoExacto").value="";
+  calculateAll();scheduleSave();return;
+ }
+ const pct=map[band];
+ if($("consumoExacto"))$("consumoExacto").value=String(pct);
+ const chip=pct>=90?"100%":pct>50?"75%":pct>25?"50%":pct>0?"25%":"0%";
+ setRadio("consumoDieta",chip);
+ calculateAll();scheduleSave();
+}
+function syncNrsBandFromExact(){
+ const pct=num(val("consumoExacto"));
+ if(pct===null){setRadio("nrsIntakeBand","UNKNOWN");return}
+ if(pct>75)setRadio("nrsIntakeBand","FULL");
+ else if(pct>50)setRadio("nrsIntakeBand","MILD");
+ else if(pct>25)setRadio("nrsIntakeBand","MODERATE");
+ else setRadio("nrsIntakeBand","SEVERE");
+}
+
 function currentIntakePercent(){
- if(importedRoute()==="NPO")return null;const exact=num(val("consumoExacto"));if(exact!==null&&exact>=0&&exact<=100)return exact;
- const raw=radio("consumoDieta")||"100%",n=parseInt(raw,10);return Number.isFinite(n)?n:100;
+ if(importedRoute()==="NPO")return null;
+ const exact=num(val("consumoExacto"));
+ if(exact!==null&&exact>=0&&exact<=100)return exact;
+ const raw=radio("consumoDieta");
+ if(!raw)return null;
+ const n=parseInt(raw,10);
+ return Number.isFinite(n)?n:null;
 }
 function clinicalNutritionRisk(){
  const b=calculationsBase(),stress=clinicalStressState(),f=diseaseFlags(),factors=[];
@@ -4723,9 +4847,17 @@ function nrsWeeklyIntakePercent(){
   if(hosp!==null&&daysHosp!==null&&daysHosp>0)return hosp;
   if(home!==null)return home;
  }
+
+ const band=radio("nrsIntakeBand");
+ if(band&&band!=="UNKNOWN"){
+  const map={FULL:100,MILD:70,MODERATE:40,SEVERE:20};
+  if(map[band]!==undefined)return map[band];
+ }
+
  const u=backgroundClinicalText();
  const m=u.match(/(?:INGESTA|CONSUMO)[^.;]{0,50}(?:SEMANA|SEMANAL)[^0-9]{0,20}(100|75|50|25|0)\s*%/);
  if(m)return Number(m[1]);
+
  return currentIntakePercent();
 }
 function nrsImpairedGeneralCondition(){
@@ -4744,19 +4876,22 @@ function nrsInitialScreeningExact(){
  const b=calculationsBase(),dis=nrsDiseaseScoreExact(),intake=nrsWeeklyIntakePercent();
  const bmi=Number.isFinite(b.imc)&&b.imc<20.5;
  const loss=nrsAnyWeightLossLast3Months();
+ const intakeKnown=intake!==null||importedRoute()==="NPO";
  const reduced=intake!==null&&intake<100&&importedRoute()!=="NPO";
  const severe=dis.score>=3;
- return {bmi,loss,reduced,severe,positive:bmi||loss||reduced||severe};
+ return {bmi,loss,reduced,severe,intakeKnown,intake,positive:bmi||loss||reduced||severe};
 }
 function nrsNutritionalScoreExact(){
  const b=calculationsBase(),route=importedRoute(),intake=nrsWeeklyIntakePercent(),loss=nrsWeightLossScore();
  let score=loss.score,reasons=[];
  if(loss.score>0)reasons.push(loss.label);
+
  if(route!=="NPO"&&intake!==null){
   if(intake<=25){score=Math.max(score,3);reasons.push("INGESTA 0–25%");}
   else if(intake<=50){score=Math.max(score,2);reasons.push("INGESTA 25–50%");}
-  else if(intake<75){score=Math.max(score,1);reasons.push("INGESTA 50–75%");}
+  else if(intake<=75){score=Math.max(score,1);reasons.push("INGESTA 50–75%");}
  }
+
  if(Number.isFinite(b.imc)&&nrsImpairedGeneralCondition()){
   if(b.imc<18.5){score=Math.max(score,3);reasons.push("IMC <18,5 + ALTERACIÓN DEL ESTADO GENERAL");}
   else if(b.imc<=20.5){score=Math.max(score,2);reasons.push("IMC 18,5–20,5 + ALTERACIÓN DEL ESTADO GENERAL");}
@@ -4793,18 +4928,28 @@ function nrsDiseaseScoreExact(){
 }
 function automaticNRS2002(){
  const b=calculationsBase(),initial=nrsInitialScreeningExact();
+
+ if(!initial.intakeKnown && !initial.bmi && !initial.loss && !initial.severe){
+  return {
+   initial,pending:true,finalPerformed:false,nut:null,dis:null,agePt:null,total:null,
+   risk:"PENDIENTE",
+   nutReason:[],disReason:"FALTA VALORAR INGESTA DE LA ÚLTIMA SEMANA"
+  };
+ }
+
  if(!initial.positive){
   return {
-   initial,finalPerformed:false,nut:0,dis:0,agePt:0,total:0,
+   initial,pending:false,finalPerformed:false,nut:0,dis:0,agePt:0,total:0,
    risk:"SIN RIESGO NUTRICIONAL",
    nutReason:[],disReason:"CRIBADO INICIAL NEGATIVO"
   };
  }
+
  const nut=nrsNutritionalScoreExact(),dis=nrsDiseaseScoreExact();
  const agePt=b.age>=70?1:0;
  const total=nut.score+dis.score+agePt;
  return {
-  initial,finalPerformed:true,nut:nut.score,dis:dis.score,agePt,total,
+  initial,pending:false,finalPerformed:true,nut:nut.score,dis:dis.score,agePt,total,
   risk:total>=3?"CON RIESGO NUTRICIONAL":"SIN RIESGO NUTRICIONAL",
   nutReason:nut.reasons,disReason:dis.label
  };
@@ -4824,6 +4969,7 @@ function screeningText(){
  }
 
  const n=automaticNRS2002();
+ if(n.pending)return "NRS-2002 PENDIENTE: FALTA VALORAR LA INGESTA DE LA ÚLTIMA SEMANA.";
  if(n.total===0)return "SIN RIESGO NUTRICIONAL SEGÚN NRS-2002 (0 PUNTOS).";
  if(n.total<3)return `SIN RIESGO NUTRICIONAL SEGÚN NRS-2002 (${n.total} PUNTOS).`;
  return `CON RIESGO NUTRICIONAL SEGÚN NRS-2002 (${n.total} PUNTOS).`;
@@ -4849,6 +4995,15 @@ function updateScreeningUI(){
  }
 
  const n=automaticNRS2002();
+
+ if(n.pending){
+  if($("adultRiskResult"))$("adultRiskResult").textContent="NRS-2002: PENDIENTE";
+  if($("adultStressResult"))$("adultStressResult").textContent="FALTA INGESTA ÚLTIMA SEMANA";
+  if($("screenReasonText"))$("screenReasonText").textContent=
+   "NO SE ASIGNA 0 NI 1 PUNTO SIN DATO. PREGUNTA CUÁNTO COMIÓ EN LA ÚLTIMA SEMANA RESPECTO A LO HABITUAL. SI COMIÓ APROXIMADAMENTE 50–75%, EL ESTADO NUTRICIONAL SUMA 1 PUNTO.";
+  return;
+ }
+
  if($("adultRiskResult"))$("adultRiskResult").textContent=`NRS-2002: ${n.total} PUNTOS`;
  if($("adultStressResult"))$("adultStressResult").textContent=n.total>=3?"CON RIESGO NUTRICIONAL":"SIN RIESGO NUTRICIONAL";
 
@@ -4858,8 +5013,9 @@ function updateScreeningUI(){
   return;
  }
 
+ const intakeReason=n.nutReason?.length?` ESTADO NUTRICIONAL: ${n.nutReason.join(", ")}.`:"";
  if($("screenReasonText"))$("screenReasonText").textContent=
-  `NRS-2002 = ESTADO NUTRICIONAL ${n.nut} + GRAVEDAD DE ENFERMEDAD ${n.dis}${n.agePt?` + EDAD ≥70 (${n.agePt})`:""} = ${n.total} PUNTOS. ${n.disReason}. ${n.total<3?"SIN RIESGO NUTRICIONAL INMEDIATO; REPETIR SEMANALMENTE.":"CON RIESGO NUTRICIONAL; INICIAR PLAN DE CUIDADOS NUTRICIONALES."}`;
+  `NRS-2002 = ESTADO NUTRICIONAL ${n.nut} + GRAVEDAD DE ENFERMEDAD ${n.dis}${n.agePt?` + EDAD ≥70 (${n.agePt})`:""} = ${n.total} PUNTOS.${intakeReason} ${n.disReason}. ${n.total<3?"SIN RIESGO NUTRICIONAL INMEDIATO; REPETIR SEMANALMENTE.":"CON RIESGO NUTRICIONAL; INICIAR PLAN DE CUIDADOS NUTRICIONALES."}`;
 }
 
 function macroClinicalContext(dietText){

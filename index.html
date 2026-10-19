@@ -954,6 +954,89 @@ body{padding-bottom:92px}
  .bottom{margin-bottom:145px}
 }
 
+
+/* ===== V64 · PACIENTE ACTUAL + ACCIONES BAJO TALLA ===== */
+.patientPill.currentPatient{
+ border:2px solid #2f78c7!important;
+ background:#e9f3ff!important;
+ box-shadow:0 0 0 3px rgba(47,120,199,.13)!important;
+}
+.patientPill.currentPatient b{
+ color:#174f91;
+ font-weight:950;
+}
+.currentDot{
+ color:#2875c4;
+ font-weight:950;
+}
+.currentLabel{
+ color:#1f67ad;
+ font-size:7px;
+ font-weight:950;
+ letter-spacing:.035em;
+}
+.patient.currentPatient{
+ border:2px solid #2f78c7!important;
+ background:#edf6ff!important;
+ box-shadow:0 0 0 3px rgba(47,120,199,.10);
+}
+.currentBadge{
+ background:#2f78c7!important;
+ color:white!important;
+ border-color:#2f78c7!important;
+}
+.anthroPatientActions{
+ display:grid;
+ grid-template-columns:1fr 1fr;
+ gap:5px;
+ margin-top:8px;
+ padding-top:7px;
+ border-top:1px dashed #cbd7e5;
+}
+.anthroPatientActions button{
+ min-height:37px;
+ border-radius:9px;
+ border:1px solid transparent;
+ padding:6px 7px;
+ font-size:8.8px;
+ font-weight:900;
+}
+.anthroSave{
+ background:#e9f2ff;
+ border-color:#c4d9f3!important;
+ color:#235c9e;
+}
+.anthroNext{
+ background:#f4f6f9;
+ border-color:#d8e0e9!important;
+ color:#42566c;
+}
+.anthroCompleteNext{
+ grid-column:1/-1;
+ background:#21815f;
+ color:white;
+ min-height:41px!important;
+ font-size:9.5px!important;
+}
+@media(max-width:650px){
+ .anthroPatientActions{
+  position:relative;
+  grid-template-columns:1fr 1fr;
+  gap:4px;
+ }
+ .anthroPatientActions button{
+  min-height:39px;
+  font-size:8.8px;
+ }
+ .anthroCompleteNext{
+  min-height:43px!important;
+  font-size:9.5px!important;
+ }
+ .patientPill.currentPatient{
+  border-width:2px!important;
+ }
+}
+
 </style>
 </head>
 <body>
@@ -1337,6 +1420,12 @@ body{padding-bottom:92px}
     <div style="margin-top:6px"><label class="label">Talla cm</label><input id="talla" type="number" step="0.1" oninput="calculateAll()"></div>
     <div id="heelBox" class="hidden" style="margin-top:6px"><label class="label">Talón-rodilla cm</label><input id="talonRodilla" type="number" step="0.1" oninput="calculateHeelKnee()"></div>
     <div id="demiSpanBox" class="hidden" style="margin-top:6px"><label class="label">Media envergadura / demi-span (cm)</label><input id="mediaEnvergadura" type="number" step="0.1" oninput="calculateDemiSpan()"><div class="note" style="margin-top:4px">Medir desde la escotadura esternal hasta la raíz de los dedos con el brazo extendido.</div></div>
+
+    <div class="anthroPatientActions">
+     <button type="button" class="anthroSave" onclick="saveCurrentPatient(false,true)">💾 Guardar paciente</button>
+     <button type="button" class="anthroNext" onclick="movePatient(1)">Siguiente →</button>
+     <button type="button" class="anthroCompleteNext" onclick="completeAndNext()">✓ Guardar + siguiente</button>
+    </div>
    </div>
   </div>
   <div id="pregnancyAnthroFields" class="q hidden" style="margin-top:8px">
@@ -1632,7 +1721,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&
 const makeId=p=>`${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,9)}`;
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
 
-const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v63", FALLBACK_KEY="nutri_word_rounds_v63";
+const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v64", FALLBACK_KEY="nutri_word_rounds_v64";
 let db=null,currentRound=null,currentPatientId=null,history=[],loading=false,saveTimer=null;
 
 const simpleFields=["area","ambiente","cama","nombre","edad","cobertura","sexo","perfil","dieta","sourceText","alergia","intolerancia","ultima","consumoExacto","bristol","habito","hallazgo","peso","pesoEstimadoDoc","cb","cp","talla","talonRodilla","mediaEnvergadura","pesoPregestacional","edadGestacional","reqPerfil","cie10","plan","planObs","kcalKg","extraKcal","choPct","proPct","proKg","lipPct","clinicalProfile","renalSubtype","egfr","icuDay","hasIC","measuredEE","ibdActivity","pancreasType","surgeryScenario","suppName","suppMl","suppKcal","suppProtein","suppServings","acompanante","acompananteDetalle","informante","extremidadesDetalle","mExtSupDetalle","interApetitoCasaDias","interConsumoCasa","interPesoHabitual","interPesoIngreso","interPerdidaCasaKg","interPerdidaCasaDias","interApetitoHospDias","interConsumoHosp","interPerdidaHospKg","interDiasHospital"];
@@ -2283,23 +2372,54 @@ function renderRound(){
   $("patientList").innerHTML="";$("progressWrap").classList.add("hidden");
   topCard.classList.add("hidden");topList.innerHTML="";return;
  }
+
  const done=currentRound.patients.filter(x=>x.completed).length,total=currentRound.patients.length;
  $("roundInfo").innerHTML=`<div style="font-size:10px;font-weight:850">${esc(currentRound.fileName||"Ronda")}</div><div class="note">${esc(currentRound.date||"")} · ${total} paciente(s)</div>`;
- $("progressWrap").classList.remove("hidden");$("progressBar").style.width=(total?done/total*100:0)+"%";$("progressText").textContent=`${done} de ${total} completados`;
+ $("progressWrap").classList.remove("hidden");
+ $("progressBar").style.width=(total?done/total*100:0)+"%";
+ $("progressText").textContent=`${done} de ${total} completados`;
 
- topCard.classList.remove("hidden");$("topPatientCount").textContent=`${done}/${total} listos`;topList.innerHTML="";
- const box=$("patientList");box.innerHTML="";
+ topCard.classList.remove("hidden");
+ $("topPatientCount").textContent=`${done}/${total} listos`;
+ topList.innerHTML="";
+
+ const box=$("patientList");
+ box.innerHTML="";
+
  currentRound.patients.forEach((p,i)=>{
-  const pill=document.createElement("button");
-  pill.className=`patientPill ${p.id===currentPatientId?"active":""} ${p.completed?"done":""}`;
-  pill.innerHTML=`<b>${i+1}. ${esc(p.nombre)}</b><small>${esc(p.area)} · AMB ${esc(p.ambiente)} · C${esc(p.cama)} · ${p.completed?"✓ COMPLETO":"PENDIENTE"}</small>`;
-  pill.onclick=()=>openPatient(p.id);topList.appendChild(pill);
+  const active=p.id===currentPatientId;
 
-  const d=document.createElement("div");d.className=`patient ${p.id===currentPatientId?"active":""} ${p.completed?"done":""}`;
-  d.innerHTML=`<div class="phead"><div class="pname">${i+1}. ${esc(p.nombre)}</div><span class="badge ${p.completed?"ok":""}">${p.completed?"COMPLETO":"PENDIENTE"}</span></div><small>${esc(p.area)} · AMB ${esc(p.ambiente)} · C${esc(p.cama)} · ${esc(p.edad)} años</small><small>${esc(p.dieta)}</small><div class="pacts"><button class="btn small soft" data-a="o">Abrir</button><button class="btn small light" data-a="w">Word</button><button class="btn small light" data-a="p">PDF</button></div>`;
+  const pill=document.createElement("button");
+  pill.type="button";
+  pill.className=`patientPill ${active?"active currentPatient":""} ${p.completed?"done":""}`;
+  if(active)pill.setAttribute("aria-current","true");
+  pill.innerHTML=
+   `<b>${active?'<span class="currentDot">●</span> ':''}${i+1}. ${esc(p.nombre)}</b>`+
+   `<small>${active?'<strong class="currentLabel">EN ESTE PACIENTE</strong> · ':''}${esc(p.area||p.section||"")}${p.ambiente?` · AMB ${esc(p.ambiente)}`:""}${p.cama?` · C${esc(p.cama)}`:""} · ${p.completed?"✓ COMPLETO":"PENDIENTE"}</small>`;
+  pill.onclick=()=>openPatient(p.id);
+  topList.appendChild(pill);
+
+  const d=document.createElement("div");
+  d.className=`patient ${active?"active currentPatient":""} ${p.completed?"done":""}`;
+  d.innerHTML=
+   `<div class="phead"><div class="pname">${active?'<span class="currentDot">●</span> ':''}${i+1}. ${esc(p.nombre)}</div>`+
+   `<span class="badge ${active?"currentBadge":p.completed?"ok":""}">${active?"EN CURSO":p.completed?"COMPLETO":"PENDIENTE"}</span></div>`+
+   `<small>${esc(p.area||p.section||"")}${p.ambiente?` · AMB ${esc(p.ambiente)}`:""}${p.cama?` · C${esc(p.cama)}`:""}${p.edad?` · ${esc(p.edad)} años`:""}</small>`+
+   `<small>${esc(p.dieta||"")}</small>`+
+   `<div class="pacts"><button class="btn small soft" data-a="o">Abrir</button><button class="btn small light" data-a="w">Word</button><button class="btn small light" data-a="p">PDF</button></div>`;
   d.querySelector('[data-a="o"]').onclick=()=>openPatient(p.id);
   d.querySelector('[data-a="w"]').onclick=()=>downloadDocx([p],safeName(p.nombre)+".docx",true);
   box.appendChild(d);
+ });
+
+ // Mantener visible el paciente actual dentro de la lista horizontal,
+ // sin mover toda la página hacia arriba/abajo.
+ requestAnimationFrame(()=>{
+  const active=topList.querySelector(".patientPill.currentPatient");
+  if(active){
+   const left=active.offsetLeft-(topList.clientWidth-active.offsetWidth)/2;
+   topList.scrollTo({left:Math.max(0,left),behavior:"smooth"});
+  }
  });
 }
 function renderHistory(){
@@ -3232,7 +3352,7 @@ function openPatient(id){
  updateProfileDetectionNote();
  calculateAll();
  updatePreview();
- renderPatientStrip();
+ renderRound();
  setupCompactSections();
  updateMobileActionBar();
  updateStickyOffset();

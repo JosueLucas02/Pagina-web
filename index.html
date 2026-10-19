@@ -663,6 +663,227 @@ img,svg,table{
   font-weight:750;
 }
 
+
+/* ===== REDISEÑO MÓVIL V62 ===== */
+:root{--appTop:72px}
+body{padding-bottom:92px}
+.sectionQuickNav{
+ position:sticky;
+ top:var(--appTop);
+ z-index:44;
+ display:flex;
+ gap:4px;
+ overflow-x:auto;
+ padding:5px 6px;
+ margin:0 0 6px;
+ background:rgba(242,245,248,.96);
+ border:1px solid var(--line);
+ border-radius:10px;
+ backdrop-filter:blur(8px);
+ scrollbar-width:none;
+}
+.sectionQuickNav::-webkit-scrollbar{display:none}
+.sectionQuickNav button{
+ flex:0 0 auto;
+ border:1px solid #d8e0ea;
+ background:white;
+ color:#57667a;
+ border-radius:999px;
+ min-height:28px;
+ padding:4px 8px;
+ font-size:8.5px;
+ font-weight:850;
+}
+.sectionQuickNav button.active{
+ background:#e7f0ff;
+ border-color:#78a5df;
+ color:#174f91;
+ box-shadow:0 0 0 2px #edf4ff;
+}
+.section{scroll-margin-top:calc(var(--appTop) + 42px)}
+.sectionPulse{box-shadow:0 0 0 3px #dbeaff,var(--shadow)!important}
+.secHead{
+ align-items:center;
+ position:relative;
+}
+.secHead>div:nth-child(2){flex:1}
+.sectionToggle{
+ flex:0 0 28px;
+ width:28px;
+ height:28px;
+ border:1px solid #d9e2ec;
+ border-radius:8px;
+ background:#f7f9fc;
+ color:#486078;
+ font-size:16px;
+ font-weight:900;
+ line-height:1;
+}
+.section.collapsed>:not(.secHead){display:none!important}
+.section.collapsed{padding-bottom:7px}
+.section.collapsed .secHead{margin-bottom:0!important}
+
+.chip span{
+ position:relative;
+ transition:.12s ease;
+}
+.chip input:checked+span{
+ background:#dfeeff!important;
+ border-color:#4f8bd4!important;
+ color:#154f91!important;
+ box-shadow:0 0 0 2px rgba(79,139,212,.12);
+ font-weight:900!important;
+}
+.chip input:checked+span::before{
+ content:"✓";
+ display:inline-grid;
+ place-items:center;
+ width:15px;
+ height:15px;
+ margin-right:4px;
+ border-radius:50%;
+ background:#3578c5;
+ color:white;
+ font-size:9px;
+ font-weight:950;
+ vertical-align:-1px;
+}
+.choiceFlash{box-shadow:0 0 0 2px #b9d6fa!important}
+
+.examGrid{align-items:start}
+.examGroupTitle{
+ grid-column:1/-1;
+ margin:3px 0 -1px;
+ padding:5px 7px;
+ border-radius:7px;
+ background:#eef4fb;
+ color:#365b82;
+ font-size:8.5px;
+ font-weight:900;
+ letter-spacing:.02em;
+ text-transform:uppercase;
+}
+.abdomenChips .chip span{border-radius:8px}
+
+.mobileActionBar{
+ position:fixed;
+ left:50%;
+ bottom:0;
+ transform:translateX(-50%);
+ z-index:85;
+ width:min(520px,100%);
+ background:rgba(255,255,255,.98);
+ border-top:1px solid #d8e0ea;
+ box-shadow:0 -8px 24px rgba(35,52,70,.13);
+ padding:6px 7px calc(6px + env(safe-area-inset-bottom));
+ backdrop-filter:blur(12px);
+}
+.mobileActionInfo{margin-bottom:5px}
+.mobilePatientLine{
+ display:grid;
+ grid-template-columns:auto minmax(0,1fr) auto;
+ gap:6px;
+ align-items:center;
+}
+.mobilePatientLine>span:first-child{
+ min-width:34px;
+ text-align:center;
+ padding:3px 5px;
+ border-radius:999px;
+ background:#e7f0ff;
+ color:#275b99;
+ font-size:8px;
+ font-weight:900;
+}
+.mobilePatientLine b{
+ white-space:nowrap;
+ overflow:hidden;
+ text-overflow:ellipsis;
+ font-size:9.5px;
+ color:#243448;
+}
+#mobileSaveState{
+ font-size:7px;
+ font-weight:900;
+ color:#32815e;
+ white-space:nowrap;
+}
+.lastChoiceText{
+ margin-top:2px;
+ white-space:nowrap;
+ overflow:hidden;
+ text-overflow:ellipsis;
+ color:#65758a;
+ font-size:7.8px;
+}
+.mobileActionButtons{
+ display:grid;
+ grid-template-columns:42px 72px 74px minmax(120px,1fr);
+ gap:5px;
+}
+.mobileActionButtons button{
+ min-height:36px;
+ border-radius:9px;
+ border:1px solid transparent;
+ font-size:8.8px;
+ font-weight:900;
+ padding:5px 4px;
+}
+.navMini{background:#f3f6fa;border-color:#dbe2eb!important;color:#43566d}
+.saveMini{background:#e9f2ff;border-color:#c8dbf4!important;color:#245d9f}
+.completeMini{background:#20835f;color:white}
+.bottom{margin-bottom:84px}
+.bottom .btn.ok{display:none}
+
+@media(max-width:650px){
+ body{font-size:14px;padding-bottom:94px}
+ .topin{padding:6px 8px 5px}
+ .brand{margin-bottom:5px}
+ .brand h1{font-size:15px}
+ .top .actions{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+ .top .actions .btn{min-height:33px;padding:5px 6px;font-size:9px}
+ .shell{padding:4px;gap:5px}
+ .patientStrip{padding:6px;margin-bottom:5px;border-radius:10px}
+ .patientStripTop{margin-bottom:4px}
+ .patientStripTop h2{font-size:11px}
+ .patientStripTop span{font-size:7.5px}
+ .patientPill{min-width:145px;max-width:185px;padding:5px 6px;border-radius:8px}
+ .patientPill b{font-size:8.5px}
+ .patientPill small{font-size:7px}
+ .section{padding:7px;margin-bottom:5px;border-radius:10px}
+ .secHead{gap:5px;margin-bottom:5px!important}
+ .step{width:22px;height:22px;flex-basis:22px;font-size:8px}
+ .secHead h2{font-size:12px}
+ .secHead p{font-size:7.8px;line-height:1.2}
+ .sectionToggle{width:25px;height:25px;flex-basis:25px}
+ .grid2,.grid3,.grid4{gap:5px}
+ .q{padding:5px;border-radius:8px}
+ .qt{font-size:9.2px;margin-bottom:4px}
+ .chips{gap:3px}
+ .chip span{min-height:27px;padding:4px 6px;font-size:8.7px}
+ .label{font-size:8px}
+ input,select{min-height:33px;padding:5px 7px;font-size:10.5px}
+ .note{font-size:7.5px;line-height:1.3}
+ .sourceBox{padding:6px}
+ .previousCompact{padding:6px}
+ .diagnosisPlain{padding:6px}
+ .dxItem{font-size:7.8px;padding-top:4px;padding-bottom:4px}
+ .metrics{gap:4px}
+ .metric{padding:5px}
+ .metric span{font-size:7px}
+ .metric b{font-size:9.5px}
+ .preview{padding:8px;font-size:9pt;line-height:1.3}
+ .examGrid{grid-template-columns:1fr!important}
+ .examGroupTitle{font-size:7.8px;padding:4px 6px}
+ #generalExamFields .chips,#maternityExamFields .chips{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+ #generalExamFields .chip span,#maternityExamFields .chip span{
+  width:100%;height:100%;display:flex;align-items:center;justify-content:flex-start;
+  border-radius:8px;white-space:normal;line-height:1.15;
+ }
+ .abdomenChips{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ .bottom{grid-template-columns:1fr 1fr;margin-bottom:88px}
+}
+
 </style>
 </head>
 <body>
@@ -709,6 +930,15 @@ img,svg,table{
   </div>
   <div id="topPatientList" class="patientStripList"></div>
  </section>
+ <nav id="sectionQuickNav" class="sectionQuickNav hidden" aria-label="Secciones de valoración">
+  <button type="button" data-sec="patientDataSection" onclick="jumpToSection('patientDataSection')">1 Datos</button>
+  <button type="button" data-sec="valuationSection" onclick="jumpToSection('valuationSection')">2 Valoración</button>
+  <button type="button" data-sec="examSection" onclick="jumpToSection('examSection')">3 Examen</button>
+  <button type="button" data-sec="anthroSection" onclick="jumpToSection('anthroSection')">4 Antro</button>
+  <button type="button" data-sec="screeningSection" onclick="jumpToSection('screeningSection')">5 Tamizaje</button>
+  <button type="button" data-sec="engineSection" onclick="jumpToSection('engineSection')">6 Requer.</button>
+  <button type="button" data-sec="previewSection" onclick="jumpToSection('previewSection')">7 Vista</button>
+ </nav>
  <section class="card section" id="patientDataSection">
   <div class="secHead"><div class="step">1</div><div><h2>Paciente y diagnóstico importado</h2><p>Se pueden corregir si el documento viene con algún dato mal escrito.</p></div></div>
   <div id="noPatient" class="warn">Primero importa un Word y abre un paciente.</div>
@@ -956,18 +1186,29 @@ img,svg,table{
  <section id="examSection" class="card section">
   <div class="secHead"><div class="step">3</div><div><h2>Examen físico</h2><p id="examSubtitle">Opciones completas y separadas.</p></div></div>
 
-  <div id="generalExamFields" class="grid2">
+  <div id="generalExamFields" class="grid2 examGrid">
+   <div class="examGroupTitle">Cabeza · mucosas · piel</div>
    <div class="q"><div class="qt">Facie</div><div class="chips"><label class="chip"><input type="radio" name="facie" value="CÁLIDA" checked><span>Cálida</span></label><label class="chip"><input type="radio" name="facie" value="SEMICÁLIDA"><span>Semicálida</span></label><label class="chip"><input type="radio" name="facie" value="SEMIPÁLIDA"><span>Semipálida</span></label><label class="chip"><input type="radio" name="facie" value="PÁLIDA"><span>Pálida</span></label></div></div>
    <div class="q"><div class="qt">Músculo temporal</div><div class="chips"><label class="chip"><input type="radio" name="temporal" value="BIEN DEFINIDO / SIN DEPLECIÓN" checked><span>Bien definido</span></label><label class="chip"><input type="radio" name="temporal" value="LEVE DEPLECIÓN"><span>Leve</span></label><label class="chip"><input type="radio" name="temporal" value="MODERADA DEPLECIÓN"><span>Moderada</span></label><label class="chip"><input type="radio" name="temporal" value="SEVERA DEPLECIÓN"><span>Severa</span></label></div></div>
    <div class="q"><div class="qt">Región periorbitaria</div><div class="chips"><label class="chip"><input type="radio" name="periorb" value="CONSERVADA" checked><span>Conservada</span></label><label class="chip"><input type="radio" name="periorb" value="LIGERAMENTE OSCURECIDA"><span>Oscurecida</span></label><label class="chip"><input type="radio" name="periorb" value="DEPLECIÓN GRASA"><span>Depleción</span></label></div></div>
    <div class="q"><div class="qt">Piezas dentales</div><div class="chips"><label class="chip"><input type="radio" name="dientes" value="COMPLETAS" checked><span>Completas</span></label><label class="chip"><input type="radio" name="dientes" value="INCOMPLETAS"><span>Incompletas</span></label><label class="chip"><input type="radio" name="dientes" value="EDÉNTULO/A"><span>Edéntulo/a</span></label></div></div>
    <div class="q"><div class="qt">Mucosa oral</div><div class="chips"><label class="chip"><input type="radio" name="mucosa" value="HIDRATADA" checked><span>Hidratada</span></label><label class="chip"><input type="radio" name="mucosa" value="SEMIHIDRATADA"><span>Semihidratada</span></label><label class="chip"><input type="radio" name="mucosa" value="SECA"><span>Seca</span></label></div></div>
    <div class="q"><div class="qt">Piel</div><div class="chips"><label class="chip"><input type="radio" name="piel" value="HIDRATADA" checked><span>Hidratada</span></label><label class="chip"><input type="radio" name="piel" value="SEMIHIDRATADA"><span>Semihidratada</span></label><label class="chip"><input type="radio" name="piel" value="SECA"><span>Seca</span></label></div></div>
+   <div class="examGroupTitle">Reserva muscular · grasa · extremidades</div>
    <div class="q"><div class="qt">Clavícula / acromion</div><div class="chips"><label class="chip"><input type="radio" name="clavicula" value="NO PROMINENTES" checked><span>No prominentes</span></label><label class="chip"><input type="radio" name="clavicula" value="LIGERAMENTE PROMINENTES"><span>Ligeramente</span></label><label class="chip"><input type="radio" name="clavicula" value="PROMINENTES"><span>Prominentes</span></label></div></div>
    <div class="q"><div class="qt">Extremidades</div><div class="chips"><label class="chip"><input type="radio" name="extremidades" value="SIMÉTRICAS" checked onchange="toggleExtremityDetail();calculateAll()"><span>Simétricas</span></label><label class="chip"><input type="radio" name="extremidades" value="ASIMÉTRICAS" onchange="toggleExtremityDetail();calculateAll()"><span>Asimétricas</span></label></div><input id="extremidadesDetalle" class="hidden" style="margin-top:6px" placeholder="Ej. amputación supracondílea izquierda"></div>
    <div class="q"><div class="qt">Masa muscular</div><div class="chips"><label class="chip"><input type="radio" name="masaMuscular" value="AUMENTADA"><span>Aumentada</span></label><label class="chip"><input type="radio" name="masaMuscular" value="CONSERVADA" checked><span>Conservada</span></label><label class="chip"><input type="radio" name="masaMuscular" value="LEVE DEPLECIÓN"><span>Leve depleción</span></label><label class="chip"><input type="radio" name="masaMuscular" value="MODERADA DEPLECIÓN"><span>Moderada</span></label><label class="chip"><input type="radio" name="masaMuscular" value="SEVERA DEPLECIÓN"><span>Severa</span></label></div></div>
-   <div class="q"><div class="qt">Masa grasa</div><div class="chips"><label class="chip"><input type="radio" name="masaGrasa" value="AUMENTADA"><span>Aumentada</span></label><label class="chip"><input type="radio" name="masaGrasa" value="CONSERVADA" checked><span>Conservada</span></label><label class="chip"><input type="radio" name="masaGrasa" value="LEVE DEPLECIÓN"><span>Leve depleción</span></label><label class="chip"><input type="radio" name="masaGrasa" value="MODERADA DEPLECIÓN"><span>Moderada</span></label><label class="chip"><input type="radio" name="masaGrasa" value="SEVERA DEPLECIÓN"><span>Severa</span></label></div></div>
-   <div class="q"><div class="qt">Abdomen</div><div class="chips"><label class="chip"><input type="radio" name="abdomen" value="BLANDO, DEPRESIBLE, NO DOLOROSO A LA PALPACIÓN" checked><span>Normal</span></label><label class="chip"><input type="radio" name="abdomen" value="DOLOROSO A LA PALPACIÓN"><span>Doloroso</span></label><label class="chip"><input type="radio" name="abdomen" value="DISTENDIDO"><span>Distendido</span></label><label class="chip"><input type="radio" name="abdomen" value="DISTENDIDO, ASCITIS, DOLOROSO A LA PALPACIÓN"><span>Ascitis</span></label></div></div>
+   <div class="q"><div class="qt">Masa grasa</div><div class="chips"><label class="chip"><input type="radio" name="masaGrasa" value="MARCADAMENTE AUMENTADA"><span>Muy aumentada</span></label><label class="chip"><input type="radio" name="masaGrasa" value="AUMENTADA"><span>Aumentada</span></label><label class="chip"><input type="radio" name="masaGrasa" value="CONSERVADA" checked><span>Conservada</span></label><label class="chip"><input type="radio" name="masaGrasa" value="LEVE DEPLECIÓN"><span>Leve depleción</span></label><label class="chip"><input type="radio" name="masaGrasa" value="MODERADA DEPLECIÓN"><span>Moderada</span></label><label class="chip"><input type="radio" name="masaGrasa" value="SEVERA DEPLECIÓN"><span>Severa</span></label></div></div>
+   <div class="examGroupTitle">Abdomen · edema · otros</div>
+   <div class="q"><div class="qt">Abdomen</div><div class="chips abdomenChips">
+    <label class="chip"><input type="radio" name="abdomen" value="BLANDO, DEPRESIBLE, NO DOLOROSO A LA PALPACIÓN" checked><span>Blando · no doloroso</span></label>
+    <label class="chip"><input type="radio" name="abdomen" value="BLANDO, DEPRESIBLE, LEVEMENTE DOLOROSO A LA PALPACIÓN"><span>Blando · leve dolor</span></label>
+    <label class="chip"><input type="radio" name="abdomen" value="BLANDO, DEPRESIBLE, DOLOROSO A LA PALPACIÓN"><span>Blando · doloroso</span></label>
+    <label class="chip"><input type="radio" name="abdomen" value="DISTENDIDO, NO DOLOROSO A LA PALPACIÓN"><span>Distendido · no dolor</span></label>
+    <label class="chip"><input type="radio" name="abdomen" value="DISTENDIDO, DOLOROSO A LA PALPACIÓN"><span>Distendido · doloroso</span></label>
+    <label class="chip"><input type="radio" name="abdomen" value="DISTENDIDO, CON ASCITIS"><span>Ascitis</span></label>
+    <label class="chip"><input type="radio" name="abdomen" value="RÍGIDO, DOLOROSO A LA PALPACIÓN"><span>Rígido · doloroso</span></label>
+   </div></div>
    <div class="q"><div class="qt">Edema</div><div class="chips"><label class="chip"><input type="radio" name="edemaFisico" value="NO" checked><span>No</span></label><label class="chip"><input type="radio" name="edemaFisico" value="SÍ"><span>Sí</span></label></div></div>
    <div class="q"><div class="qt">Ojos</div><div class="chips"><label class="chip"><input type="radio" name="ojos" value="SIN HALLAZGOS" checked><span>Sin hallazgos</span></label><label class="chip"><input type="radio" name="ojos" value="LEVEMENTE ICTÉRICOS"><span>Leve ictericia</span></label><label class="chip"><input type="radio" name="ojos" value="ICTÉRICOS"><span>Ictéricos</span></label></div></div>
   </div>
@@ -979,7 +1220,13 @@ img,svg,table{
    <div class="q"><div class="qt">Piezas dentales</div><div class="chips"><label class="chip"><input type="radio" name="mDientes" value="COMPLETAS"><span>Completas</span></label><label class="chip"><input type="radio" name="mDientes" value="INCOMPLETAS"><span>Incompletas</span></label></div></div>
    <div class="q"><div class="qt">Mucosa oral y piel</div><div class="chips"><label class="chip"><input type="radio" name="mHidratacion" value="HIDRATADAS"><span>Hidratadas</span></label><label class="chip"><input type="radio" name="mHidratacion" value="SEMIHIDRATADAS"><span>Semihidratadas</span></label><label class="chip"><input type="radio" name="mHidratacion" value="SECAS"><span>Secas</span></label></div></div>
    <div class="q"><div class="qt">Región clavicular</div><div class="chips"><label class="chip"><input type="radio" name="mClavicula" value="MÚSCULO BIEN DEFINIDO RODEANDO EL HUESO. NO PROMINENTE"><span>No prominente</span></label><label class="chip"><input type="radio" name="mClavicula" value="LIGERAMENTE PROMINENTE"><span>Ligeramente</span></label><label class="chip"><input type="radio" name="mClavicula" value="PROMINENTE"><span>Prominente</span></label></div></div>
-   <div class="q"><div class="qt">Abdomen</div><div class="chips"><label class="chip"><input type="radio" name="mAbdomen" value="BLANDO, DEPRESIBLE NO DOLOROSO A LA PALPACIÓN"><span>No doloroso</span></label><label class="chip"><input type="radio" name="mAbdomen" value="BLANDO, DEPRESIBLE, DOLOROSO A LA PALPACIÓN"><span>Doloroso</span></label><label class="chip"><input type="radio" name="mAbdomen" value="DISTENDIDO"><span>Distendido</span></label></div></div>
+   <div class="q"><div class="qt">Abdomen</div><div class="chips abdomenChips">
+    <label class="chip"><input type="radio" name="mAbdomen" value="BLANDO, DEPRESIBLE NO DOLOROSO A LA PALPACIÓN"><span>Blando · no doloroso</span></label>
+    <label class="chip"><input type="radio" name="mAbdomen" value="BLANDO, DEPRESIBLE, LEVEMENTE DOLOROSO A LA PALPACIÓN"><span>Blando · leve dolor</span></label>
+    <label class="chip"><input type="radio" name="mAbdomen" value="BLANDO, DEPRESIBLE, DOLOROSO A LA PALPACIÓN"><span>Blando · doloroso</span></label>
+    <label class="chip"><input type="radio" name="mAbdomen" value="DISTENDIDO, NO DOLOROSO A LA PALPACIÓN"><span>Distendido · no dolor</span></label>
+    <label class="chip"><input type="radio" name="mAbdomen" value="DISTENDIDO, DOLOROSO A LA PALPACIÓN"><span>Distendido · doloroso</span></label>
+   </div></div>
    <div class="q"><div class="qt">Extremidades superiores</div><div class="chips"><label class="chip"><input type="radio" name="mExtSup" value="SIMÉTRICAS" onchange="toggleMaternityExtremityDetail();calculateAll()"><span>Simétricas</span></label><label class="chip"><input type="radio" name="mExtSup" value="ASIMÉTRICAS" onchange="toggleMaternityExtremityDetail();calculateAll()"><span>Asimétricas</span></label></div><input id="mExtSupDetalle" class="hidden" style="margin-top:6px" placeholder="Ej. amputación, lesión o limitación"></div>
    <div class="q"><div class="qt">Región tricipital</div><div class="chips"><label class="chip"><input type="radio" name="mTricipital" value="TEJIDO GRASO Y MASA MUSCULAR NORMAL EVIDENTE ENTRE LOS PLIEGUES DE PIEL PELLIZCADOS"><span>Normal</span></label><label class="chip"><input type="radio" name="mTricipital" value="LEVE DEPLECIÓN DE TEJIDO GRASO Y MASA MUSCULAR"><span>Leve</span></label><label class="chip"><input type="radio" name="mTricipital" value="DEPLECIÓN MODERADA/SEVERA"><span>Mod./severa</span></label></div></div>
    <div class="q"><div class="qt">Cuádriceps anterior</div><div class="chips"><label class="chip"><input type="radio" name="mCuadriceps" value="REDONDEADO Y BIEN DESARROLLADO"><span>Bien desarrollado</span></label><label class="chip"><input type="radio" name="mCuadriceps" value="LEVE DEPLECIÓN"><span>Leve</span></label><label class="chip"><input type="radio" name="mCuadriceps" value="DEPLECIÓN MODERADA/SEVERA"><span>Mod./severa</span></label></div></div>
@@ -989,7 +1236,7 @@ img,svg,table{
   </div>
   <div style="margin-top:7px"><label class="label">Hallazgo físico adicional</label><input id="hallazgo"></div>
  </section>
- <section class="card section">
+ <section id="anthroSection" class="card section">
   <div class="secHead"><div class="step">4</div><div><h2>Antropometría</h2><p>Incluye talla estimada por talón-rodilla.</p></div></div>
   <div class="grid2">
    <div class="q"><div class="qt">Peso</div><div class="chips"><label class="chip"><input type="radio" name="modoPeso" value="ACTUAL" checked onchange="toggleWeightMode()"><span>Actual</span></label><label class="chip"><input type="radio" name="modoPeso" value="REFERIDO" onchange="toggleWeightMode()"><span>Referido</span></label><label class="chip"><input type="radio" name="modoPeso" value="ESTIMADO" onchange="toggleWeightMode()"><span>Estimado</span></label></div>
@@ -1049,8 +1296,8 @@ img,svg,table{
    <div id="screenReasonText" class="sourceText" style="min-height:auto;max-height:none"></div>
   </div>
  </section>
- <section class="card section">
-  <div class="secHead"><div class="step">6</div><div><h2>Motor clínico nutricional</h2><p>Adapta energía, proteína, peso de cálculo y soporte según enfermedad, estado nutricional y guías vigentes.</p></div></div>
+ <section id="engineSection" class="card section">
+  <div class="secHead"><div class="step">6</div><div><h2>Requerimientos y plan</h2><p>Adapta energía, proteína, peso de cálculo y soporte según enfermedad, estado nutricional y guías vigentes.</p></div></div>
 
   <div class="grid2">
    <div>
@@ -1237,8 +1484,8 @@ img,svg,table{
   <div class="note" style="margin-top:8px"><b>Apoyo clínico:</b> el motor propone metas y alertas; no sustituye juicio profesional, laboratorio, balance hídrico, tolerancia gastrointestinal ni indicaciones médicas.</div>
  </section>
 
- <section class="card section">
-  <div class="secHead"><div class="step">7</div><div><h2>Vista previa nutricional</h2><p>Formato final fijo hospitalario. La valoración anterior solo autorrellena datos; no cambia el formato.</p></div></div>
+ <section id="previewSection" class="card section">
+  <div class="secHead"><div class="step">7</div><div><h2>Vista previa</h2><p>Formato final fijo hospitalario. La valoración anterior solo autorrellena datos; no cambia el formato.</p></div></div>
   <div id="preview" class="preview"></div>
  </section>
 
@@ -1251,6 +1498,19 @@ img,svg,table{
  </div>
  </div>
 </main>
+</div>
+
+<div id="mobileActionBar" class="mobileActionBar hidden">
+ <div class="mobileActionInfo">
+  <div class="mobilePatientLine"><span id="mobilePatientPos">—</span><b id="mobilePatientName">Paciente</b><span id="mobileSaveState">AUTO</span></div>
+  <div id="lastChoiceText" class="lastChoiceText">Listo para valorar.</div>
+ </div>
+ <div class="mobileActionButtons">
+  <button type="button" class="navMini" onclick="movePatient(-1)">←</button>
+  <button type="button" class="saveMini" onclick="saveCurrentPatient(false,true)">Guardar</button>
+  <button type="button" class="navMini" onclick="movePatient(1)">Siguiente</button>
+  <button type="button" class="completeMini" onclick="completeAndNext()">✓ Completar →</button>
+ </div>
 </div>
 
 <div id="finalModal" class="modalBack"><div class="modal">
@@ -1287,7 +1547,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&
 const makeId=p=>`${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,9)}`;
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
 
-const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v61", FALLBACK_KEY="nutri_word_rounds_v61";
+const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v62", FALLBACK_KEY="nutri_word_rounds_v62";
 let db=null,currentRound=null,currentPatientId=null,history=[],loading=false,saveTimer=null;
 
 const simpleFields=["area","ambiente","cama","nombre","edad","cobertura","sexo","perfil","dieta","sourceText","alergia","intolerancia","ultima","consumoExacto","bristol","habito","hallazgo","peso","pesoEstimadoDoc","cb","cp","talla","talonRodilla","mediaEnvergadura","pesoPregestacional","edadGestacional","reqPerfil","cie10","plan","planObs","kcalKg","extraKcal","choPct","proPct","proKg","lipPct","clinicalProfile","renalSubtype","egfr","icuDay","hasIC","measuredEE","ibdActivity","pancreasType","surgeryScenario","suppName","suppMl","suppKcal","suppProtein","suppServings","acompanante","acompananteDetalle","informante","extremidadesDetalle","mExtSupDetalle","interApetitoCasaDias","interConsumoCasa","interPesoHabitual","interPesoIngreso","interPerdidaCasaKg","interPerdidaCasaDias","interApetitoHospDias","interConsumoHosp","interPerdidaHospKg","interDiasHospital"];
@@ -1980,7 +2240,14 @@ async function deleteRound(id){
  }
  await loadHistory();renderHistory();renderRound();
 }
-function showNoPatient(){$("noPatient").classList.remove("hidden");$("patientForm").classList.add("hidden");$("clinicalSections").classList.add("hidden");$("preview").textContent=""}
+function showNoPatient(){
+ $("noPatient").classList.remove("hidden");
+ $("patientForm").classList.add("hidden");
+ $("clinicalSections").classList.add("hidden");
+ $("preview").textContent="";
+ if($("mobileActionBar"))$("mobileActionBar").classList.add("hidden");
+ if($("sectionQuickNav"))$("sectionQuickNav").classList.add("hidden");
+}
 
 function setRadioFromPrevious(name,value){
  if(!value)return;
@@ -2568,10 +2835,18 @@ function autofillPreviousAssessment(){
  const abdomen=(ex.match(/ABDOMEN\s*:\s*([^.;]+)/)||[])[1]||"";
  if(/BLANDO.*DEPRESIBLE.*NO DOLOROSO/.test(abdomen))
   setRadioFromPrevious("abdomen","BLANDO, DEPRESIBLE, NO DOLOROSO A LA PALPACIÓN");
- else if(/DISTENDIDO.*ASCITIS/.test(abdomen))
-  setRadioFromPrevious("abdomen","DISTENDIDO, ASCITIS, DOLOROSO A LA PALPACIÓN");
- else if(/DISTENDIDO/.test(abdomen))setRadioFromPrevious("abdomen","DISTENDIDO");
- else if(/DOLOROSO/.test(abdomen))setRadioFromPrevious("abdomen","DOLOROSO A LA PALPACIÓN");
+ else if(/BLANDO.*LEVEMENTE DOLOROSO|BLANDO.*LEVE(?:MENTE)? DOLOR/.test(abdomen))
+  setRadioFromPrevious("abdomen","BLANDO, DEPRESIBLE, LEVEMENTE DOLOROSO A LA PALPACIÓN");
+ else if(/BLANDO.*DOLOROSO/.test(abdomen))
+  setRadioFromPrevious("abdomen","BLANDO, DEPRESIBLE, DOLOROSO A LA PALPACIÓN");
+ else if(/DISTENDIDO.*ASCITIS|ASCITIS/.test(abdomen))
+  setRadioFromPrevious("abdomen","DISTENDIDO, CON ASCITIS");
+ else if(/DISTENDIDO.*NO DOLOROSO/.test(abdomen))
+  setRadioFromPrevious("abdomen","DISTENDIDO, NO DOLOROSO A LA PALPACIÓN");
+ else if(/DISTENDIDO.*DOLOROSO/.test(abdomen))
+  setRadioFromPrevious("abdomen","DISTENDIDO, DOLOROSO A LA PALPACIÓN");
+ else if(/R[IÍ]GIDO.*DOLOROSO/.test(abdomen))
+  setRadioFromPrevious("abdomen","RÍGIDO, DOLOROSO A LA PALPACIÓN");
 
  if(/EXTREMIDADES?\s*:\s*ASIM[ÉE]TRICAS/.test(ex))setRadioFromPrevious("extremidades","ASIMÉTRICAS");
  else if(/EXTREMIDADES?\s*:\s*SIM[ÉE]TRICAS/.test(ex))setRadioFromPrevious("extremidades","SIMÉTRICAS");
@@ -2582,7 +2857,11 @@ function autofillPreviousAssessment(){
  else if(/MASA MUSCULAR\s+MODERADA DEPLECI[ÓO]N/.test(ex))setRadioFromPrevious("masaMuscular","MODERADA DEPLECIÓN");
  else if(/MASA MUSCULAR\s+SEVERA DEPLECI[ÓO]N/.test(ex))setRadioFromPrevious("masaMuscular","SEVERA DEPLECIÓN");
 
- if(/MASA GRASA\s+CONSERVADA|MASA MUSCULAR\s+Y\s+MASA GRASA\s+CONSERVADA/.test(ex))
+ if(/MASA GRASA\s+(?:MARCADAMENTE|MUY)\s+AUMENTADA|TEJIDO GRASO\s+(?:MARCADAMENTE|MUY)\s+AUMENTADO/.test(ex))
+  setRadioFromPrevious("masaGrasa","MARCADAMENTE AUMENTADA");
+ else if(/MASA GRASA\s+AUMENTADA|TEJIDO GRASO\s+AUMENTADO|AMPLIO TEJIDO GRASO/.test(ex))
+  setRadioFromPrevious("masaGrasa","AUMENTADA");
+ else if(/MASA GRASA\s+CONSERVADA|MASA MUSCULAR\s+Y\s+MASA GRASA\s+CONSERVADA/.test(ex))
   setRadioFromPrevious("masaGrasa","CONSERVADA");
  else if(/MASA GRASA\s+LEVE DEPLECI[ÓO]N/.test(ex))setRadioFromPrevious("masaGrasa","LEVE DEPLECIÓN");
  else if(/MASA GRASA\s+MODERADA DEPLECI[ÓO]N/.test(ex))setRadioFromPrevious("masaGrasa","MODERADA DEPLECIÓN");
@@ -2726,6 +3005,106 @@ function toggleHeaderModeUI(p){
   if($("area")&&!val("area"))$("area").value=p?.section||p?.area||"EMERGENCIA";
  }
 }
+
+function updateStickyOffset(){
+ const top=document.querySelector(".top");
+ const h=top?Math.ceil(top.getBoundingClientRect().height):0;
+ document.documentElement.style.setProperty("--appTop",`${h}px`);
+}
+function jumpToSection(id){
+ const el=$(id);if(!el)return;
+ el.classList.remove("collapsed");
+ const btn=el.querySelector(".sectionToggle");
+ if(btn)btn.textContent="−";
+ el.scrollIntoView({behavior:"smooth",block:"start"});
+ document.querySelectorAll("#sectionQuickNav button").forEach(b=>b.classList.toggle("active",b.dataset.sec===id));
+ el.classList.add("sectionPulse");
+ setTimeout(()=>el.classList.remove("sectionPulse"),700);
+}
+function setupCompactSections(){
+ const ids=["patientDataSection","changesSection","valuationSection","examSection","anthroSection","screeningSection","engineSection","previewSection"];
+ ids.forEach(id=>{
+  const sec=$(id);if(!sec||sec.dataset.compactReady==="1")return;
+  sec.dataset.compactReady="1";
+  const head=sec.querySelector(":scope > .secHead");
+  if(!head)return;
+  const b=document.createElement("button");
+  b.type="button";b.className="sectionToggle";b.textContent="−";b.setAttribute("aria-label","Plegar sección");
+  b.onclick=(ev)=>{
+   ev.stopPropagation();
+   const collapsed=sec.classList.toggle("collapsed");
+   b.textContent=collapsed?"+":"−";
+  };
+  head.appendChild(b);
+ });
+ const changes=$("changesSection");
+ if(changes&&!changes.classList.contains("collapsed")){
+  changes.classList.add("collapsed");
+  const b=changes.querySelector(".sectionToggle");if(b)b.textContent="+";
+ }
+}
+function updateMobileActionBar(){
+ const bar=$("mobileActionBar"),nav=$("sectionQuickNav");
+ if(!currentRound||!currentPatientId){
+  if(bar)bar.classList.add("hidden");
+  if(nav)nav.classList.add("hidden");
+  return;
+ }
+ if(bar)bar.classList.remove("hidden");
+ if(nav)nav.classList.remove("hidden");
+ const idx=currentRound.patients.findIndex(x=>x.id===currentPatientId);
+ const p=currentRound.patients[idx];
+ if($("mobilePatientPos"))$("mobilePatientPos").textContent=`${idx+1}/${currentRound.patients.length}`;
+ if($("mobilePatientName"))$("mobilePatientName").textContent=p?.nombre||"Paciente";
+ if($("mobileSaveState"))$("mobileSaveState").textContent=p?.completed?"✓ COMPLETO":"AUTO-GUARDADO";
+}
+async function movePatient(step){
+ if(!currentRound||!currentPatientId)return;
+ await saveCurrentPatient(false,false);
+ const idx=currentRound.patients.findIndex(x=>x.id===currentPatientId);
+ const target=currentRound.patients[idx+step];
+ if(target)openPatient(target.id);
+ else flash(step>0?"Ya estás en el último paciente":"Ya estás en el primer paciente");
+}
+function trackLastChoice(target){
+ if(!$("lastChoiceText")||!target)return;
+ let label="";
+ const q=target.closest?.(".q");
+ if(q){
+  label=q.querySelector(".qt")?.textContent?.replace(/^\d+\.\s*/,"")||"";
+ }
+ if(!label){
+  const wrap=target.closest?.("div");
+  label=wrap?.querySelector?.(".label")?.textContent||target.id||target.name||"Dato";
+ }
+ let chosen="";
+ if(target.type==="radio"){
+  const span=target.nextElementSibling;
+  chosen=span?.textContent||target.value;
+ }else if(target.type==="checkbox"){
+  chosen=target.checked?"Sí":"No";
+ }else if(target.tagName==="SELECT"){
+  chosen=target.selectedOptions?.[0]?.textContent||target.value;
+ }else{
+  chosen=target.value||"";
+ }
+ if(label&&chosen)$("lastChoiceText").textContent=`Último: ${label} → ${chosen}`;
+ if(q){
+  q.classList.add("choiceFlash");
+  setTimeout(()=>q.classList.remove("choiceFlash"),450);
+ }
+}
+function setupSectionObserver(){
+ if(!("IntersectionObserver" in window))return;
+ const secs=["patientDataSection","valuationSection","examSection","anthroSection","screeningSection","engineSection","previewSection"].map(id=>$(id)).filter(Boolean);
+ const ob=new IntersectionObserver(entries=>{
+  const visible=entries.filter(e=>e.isIntersecting).sort((a,b)=>b.intersectionRatio-a.intersectionRatio)[0];
+  if(!visible)return;
+  document.querySelectorAll("#sectionQuickNav button").forEach(b=>b.classList.toggle("active",b.dataset.sec===visible.target.id));
+ },{rootMargin:"-25% 0px -60% 0px",threshold:[0,.1,.3]});
+ secs.forEach(s=>ob.observe(s));
+}
+
 function openPatient(id){
  if(currentPatientId&&currentPatientId!==id){
   clearTimeout(saveTimer);
@@ -2758,6 +3137,9 @@ function openPatient(id){
  calculateAll();
  updatePreview();
  renderPatientStrip();
+ setupCompactSections();
+ updateMobileActionBar();
+ updateStickyOffset();
 }
 function captureState(){const s={};simpleFields.forEach(id=>s[id]=val(id));radios.forEach(n=>s["r_"+n]=radio(n));checks.forEach(id=>s[id]=chk(id));return s}
 function restoreState(s){
@@ -2794,6 +3176,7 @@ async function saveCurrentPatient(completed=false,show=true){
  syncCache();
  await persistRound();
  renderRound();
+ updateMobileActionBar();
  if(show)flash(p.completed?"Paciente completado":"Borrador guardado");
  return true;
 }
@@ -5729,6 +6112,11 @@ document.addEventListener("change",e=>{
 document.addEventListener("blur",e=>{
  if(currentPatientId&&!loading&&e.target.matches("input,select,textarea"))scheduleSave();
 },true);
+document.addEventListener("change",e=>{
+ if(currentPatientId&&!loading&&e.target.matches("input,select,textarea"))trackLastChoice(e.target);
+});
+window.addEventListener("resize",updateStickyOffset);
+
 window.addEventListener("beforeunload",()=>{
  syncWorkingPatient();
  syncCache();
@@ -5746,6 +6134,9 @@ async function boot(){
  else if(history.length)currentRound=JSON.parse(JSON.stringify(history[0]));
 
  renderHistory();renderRound();
+ setupCompactSections();
+ setupSectionObserver();
+ updateStickyOffset();
  if(currentRound?.patients?.length)openPatient(currentRound.patients[0].id);
  else showNoPatient();
 }

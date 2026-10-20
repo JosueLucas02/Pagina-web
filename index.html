@@ -1750,7 +1750,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&
 const makeId=p=>`${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,9)}`;
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
 
-const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v68", FALLBACK_KEY="nutri_word_rounds_v68";
+const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v69", FALLBACK_KEY="nutri_word_rounds_v69";
 let db=null,currentRound=null,currentPatientId=null,history=[],loading=false,saveTimer=null;
 
 const simpleFields=["area","ambiente","cama","nombre","edad","cobertura","sexo","perfil","dieta","sourceText","alergia","intolerancia","ultima","consumoExacto","bristol","habito","hallazgo","peso","pesoEstimadoDoc","cb","cp","talla","talonRodilla","mediaEnvergadura","pesoPregestacional","edadGestacional","reqPerfil","cie10","plan","planObs","kcalKg","extraKcal","choPct","proPct","proKg","lipPct","clinicalProfile","renalSubtype","egfr","icuDay","hasIC","measuredEE","ibdActivity","pancreasType","surgeryScenario","suppName","suppMl","suppKcal","suppProtein","suppServings","acompanante","acompananteDetalle","informante","extremidadesDetalle","mExtSupDetalle","interApetitoCasaDias","interConsumoCasa","interPesoHabitual","interPesoIngreso","interPerdidaCasaKg","interPerdidaCasaDias","interApetitoHospDias","interConsumoHosp","interPerdidaHospKg","interDiasHospital"];
@@ -2383,15 +2383,20 @@ function syncWorkingPatient(){
  const oldState=p.state||{};
  p.area=val("area");p.ambiente=val("ambiente");p.cama=val("cama");p.nombre=val("nombre");p.edad=val("edad");p.cobertura=val("cobertura");
  p.dieta=validDietText(val("dieta"))||patientDietText(p);p.sourceText=val("sourceText");
- const ns=captureState();
+ const ns=stateWithMeta(oldState);
  ns._autofilledFromPrevious=true;
- ns._autofillVersion=68;
+ ns._autofillVersion=69;
+ ns._importSeedAppliedV69=true;
+ ns._userEditedAfterImport=oldState._userEditedAfterImport===true;
  ns._sourceFingerprint=oldState._sourceFingerprint||patientSourceFingerprint(p);
  ns._migratedV36=true;
  ns._profileManual=oldState._profileManual===true;
  ns._profileAutoReason=oldState._profileAutoReason||"";
  ns._profileConfidence=oldState._profileConfidence||"";
- p.state=ns;p.note=nutritionNote();p.touched=true;p.updatedAt=Date.now();
+ p.state=ns;
+ p.note=nutritionNote();
+ p.touched=true;
+ p.updatedAt=Date.now();
 }
 
 /* UI ronda/pacientes */
@@ -2823,8 +2828,6 @@ function rebuildPatientNoteFromState(p){
  if(!p)return [];
  const prevPatient=currentPatientId;
  const prevLoading=loading;
-
- // Guardar estado DOM actual si estamos parados en otro paciente.
  let domBackup=null;
  if(prevPatient && currentRound?.patients?.some(x=>x.id===prevPatient)){
   try{domBackup=captureState();}catch(e){}
@@ -2833,8 +2836,8 @@ function rebuildPatientNoteFromState(p){
  loading=true;
  try{
   p=migrateLegacyPatientState(p);
-  restoreState(p.state||{});
-  // El encabezado/importación manda para estos datos.
+  const oldState=p.state||{};
+  restoreState(oldState);
   if($("area"))$("area").value=p.area||"";
   if($("ambiente"))$("ambiente").value=p.ambiente||"";
   if($("cama"))$("cama").value=p.cama||"";
@@ -2843,22 +2846,20 @@ function rebuildPatientNoteFromState(p){
   if($("cobertura"))$("cobertura").value=p.cobertura||"";
   if($("dieta"))$("dieta").value=patientDietText(p);
   if($("sourceText"))$("sourceText").value=p.sourceText||p.state?.sourceText||"";
-
-  // Limpiar también el DOM por si el estado viejo contaminó hallazgo.
   if($("hallazgo"))$("hallazgo").value=cleanLegacyHallazgo(val("hallazgo"));
 
   calculateAll();
   const note=nutritionNote();
   p.note=note;
-  p.state=captureState();
+  p.state=stateWithMeta(oldState);
   p.state._migratedV33=true;
+  p.state._importSeedAppliedV69=true;
+  p.state._autofillVersion=69;
+  p.state._sourceFingerprint=oldState._sourceFingerprint||patientSourceFingerprint(p);
   p._needsNoteRebuild=false;
   return note;
  }finally{
-  // Restaurar al paciente que el usuario estaba editando.
-  if(prevPatient && domBackup){
-   try{restoreState(domBackup);}catch(e){}
-  }
+  if(prevPatient && domBackup){try{restoreState(domBackup);}catch(e){}}
   loading=prevLoading;
  }
 }
@@ -3442,35 +3443,43 @@ function sourceHasPreviousNutritionAssessment(p){
 }
 function shouldAutofillImportedAssessment(p){
  if(!p||!sourceHasPreviousNutritionAssessment(p))return false;
- const fp=patientSourceFingerprint(p);
  const st=p.state||{};
 
- // Documento nuevo/cambiado: volver a leerlo.
- if(st._sourceFingerprint&&st._sourceFingerprint!==fp)return true;
+ // Si ya se sembró una valoración previa, JAMÁS volver a copiarla encima de
+ // los cambios del usuario. El Word es solo el punto de partida.
+ if(st._importSeedAppliedV69===true)return false;
+ if(st._userEditedAfterImport===true)return false;
 
- // Paciente recién importado o nunca autorrellenado correctamente.
- if(!p.touched)return true;
- if(st._autofillVersion!==68 && st._autofilledFromPrevious!==true)return true;
+ // Compatibilidad con v68/v65: si ya constaba como autorrellenado, conservar
+ // el estado guardado actual en lugar de volver a importar el Word.
+ if(st._autofilledFromPrevious===true){
+  st._importSeedAppliedV69=true;
+  st._autofillVersion=69;
+  st._sourceFingerprint=st._sourceFingerprint||patientSourceFingerprint(p);
+  return false;
+ }
 
- return false;
+ // Paciente nuevo: copiar una única vez desde la valoración anterior.
+ return true;
 }
 function applyImportedAssessmentOnce(p){
  if(!shouldAutofillImportedAssessment(p))return false;
 
- // sourceText ya está cargado en pantalla por restoreState().
+ // Copia inicial desde el Word. A partir de aquí mandan los campos editables.
  autofillPreviousAssessment();
 
  const old=p.state||{};
- const ns=captureState();
+ const ns=stateWithMeta(old);
  ns._autofilledFromPrevious=true;
- ns._autofillVersion=68;
+ ns._autofillVersion=69;
+ ns._importSeedAppliedV69=true;
+ ns._userEditedAfterImport=false;
  ns._sourceFingerprint=patientSourceFingerprint(p);
  ns._migratedV36=true;
  ns._profileManual=old._profileManual===true;
  ns._profileAutoReason=old._profileAutoReason||"";
  ns._profileConfidence=old._profileConfidence||"";
  p.state=ns;
-
  return true;
 }
 
@@ -3517,6 +3526,25 @@ function openPatient(id){
  updateMobileActionBar();
  updateStickyOffset();
 }
+
+function stateWithMeta(oldState){
+ const ns=captureState();
+ const old=oldState||{};
+ Object.entries(old).forEach(([k,v])=>{if(k.startsWith("_"))ns[k]=v});
+ return ns;
+}
+function markCurrentPatientEdited(){
+ if(loading||!currentRound||!currentPatientId)return;
+ const p=currentRound.patients.find(x=>x.id===currentPatientId);if(!p)return;
+ p.state=p.state||{};
+ p.state._userEditedAfterImport=true;
+ p.state._importSeedAppliedV69=true;
+ p.state._autofilledFromPrevious=true;
+ p.state._autofillVersion=69;
+ p.state._sourceFingerprint=p.state._sourceFingerprint||patientSourceFingerprint(p);
+ p.touched=true;
+}
+
 function captureState(){const s={};simpleFields.forEach(id=>s[id]=val(id));radios.forEach(n=>s["r_"+n]=radio(n));checks.forEach(id=>s[id]=chk(id));return s}
 function restoreState(s){
  loading=true;try{
@@ -3540,27 +3568,35 @@ function restoreState(s){
 async function saveCurrentPatient(completed=false,show=true){
  if(!currentRound||!currentPatientId)return false;
  if(!val("nombre").trim()){flash("Falta el nombre");return false}
+
+ // Primero copiar EXACTAMENTE lo que está seleccionado/escrito en pantalla.
  syncWorkingPatient();
  const p=currentRound.patients.find(x=>x.id===currentPatientId);
  if(!p)return false;
  p.completed=completed||p.completed;
  if($("hallazgo"))$("hallazgo").value=cleanLegacyHallazgo(val("hallazgo"));
- const prevMeta=p.state||{};
- p.state=captureState();
- p.state._migratedV33=true;
- p.state._autofilledFromPrevious=prevMeta._autofilledFromPrevious===true;
- p.state._autofillVersion=prevMeta._autofillVersion||68;
- p.state._sourceFingerprint=prevMeta._sourceFingerprint||patientSourceFingerprint(p);
- p.state._profileManual=prevMeta._profileManual===true;
- p.state._profileAutoReason=prevMeta._profileAutoReason||"";
- p.state._profileConfidence=prevMeta._profileConfidence||"";
+
+ const old=p.state||{};
+ const ns=stateWithMeta(old);
+ ns._migratedV33=true;
+ ns._autofilledFromPrevious=true;
+ ns._autofillVersion=69;
+ ns._importSeedAppliedV69=true;
+ ns._userEditedAfterImport=true;
+ ns._sourceFingerprint=old._sourceFingerprint||patientSourceFingerprint(p);
+ ns._profileManual=old._profileManual===true;
+ ns._profileAutoReason=old._profileAutoReason||"";
+ ns._profileConfidence=old._profileConfidence||"";
+ p.state=ns;
+ p.touched=true;
  p.note=nutritionNote();
  p.updatedAt=Date.now();
+
  syncCache();
  await persistRound();
  renderRound();
  updateMobileActionBar();
- if(show)flash(p.completed?"Paciente completado":"Borrador guardado");
+ if(show)flash(p.completed?"Paciente completado":"Cambios guardados");
  return true;
 }
 async function completeAndNext(){
@@ -6465,8 +6501,19 @@ function updatePreview(){
  if($("hallazgo"))$("hallazgo").value=cleanLegacyHallazgo(val("hallazgo"));
  const n=finalClinicalLines(nutritionNote());
  $("preview").textContent=n.join("\n\n");
+
+ // Durante restoreState/autorrelleno solo se pinta la vista; no se pisa p.state.
+ if(loading)return;
  const p=currentRound?.patients.find(x=>x.id===currentPatientId);
- if(p){p.note=n;p.state=captureState();p.state._migratedV38=true;}
+ if(p){
+  const old=p.state||{};
+  p.note=n;
+  p.state=stateWithMeta(old);
+  p.state._migratedV38=true;
+  p.state._importSeedAppliedV69=true;
+  p.state._autofillVersion=69;
+  p.state._sourceFingerprint=old._sourceFingerprint||patientSourceFingerprint(p);
+ }
 }
 
 /* Documento final */
@@ -6705,18 +6752,23 @@ async function importBackup(event){
 /* Eventos */
 document.addEventListener("input",e=>{
  if(currentPatientId&&!loading){
+  markCurrentPatientEdited();
   if(e.target.id==="dieta")updatePreview();
   scheduleSave();
  }
 });
 document.addEventListener("change",e=>{
  if(currentPatientId&&!loading){
+  markCurrentPatientEdited();
   if(e.target.name||e.target.matches("select,input[type=checkbox]"))updatePreview();
   scheduleSave();
  }
 });
 document.addEventListener("blur",e=>{
- if(currentPatientId&&!loading&&e.target.matches("input,select,textarea"))scheduleSave();
+ if(currentPatientId&&!loading&&e.target.matches("input,select,textarea")){
+  markCurrentPatientEdited();
+  scheduleSave();
+ }
 },true);
 document.addEventListener("change",e=>{
  if(currentPatientId&&!loading&&e.target.matches("input,select,textarea"))trackLastChoice(e.target);

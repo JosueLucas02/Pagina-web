@@ -1050,6 +1050,19 @@ body{padding-bottom:92px}
  font-weight:900;
 }
 
+
+.importedScreeningNotice,.importedFillNote{
+ margin-top:5px;
+ padding:6px 7px;
+ border-radius:8px;
+ border:1px solid #c7d9f2;
+ background:#f2f7ff;
+ color:#285f9c;
+ font-size:8.2px;
+ line-height:1.3;
+ font-weight:850;
+}
+
 </style>
 </head>
 <body>
@@ -1126,7 +1139,7 @@ body{padding-bottom:92px}
    <div style="margin-top:7px"><label class="label">Dieta importada / actual</label><input id="dieta"><div class="note">Si el Word no trae dieta, aparecerá “DIETA NO REGISTRADA” para que ingreses la prescripción actual sin inventarla.</div></div><div class="note" id="headerModeNote" style="margin-top:6px"></div>
    <div class="sourceBox previousCompact" style="margin-top:7px">
     <div class="previousTitleRow">
-     <div><div class="srcTitle">Valoración anterior importada</div><div class="note">La app usa estos datos para revaloración; la dieta actual del encabezado sigue mandando.</div></div>
+     <div><div class="srcTitle">Valoración anterior importada</div><div class="note">La app usa estos datos para revaloración; la dieta actual del encabezado sigue mandando.</div><div class="note importedFillNote">✓ SI YA HAY VALORACIÓN PREVIA, SE COPIAN SUS CAMPOS AUTOMÁTICAMENTE. SOLO CAMBIA LO QUE HAYA VARIADO.</div></div>
      <span class="miniStatus">IMPORTADO</span>
     </div>
 
@@ -1460,6 +1473,7 @@ body{padding-bottom:92px}
 
  <section id="screeningSection" class="card section">
   <div class="secHead"><div class="step">5</div><div><h2>Tamizaje automático</h2><p>No repite preguntas: usa diagnóstico, antecedentes, ingesta, tolerancia, síntomas, movilidad, examen físico y antropometría.</p></div></div>
+  <div id="importedScreeningNotice" class="importedScreeningNotice hidden">✓ TAMIZAJE COPIADO DEL WORD. SE CONSERVA EL NRS / MNA / VGS DOCUMENTADO.</div>
 
   <div id="adultRiskBox">
    <div class="metrics">
@@ -1736,7 +1750,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&
 const makeId=p=>`${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,9)}`;
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
 
-const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v66", FALLBACK_KEY="nutri_word_rounds_v66";
+const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v68", FALLBACK_KEY="nutri_word_rounds_v68";
 let db=null,currentRound=null,currentPatientId=null,history=[],loading=false,saveTimer=null;
 
 const simpleFields=["area","ambiente","cama","nombre","edad","cobertura","sexo","perfil","dieta","sourceText","alergia","intolerancia","ultima","consumoExacto","bristol","habito","hallazgo","peso","pesoEstimadoDoc","cb","cp","talla","talonRodilla","mediaEnvergadura","pesoPregestacional","edadGestacional","reqPerfil","cie10","plan","planObs","kcalKg","extraKcal","choPct","proPct","proKg","lipPct","clinicalProfile","renalSubtype","egfr","icuDay","hasIC","measuredEE","ibdActivity","pancreasType","surgeryScenario","suppName","suppMl","suppKcal","suppProtein","suppServings","acompanante","acompananteDetalle","informante","extremidadesDetalle","mExtSupDetalle","interApetitoCasaDias","interConsumoCasa","interPesoHabitual","interPesoIngreso","interPerdidaCasaKg","interPerdidaCasaDias","interApetitoHospDias","interConsumoHosp","interPerdidaHospKg","interDiasHospital"];
@@ -2371,7 +2385,7 @@ function syncWorkingPatient(){
  p.dieta=validDietText(val("dieta"))||patientDietText(p);p.sourceText=val("sourceText");
  const ns=captureState();
  ns._autofilledFromPrevious=true;
- ns._autofillVersion=65;
+ ns._autofillVersion=68;
  ns._sourceFingerprint=oldState._sourceFingerprint||patientSourceFingerprint(p);
  ns._migratedV36=true;
  ns._profileManual=oldState._profileManual===true;
@@ -3036,186 +3050,260 @@ function autofillPreviousAssessment(){
  const ex=previousExamSection()||u;
  const nu=previousNutritionSection()||u;
 
- // ---------------- EXAMEN FÍSICO ----------------
- if(/FACIE\s+P[ÁA]LIDA/.test(ex))setRadioFromPrevious("facie","PÁLIDA");
- else if(/FACIE\s+SEMIP[ÁA]LIDA/.test(ex))setRadioFromPrevious("facie","SEMIPÁLIDA");
- else if(/FACIE\s+SEMIC[ÁA]LIDA/.test(ex))setRadioFromPrevious("facie","SEMICÁLIDA");
- else if(/FACIE\s+C[ÁA]LIDA/.test(ex))setRadioFromPrevious("facie","CÁLIDA");
+ // =========================================================
+ // EXAMEN FÍSICO GENERAL
+ // =========================================================
+ if(/FACIE\s+P[ÁA]LIDA/.test(ex))copyPreviousRadio("facie","PÁLIDA");
+ else if(/FACIE\s+SEMIP[ÁA]LIDA/.test(ex))copyPreviousRadio("facie","SEMIPÁLIDA");
+ else if(/FACIE\s+SEMIC[ÁA]LIDA/.test(ex))copyPreviousRadio("facie","SEMICÁLIDA");
+ else if(/FACIE\s+C[ÁA]LIDA/.test(ex))copyPreviousRadio("facie","CÁLIDA");
 
  const temporal=(ex.match(/M[ÚU]SCULOS?\s+TEMPORALES?\s*[:.]?\s*([^,;]+)/)||[])[1]||"";
- if(/NO DEPLECI[ÓO]N|SIN DEPLECI[ÓO]N|BIEN DEFINID/.test(temporal))
-  setRadioFromPrevious("temporal","BIEN DEFINIDO / SIN DEPLECIÓN");
- else if(/LEVE DEPLECI[ÓO]N/.test(temporal))setRadioFromPrevious("temporal","LEVE DEPLECIÓN");
- else if(/MODERADA DEPLECI[ÓO]N/.test(temporal))setRadioFromPrevious("temporal","MODERADA DEPLECIÓN");
- else if(/SEVERA DEPLECI[ÓO]N/.test(temporal))setRadioFromPrevious("temporal","SEVERA DEPLECIÓN");
+ if(/SEVERA DEPLECI[ÓO]N/.test(temporal))copyPreviousRadio("temporal","SEVERA DEPLECIÓN");
+ else if(/MODERADA DEPLECI[ÓO]N/.test(temporal))copyPreviousRadio("temporal","MODERADA DEPLECIÓN");
+ else if(/LEVE DEPLECI[ÓO]N/.test(temporal))copyPreviousRadio("temporal","LEVE DEPLECIÓN");
+ else if(/NO DEPLECI[ÓO]N|SIN DEPLECI[ÓO]N|BIEN DEFINID/.test(temporal))copyPreviousRadio("temporal","BIEN DEFINIDO / SIN DEPLECIÓN");
 
  const per=(ex.match(/REGI[ÓO]N PERIORBITARIA\s*[:.]?\s*([^,;]+)/)||[])[1]||"";
- if(/CONSERVADA|SIN DEPLECI[ÓO]N/.test(per))setRadioFromPrevious("periorb","CONSERVADA");
- else if(/LIGERAMENTE OSCURECIDA|OSCURECIDA/.test(per))setRadioFromPrevious("periorb","LIGERAMENTE OSCURECIDA");
- else if(/DEPLECI[ÓO]N/.test(per))setRadioFromPrevious("periorb","DEPLECIÓN GRASA");
+ if(/HUNDIMIENT|DEPLECI[ÓO]N/.test(per))copyPreviousRadio("periorb","DEPLECIÓN GRASA");
+ else if(/LIGERAMENTE OSCURECIDA|OSCURECIDA|OJERAS?/.test(per))copyPreviousRadio("periorb","LIGERAMENTE OSCURECIDA");
+ else if(/CONSERVADA|SIN DEPLECI[ÓO]N|COLORACI[ÓO]N UNIFORME/.test(per))copyPreviousRadio("periorb","CONSERVADA");
 
- if(/MUCOSA ORAL\s+(?:DESHIDRATADA|SECA)/.test(ex))setRadioFromPrevious("mucosa","SECA");
- else if(/MUCOSA ORAL\s+SEMIHIDRATADA/.test(ex))setRadioFromPrevious("mucosa","SEMIHIDRATADA");
- else if(/MUCOSA ORAL\s+HIDRATADA/.test(ex))setRadioFromPrevious("mucosa","HIDRATADA");
+ if(/MUCOSA ORAL\s+(?:DESHIDRATADA|SECA)|MUCOSAS?\s+SECAS?/.test(ex))copyPreviousRadio("mucosa","SECA");
+ else if(/MUCOSA ORAL\s+SEMIHIDRATADA|MUCOSAS?\s+SEMIHIDRATADAS?/.test(ex))copyPreviousRadio("mucosa","SEMIHIDRATADA");
+ else if(/MUCOSA ORAL\s+HIDRATADA|MUCOSAS?\s+HIDRATADAS?/.test(ex))copyPreviousRadio("mucosa","HIDRATADA");
 
- if(/PIEL\s+(?:DESHIDRATADA|SECA)/.test(ex))setRadioFromPrevious("piel","SECA");
- else if(/PIEL\s+SEMIHIDRATADA/.test(ex))setRadioFromPrevious("piel","SEMIHIDRATADA");
- else if(/PIEL\s+HIDRATADA/.test(ex))setRadioFromPrevious("piel","HIDRATADA");
+ if(/PIEL\s+(?:DESHIDRATADA|SECA)/.test(ex))copyPreviousRadio("piel","SECA");
+ else if(/PIEL\s+SEMIHIDRATADA/.test(ex))copyPreviousRadio("piel","SEMIHIDRATADA");
+ else if(/PIEL\s+HIDRATADA/.test(ex))copyPreviousRadio("piel","HIDRATADA");
 
- if(/PIEZAS DENTALES\s+INCOMPLETAS/.test(ex))setRadioFromPrevious("dientes","INCOMPLETAS");
- else if(/ED[ÉE]NTUL/.test(ex))setRadioFromPrevious("dientes","EDÉNTULO/A");
- else if(/PIEZAS DENTALES\s+COMPLETAS/.test(ex))setRadioFromPrevious("dientes","COMPLETAS");
+ if(/PIEZAS DENTALES\s+INCOMPLETAS/.test(ex))copyPreviousRadio("dientes","INCOMPLETAS");
+ else if(/ED[ÉE]NTUL/.test(ex))copyPreviousRadio("dientes","EDÉNTULO/A");
+ else if(/PIEZAS DENTALES\s+COMPLETAS/.test(ex))copyPreviousRadio("dientes","COMPLETAS");
 
  const clav=(ex.match(/REGI[ÓO]N CLAVICULAR(?:\s+Y\s+ACROMI[ÓO]N)?\s*[:.]?\s*([^,;]+)/)||[])[1]||"";
- if(/NO PROMINENT|BIEN DEFINID/.test(clav))setRadioFromPrevious("clavicula","NO PROMINENTES");
- else if(/LIGERAMENTE PROMINENT/.test(clav))setRadioFromPrevious("clavicula","LIGERAMENTE PROMINENTES");
- else if(/PROMINENT/.test(clav))setRadioFromPrevious("clavicula","PROMINENTES");
+ if(/PROMINENT/.test(clav)&&!/NO PROMINENT|LIGERAMENTE PROMINENT/.test(clav))copyPreviousRadio("clavicula","PROMINENTES");
+ else if(/LIGERAMENTE PROMINENT/.test(clav))copyPreviousRadio("clavicula","LIGERAMENTE PROMINENTES");
+ else if(/NO PROMINENT|BIEN DEFINID/.test(clav))copyPreviousRadio("clavicula","NO PROMINENTES");
 
  const abdomen=(ex.match(/ABDOMEN\s*:\s*([^.;]+)/)||[])[1]||"";
- if(/BLANDO.*DEPRESIBLE.*NO DOLOROSO/.test(abdomen))
-  setRadioFromPrevious("abdomen","BLANDO, DEPRESIBLE, NO DOLOROSO A LA PALPACIÓN");
- else if(/BLANDO.*LEVEMENTE DOLOROSO|BLANDO.*LEVE(?:MENTE)? DOLOR/.test(abdomen))
-  setRadioFromPrevious("abdomen","BLANDO, DEPRESIBLE, LEVEMENTE DOLOROSO A LA PALPACIÓN");
- else if(/BLANDO.*DOLOROSO/.test(abdomen))
-  setRadioFromPrevious("abdomen","BLANDO, DEPRESIBLE, DOLOROSO A LA PALPACIÓN");
- else if(/DISTENDIDO.*ASCITIS|ASCITIS/.test(abdomen))
-  setRadioFromPrevious("abdomen","DISTENDIDO, CON ASCITIS");
- else if(/DISTENDIDO.*NO DOLOROSO/.test(abdomen))
-  setRadioFromPrevious("abdomen","DISTENDIDO, NO DOLOROSO A LA PALPACIÓN");
- else if(/DISTENDIDO.*DOLOROSO/.test(abdomen))
-  setRadioFromPrevious("abdomen","DISTENDIDO, DOLOROSO A LA PALPACIÓN");
- else if(/R[IÍ]GIDO.*DOLOROSO/.test(abdomen))
-  setRadioFromPrevious("abdomen","RÍGIDO, DOLOROSO A LA PALPACIÓN");
+ if(/R[IÍ]GIDO.*DOLOROSO/.test(abdomen))copyPreviousRadio("abdomen","RÍGIDO, DOLOROSO A LA PALPACIÓN");
+ else if(/ASCITIS/.test(abdomen))copyPreviousRadio("abdomen","DISTENDIDO, CON ASCITIS");
+ else if(/DISTENDIDO.*NO DOLOROSO/.test(abdomen))copyPreviousRadio("abdomen","DISTENDIDO, NO DOLOROSO A LA PALPACIÓN");
+ else if(/DISTENDIDO.*DOLOROSO/.test(abdomen))copyPreviousRadio("abdomen","DISTENDIDO, DOLOROSO A LA PALPACIÓN");
+ else if(/BLANDO.*LEVEMENTE DOLOROSO|BLANDO.*LEVE(?:MENTE)? DOLOR/.test(abdomen))copyPreviousRadio("abdomen","BLANDO, DEPRESIBLE, LEVEMENTE DOLOROSO A LA PALPACIÓN");
+ else if(/BLANDO.*DOLOROSO/.test(abdomen))copyPreviousRadio("abdomen","BLANDO, DEPRESIBLE, DOLOROSO A LA PALPACIÓN");
+ else if(/BLANDO.*DEPRESIBLE.*NO DOLOROSO/.test(abdomen))copyPreviousRadio("abdomen","BLANDO, DEPRESIBLE, NO DOLOROSO A LA PALPACIÓN");
 
- if(/EXTREMIDADES?\s*:\s*ASIM[ÉE]TRICAS/.test(ex))setRadioFromPrevious("extremidades","ASIMÉTRICAS");
- else if(/EXTREMIDADES?\s*:\s*SIM[ÉE]TRICAS/.test(ex))setRadioFromPrevious("extremidades","SIMÉTRICAS");
+ if(/EXTREMIDADES?(?:\s+SUPERIORES)?\s*:\s*ASIM[ÉE]TRICAS/.test(ex))copyPreviousRadio("extremidades","ASIMÉTRICAS");
+ else if(/EXTREMIDADES?(?:\s+SUPERIORES)?\s*:\s*SIM[ÉE]TRICAS/.test(ex))copyPreviousRadio("extremidades","SIMÉTRICAS");
 
- if(/MASA MUSCULAR(?:\s+Y\s+MASA GRASA)?\s+CONSERVADA|MASA MUSCULAR\s+CONSERVADA/.test(ex))
-  setRadioFromPrevious("masaMuscular","CONSERVADA");
- else if(/MASA MUSCULAR\s+LEVE DEPLECI[ÓO]N/.test(ex))setRadioFromPrevious("masaMuscular","LEVE DEPLECIÓN");
- else if(/MASA MUSCULAR\s+MODERADA DEPLECI[ÓO]N/.test(ex))setRadioFromPrevious("masaMuscular","MODERADA DEPLECIÓN");
- else if(/MASA MUSCULAR\s+SEVERA DEPLECI[ÓO]N/.test(ex))setRadioFromPrevious("masaMuscular","SEVERA DEPLECIÓN");
+ if(/MASA MUSCULAR\s+(?:MARCADAMENTE\s+)?AUMENTADA|MASA MUSCULAR\s+ABUNDANTE|BIEN DESARROLLADA|HIPERTROFIADA/.test(ex))copyPreviousRadio("masaMuscular","AUMENTADA");
+ else if(/MASA MUSCULAR\s+SEVERA DEPLECI[ÓO]N/.test(ex))copyPreviousRadio("masaMuscular","SEVERA DEPLECIÓN");
+ else if(/MASA MUSCULAR\s+MODERADA DEPLECI[ÓO]N/.test(ex))copyPreviousRadio("masaMuscular","MODERADA DEPLECIÓN");
+ else if(/MASA MUSCULAR\s+LEVE DEPLECI[ÓO]N/.test(ex))copyPreviousRadio("masaMuscular","LEVE DEPLECIÓN");
+ else if(/MASA MUSCULAR(?:\s+Y\s+MASA GRASA)?\s+CONSERVADA|MASA MUSCULAR\s+CONSERVADA/.test(ex))copyPreviousRadio("masaMuscular","CONSERVADA");
 
- if(/MASA GRASA\s+(?:MARCADAMENTE|MUY)\s+AUMENTADA|TEJIDO GRASO\s+(?:MARCADAMENTE|MUY)\s+AUMENTADO/.test(ex))
-  setRadioFromPrevious("masaGrasa","MARCADAMENTE AUMENTADA");
- else if(/MASA GRASA\s+AUMENTADA|TEJIDO GRASO\s+AUMENTADO|AMPLIO TEJIDO GRASO/.test(ex))
-  setRadioFromPrevious("masaGrasa","AUMENTADA");
- else if(/MASA GRASA\s+CONSERVADA|MASA MUSCULAR\s+Y\s+MASA GRASA\s+CONSERVADA/.test(ex))
-  setRadioFromPrevious("masaGrasa","CONSERVADA");
- else if(/MASA GRASA\s+LEVE DEPLECI[ÓO]N/.test(ex))setRadioFromPrevious("masaGrasa","LEVE DEPLECIÓN");
- else if(/MASA GRASA\s+MODERADA DEPLECI[ÓO]N/.test(ex))setRadioFromPrevious("masaGrasa","MODERADA DEPLECIÓN");
- else if(/MASA GRASA\s+SEVERA DEPLECI[ÓO]N/.test(ex))setRadioFromPrevious("masaGrasa","SEVERA DEPLECIÓN");
+ if(/MASA GRASA\s+(?:MARCADAMENTE|MUY)\s+AUMENTADA|TEJIDO GRASO\s+(?:MARCADAMENTE|MUY)\s+AUMENTADO/.test(ex))copyPreviousRadio("masaGrasa","MARCADAMENTE AUMENTADA");
+ else if(/MASA GRASA\s+AUMENTADA|TEJIDO GRASO\s+AUMENTADO|AMPLIO TEJIDO GRASO|EXCESO DE TEJIDO ADIPOSO/.test(ex))copyPreviousRadio("masaGrasa","AUMENTADA");
+ else if(/MASA GRASA\s+SEVERA DEPLECI[ÓO]N/.test(ex))copyPreviousRadio("masaGrasa","SEVERA DEPLECIÓN");
+ else if(/MASA GRASA\s+MODERADA DEPLECI[ÓO]N/.test(ex))copyPreviousRadio("masaGrasa","MODERADA DEPLECIÓN");
+ else if(/MASA GRASA\s+LEVE DEPLECI[ÓO]N/.test(ex))copyPreviousRadio("masaGrasa","LEVE DEPLECIÓN");
+ else if(/MASA GRASA\s+CONSERVADA|MASA MUSCULAR\s+Y\s+MASA GRASA\s+CONSERVADA/.test(ex))copyPreviousRadio("masaGrasa","CONSERVADA");
 
- if(/OJOS\s+ICT[ÉE]RICOS|ESCLERAS?\s+ICT[ÉE]RICAS?/.test(ex))setRadioFromPrevious("ojos","ICTÉRICOS");
- else if(/OJOS\s+LEVEMENTE ICT[ÉE]RICOS/.test(ex))setRadioFromPrevious("ojos","LEVEMENTE ICTÉRICOS");
+ if(/OJOS\s+LEVEMENTE ICT[ÉE]RICOS|ESCLERAS?\s+LEVEMENTE ICT[ÉE]RICAS?/.test(ex))copyPreviousRadio("ojos","LEVEMENTE ICTÉRICOS");
+ else if(/OJOS\s+ICT[ÉE]RICOS|ESCLERAS?\s+ICT[ÉE]RICAS?/.test(ex))copyPreviousRadio("ojos","ICTÉRICOS");
+ else if(/OJOS\s+SIN HALLAZGOS|ESCLERAS?\s+ANICT[ÉE]RICAS?/.test(ex))copyPreviousRadio("ojos","SIN HALLAZGOS");
 
- // Edema localizado: conservar descripción exacta y sincronizar el selector.
  const edemaLocal=ex.match(/EDEMA\s+(?:A NIVEL|EN)\s+([^,.;]+)/);
  if(edemaLocal){
   setFieldFromPrevious("hallazgo",`EDEMA A NIVEL ${edemaLocal[1].trim()}`);
-  setRadioFromPrevious("edemaFisico","SÍ");
- }else if(/\bEDEMA\b/.test(ex)&&!/\bNO EDEMA\b|SIN PRESENCIA DE EDEMA/.test(ex)){
-  setRadioFromPrevious("edemaFisico","SÍ");
- }else if(/\bNO EDEMA\b|SIN PRESENCIA DE EDEMA/.test(ex)){
-  setRadioFromPrevious("edemaFisico","NO");
+  copyPreviousRadio("edemaFisico","SÍ");
+ }else if(/\bEDEMA\b/.test(ex)&&!/\bNO EDEMA\b|SIN PRESENCIA DE EDEMA|SIN EDEMA/.test(ex)){
+  copyPreviousRadio("edemaFisico","SÍ");
+ }else if(/\bNO EDEMA\b|SIN PRESENCIA DE EDEMA|SIN EDEMA/.test(ex)){
+  copyPreviousRadio("edemaFisico","NO");
  }
 
- // ---------------- VALORACIÓN NUTRICIONAL ----------------
- if(/PACIENTE\s+DESPIERT/.test(nu))setRadioFromPrevious("conciencia","DESPIERTO/A");
- else if(/SOMNOLIENT/.test(nu))setRadioFromPrevious("conciencia","SOMNOLIENTO/A");
- else if(/LET[ÁA]RGIC/.test(nu))setRadioFromPrevious("conciencia","LETÁRGICO/A");
+ // =========================================================
+ // EXAMEN FÍSICO MATERNO: copiar las mismas selecciones
+ // =========================================================
+ if(/FACIE\s+P[ÁA]LIDA/.test(ex))copyPreviousRadio("mFacie","PÁLIDA");
+ else if(/FACIE\s+SEMIP[ÁA]LIDA/.test(ex))copyPreviousRadio("mFacie","SEMIPÁLIDA");
+ else if(/FACIE\s+SEMIC[ÁA]LIDA/.test(ex))copyPreviousRadio("mFacie","SEMICÁLIDA");
+ else if(/FACIE\s+C[ÁA]LIDA/.test(ex))copyPreviousRadio("mFacie","CÁLIDA");
 
- if(/DESORIENTAD/.test(nu))setRadioFromPrevious("orientacion","DESORIENTADO/A");
- else if(/ORIENTAD[OA](?:\s+EN\s+SUS\s+3\s+ESFERAS)?/.test(nu))setRadioFromPrevious("orientacion","ORIENTADO/A");
+ if(/M[ÚU]SCULO TEMPORAL\s*:\s*(?:DEPLECI[ÓO]N MODERADA|DEPLECI[ÓO]N SEVERA|SEVERA DEPLECI[ÓO]N)/.test(ex))copyPreviousRadio("mTemporal","DEPLECIÓN MODERADA/SEVERA");
+ else if(/M[ÚU]SCULO TEMPORAL\s*:\s*LEVE DEPLECI[ÓO]N/.test(ex))copyPreviousRadio("mTemporal","LEVE DEPLECIÓN");
+ else if(/M[ÚU]SCULO TEMPORAL\s*:\s*(?:DEFINIDO|BIEN DEFINIDO|SIN DEPLECI[ÓO]N)/.test(ex))copyPreviousRadio("mTemporal","DEFINIDO");
 
- if(/NO COLABORA CON EL INTERROGATORIO/.test(nu))setRadioFromPrevious("colabora","NO");
- else if(/COLABORA CON EL INTERROGATORIO/.test(nu))setRadioFromPrevious("colabora","SÍ");
+ if(/REGI[ÓO]N PERIORBITARIA[^.;]*(?:HUNDIMIENT|DEPLECI[ÓO]N)/.test(ex))copyPreviousRadio("mPeriorb","CON HUNDIMIENTOS / DEPLECIÓN");
+ else if(/REGI[ÓO]N PERIORBITARIA[^.;]*(?:OJERAS LEVES|LIGERAMENTE OSCURECIDA)/.test(ex))copyPreviousRadio("mPeriorb","COLORACIÓN UNIFORME, OJERAS LEVES, SIN HUNDIMIENTOS");
+ else if(/REGI[ÓO]N PERIORBITARIA[^.;]*(?:SIN OJERAS|COLORACI[ÓO]N UNIFORME|CONSERVADA)/.test(ex))copyPreviousRadio("mPeriorb","COLORACIÓN UNIFORME, SIN OJERAS, NI HUNDIMIENTOS");
 
- if(/APETITO\s+(?:CONSERVADO|ADECUADO)/.test(nu))setRadioFromPrevious("apetito","CONSERVADO");
- else if(/APETITO\s+DISMINUIDO|HIPOREXIA/.test(nu))setRadioFromPrevious("apetito","DISMINUIDO");
- else if(/APETITO\s+AUMENTADO/.test(nu))setRadioFromPrevious("apetito","AUMENTADO");
- else if(/APETITO\s+AUSENTE|ANOREXIA/.test(nu))setRadioFromPrevious("apetito","AUSENTE");
+ if(/PIEZAS DENTALES\s+INCOMPLETAS/.test(ex))copyPreviousRadio("mDientes","INCOMPLETAS");
+ else if(/PIEZAS DENTALES\s+COMPLETAS/.test(ex))copyPreviousRadio("mDientes","COMPLETAS");
 
- const consumo=nu.match(/(?:CONSUMO|INGESTA)[^0-9]{0,25}(100|75|50|25|0)\s*%/);
- if(consumo)setRadioFromPrevious("consumoDieta",`${consumo[1]}%`);
+ if(/MUCOSA ORAL Y PIEL\s+SECAS|MUCOSA ORAL[^.;]*(?:SECA|DESHIDRATADA).*PIEL[^.;]*(?:SECA|DESHIDRATADA)/.test(ex))copyPreviousRadio("mHidratacion","SECAS");
+ else if(/MUCOSA ORAL Y PIEL\s+SEMIHIDRATADAS|MUCOSA ORAL[^.;]*SEMIHIDRATADA.*PIEL[^.;]*SEMIHIDRATADA/.test(ex))copyPreviousRadio("mHidratacion","SEMIHIDRATADAS");
+ else if(/MUCOSA ORAL Y PIEL\s+HIDRATADAS|MUCOSA ORAL[^.;]*HIDRATADA.*PIEL[^.;]*HIDRATADA/.test(ex))copyPreviousRadio("mHidratacion","HIDRATADAS");
 
- if(/NO TOLERA(?:\s+ADECUADAMENTE)?\s+LA V[IÍ]A ORAL/.test(nu))setRadioFromPrevious("viaoral","NO TOLERA");
- else if(/TOLERA(?:\s+ADECUADAMENTE)?\s+LA V[IÍ]A ORAL|ADECUADA TOLERANCIA ORAL/.test(nu))setRadioFromPrevious("viaoral","TOLERA");
+ if(/REGI[ÓO]N CLAVICULAR[^.;]*PROMINENTE/.test(ex)&&!/NO PROMINENTE|LIGERAMENTE PROMINENTE/.test(ex))copyPreviousRadio("mClavicula","PROMINENTE");
+ else if(/REGI[ÓO]N CLAVICULAR[^.;]*LIGERAMENTE PROMINENTE/.test(ex))copyPreviousRadio("mClavicula","LIGERAMENTE PROMINENTE");
+ else if(/REGI[ÓO]N CLAVICULAR[^.;]*(?:NO PROMINENTE|BIEN DEFINIDO)/.test(ex))copyPreviousRadio("mClavicula","MÚSCULO BIEN DEFINIDO RODEANDO EL HUESO. NO PROMINENTE");
 
- if(/PROBLEMAS? DE MASTICACI[ÓO]N|DIFICULTAD PARA MASTICAR/.test(nu))
-  setRadioFromPrevious("masticacion","CON DIFICULTAD");
- else if(/SIN PROBLEMAS PARA MASTICAR|NO REFIERE INCONVENIENTES PARA MASTICAR/.test(nu))
-  setRadioFromPrevious("masticacion","SIN INCONVENIENTES");
+ if(/ABDOMEN[^.;]*DISTENDIDO[^.;]*DOLOROSO/.test(ex))copyPreviousRadio("mAbdomen","DISTENDIDO, DOLOROSO A LA PALPACIÓN");
+ else if(/ABDOMEN[^.;]*DISTENDIDO[^.;]*NO DOLOROSO/.test(ex))copyPreviousRadio("mAbdomen","DISTENDIDO, NO DOLOROSO A LA PALPACIÓN");
+ else if(/ABDOMEN[^.;]*BLANDO[^.;]*LEVEMENTE DOLOROSO/.test(ex))copyPreviousRadio("mAbdomen","BLANDO, DEPRESIBLE, LEVEMENTE DOLOROSO A LA PALPACIÓN");
+ else if(/ABDOMEN[^.;]*BLANDO[^.;]*DOLOROSO/.test(ex))copyPreviousRadio("mAbdomen","BLANDO, DEPRESIBLE, DOLOROSO A LA PALPACIÓN");
+ else if(/ABDOMEN[^.;]*BLANDO[^.;]*NO DOLOROSO/.test(ex))copyPreviousRadio("mAbdomen","BLANDO, DEPRESIBLE NO DOLOROSO A LA PALPACIÓN");
 
- if(/PROBLEMAS? DE (?:MASTICACI[ÓO]N Y )?DEGLUCI[ÓO]N|DIFICULTAD PARA DEGLUTIR/.test(nu))
-  setRadioFromPrevious("deglucion","CON DIFICULTAD");
- else if(/SIN PROBLEMAS PARA .*DEGLUTIR|NO REFIERE INCONVENIENTES PARA .*DEGLUTIR/.test(nu))
-  setRadioFromPrevious("deglucion","SIN INCONVENIENTES");
+ if(/EXTREMIDADES SUPERIORES\s*:\s*ASIM[ÉE]TRICAS/.test(ex))copyPreviousRadio("mExtSup","ASIMÉTRICAS");
+ else if(/EXTREMIDADES SUPERIORES\s*:\s*SIM[ÉE]TRICAS/.test(ex))copyPreviousRadio("mExtSup","SIMÉTRICAS");
 
- if(/DIURESIS\s+CONSERVADA POR SONDA/.test(nu))setRadioFromPrevious("diuresis","CONSERVADA POR SONDA");
- else if(/DIURESIS\s+CONSERVADA/.test(nu))setRadioFromPrevious("diuresis","CONSERVADA");
- else if(/DIURESIS\s+DISMINUIDA|OLIGURIA/.test(nu))setRadioFromPrevious("diuresis","DISMINUIDA");
- else if(/ANURIA/.test(nu))setRadioFromPrevious("diuresis","ANURIA");
+ if(/REGI[ÓO]N TRICIPITAL[^.;]*DEPLECI[ÓO]N MODERADA|REGI[ÓO]N TRICIPITAL[^.;]*DEPLECI[ÓO]N SEVERA/.test(ex))copyPreviousRadio("mTricipital","DEPLECIÓN MODERADA/SEVERA");
+ else if(/REGI[ÓO]N TRICIPITAL[^.;]*LEVE DEPLECI[ÓO]N/.test(ex))copyPreviousRadio("mTricipital","LEVE DEPLECIÓN DE TEJIDO GRASO Y MASA MUSCULAR");
+ else if(/REGI[ÓO]N TRICIPITAL[^.;]*(?:NORMAL|CONSERVAD|EVIDENTE)/.test(ex))copyPreviousRadio("mTricipital","TEJIDO GRASO Y MASA MUSCULAR NORMAL EVIDENTE ENTRE LOS PLIEGUES DE PIEL PELLIZCADOS");
 
- if(/NO CANALIZA FLATOS/.test(nu))setRadioFromPrevious("flatos","NO");
- else if(/CANALIZA FLATOS/.test(nu))setRadioFromPrevious("flatos","SÍ");
+ if(/CU[ÁA]DRICEPS ANTERIOR[^.;]*(?:DEPLECI[ÓO]N MODERADA|DEPLECI[ÓO]N SEVERA)/.test(ex))copyPreviousRadio("mCuadriceps","DEPLECIÓN MODERADA/SEVERA");
+ else if(/CU[ÁA]DRICEPS ANTERIOR[^.;]*LEVE DEPLECI[ÓO]N/.test(ex))copyPreviousRadio("mCuadriceps","LEVE DEPLECIÓN");
+ else if(/CU[ÁA]DRICEPS ANTERIOR[^.;]*(?:REDONDEADO|BIEN DESARROLLADO)/.test(ex))copyPreviousRadio("mCuadriceps","REDONDEADO Y BIEN DESARROLLADO");
 
- if(/NO DEAMBULA/.test(nu))setRadioFromPrevious("deambula","NO DEAMBULA");
- else if(/DEAMBULA CON ASISTENCIA/.test(nu))setRadioFromPrevious("deambula","CON ASISTENCIA");
- else if(/\bDEAMBULA\b/.test(nu))setRadioFromPrevious("deambula","SIN ASISTENCIA");
+ if(/REGI[ÓO]N PATELAR[^.;]*(?:R[ÓO]TULA PROMINENTE|DEPLECI[ÓO]N)/.test(ex))copyPreviousRadio("mPatelar","RÓTULA PROMINENTE / DEPLECIÓN");
+ else if(/REGI[ÓO]N PATELAR[^.;]*(?:R[ÓO]TULA NO PROMINENTE|M[ÚU]SCULOS SOBRESALEN)/.test(ex))copyPreviousRadio("mPatelar","MÚSCULOS SOBRESALEN. RÓTULA NO PROMINENTE");
 
- if(/ULTIMA DEPOSICI[ÓO]N\s+AYER/.test(nu))setFieldFromPrevious("ultima","AYER");
- else if(/ULTIMA DEPOSICI[ÓO]N\s+HOY/.test(nu))setFieldFromPrevious("ultima","HOY");
- else if(/ULTIMA DEPOSICI[ÓO]N\s+HACE\s+2\s+D[IÍ]AS/.test(nu))setFieldFromPrevious("ultima","HACE 2 DÍAS");
- else if(/ULTIMA DEPOSICI[ÓO]N\s+HACE\s+\d+\s+D[IÍ]AS/.test(nu))setFieldFromPrevious("ultima","HACE 3 DÍAS O MÁS");
+ if(/PANTORRILLA[^.;]*(?:DISMINUCI[ÓO]N|DEPLECI[ÓO]N)/.test(ex))copyPreviousRadio("mGemelos","DISMINUCIÓN DE MASA MUSCULAR");
+ else if(/PANTORRILLA[^.;]*(?:GEMELOS BIEN DESARROLLADOS|BIEN DESARROLLAD)/.test(ex))copyPreviousRadio("mGemelos","GEMELOS BIEN DESARROLLADOS");
+
+ if(/CON PRESENCIA DE EDEMA|SE EVIDENCIA PRESENCIA DE EDEMA/.test(ex))copyPreviousRadio("mEdema","SÍ");
+ else if(/SIN PRESENCIA DE EDEMA|SIN EDEMA/.test(ex))copyPreviousRadio("mEdema","NO");
+
+ // =========================================================
+ // VALORACIÓN NUTRICIONAL
+ // =========================================================
+ if(/NO RESPONDE|INCONSCIENT/.test(nu))copyPreviousRadio("conciencia","NO RESPONDE");
+ else if(/LET[ÁA]RGIC/.test(nu))copyPreviousRadio("conciencia","LETÁRGICO/A");
+ else if(/SOMNOLIENT/.test(nu))copyPreviousRadio("conciencia","SOMNOLIENTO/A");
+ else if(/PACIENTE\s+DESPIERT|SE ENCUENTRA DESPIERT/.test(nu))copyPreviousRadio("conciencia","DESPIERTO/A");
+
+ if(/NO VALORABLE[^.;]*ORIENTACI[ÓO]N|ORIENTACI[ÓO]N NO VALORABLE/.test(nu))copyPreviousRadio("orientacion","NO VALORABLE");
+ else if(/DESORIENTAD/.test(nu))copyPreviousRadio("orientacion","DESORIENTADO/A");
+ else if(/ORIENTAD[OA](?:\s+EN\s+SUS\s+3\s+ESFERAS)?/.test(nu))copyPreviousRadio("orientacion","ORIENTADO/A");
+
+ if(/NO COLABORA/.test(nu))copyPreviousRadio("colabora","NO");
+ else if(/\bCOLABORA\b/.test(nu))copyPreviousRadio("colabora","SÍ");
+
+ if(/APETITO\s+AUSENTE|\bANOREXIA\b/.test(nu))copyPreviousRadio("apetito","AUSENTE");
+ else if(/APETITO\s+AUMENTADO|HIPEROREXIA/.test(nu))copyPreviousRadio("apetito","AUMENTADO");
+ else if(/APETITO\s+DISMINUIDO|\bHIPOREXIA\b/.test(nu))copyPreviousRadio("apetito","DISMINUIDO");
+ else if(/APETITO\s+(?:CONSERVADO|ADECUADO|NORMAL)/.test(nu))copyPreviousRadio("apetito","CONSERVADO");
+
+ const consumo=nu.match(/(?:CONSUMO|INGESTA)[^0-9]{0,40}(100|75|50|25|0)\s*%/);
+ if(consumo){
+  setRadioFromPrevious("consumoDieta",`${consumo[1]}%`);
+  setFieldFromPrevious("consumoExacto",consumo[1]);
+  const pct=Number(consumo[1]);
+  if(pct>75)copyPreviousRadio("nrsIntakeBand","FULL");
+  else if(pct>50)copyPreviousRadio("nrsIntakeBand","MILD");
+  else if(pct>25)copyPreviousRadio("nrsIntakeBand","MODERATE");
+  else copyPreviousRadio("nrsIntakeBand","SEVERE");
+ }
+
+ if(/PACIENTE EN NPO|EN AYUNO|NPO SEG[ÚU]N PRESCRIPCI[ÓO]N/.test(nu))copyPreviousRadio("viaoral","NO APLICA");
+ else if(/NO TOLERA(?:\s+ADECUADAMENTE)?\s+LA V[IÍ]A ORAL/.test(nu))copyPreviousRadio("viaoral","NO TOLERA");
+ else if(/TOLERA(?:\s+ADECUADAMENTE)?\s+LA V[IÍ]A ORAL|ADECUADA TOLERANCIA ORAL/.test(nu))copyPreviousRadio("viaoral","TOLERA");
+
+ if(/DIFICULTAD PARA MASTICAR|PROBLEMAS? DE MASTICACI[ÓO]N/.test(nu))copyPreviousRadio("masticacion","CON DIFICULTAD");
+ else if(/SIN PROBLEMAS PARA MASTICAR|NO REFIERE INCONVENIENTES PARA MASTICAR/.test(nu))copyPreviousRadio("masticacion","SIN INCONVENIENTES");
+
+ if(/DIFICULTAD PARA DEGLUTIR|PROBLEMAS? DE (?:MASTICACI[ÓO]N Y )?DEGLUCI[ÓO]N|DISFAGIA/.test(nu))copyPreviousRadio("deglucion","CON DIFICULTAD");
+ else if(/SIN PROBLEMAS PARA .*DEGLUTIR|NO REFIERE INCONVENIENTES PARA .*DEGLUTIR/.test(nu))copyPreviousRadio("deglucion","SIN INCONVENIENTES");
+
+ if(/ANURIA/.test(nu))copyPreviousRadio("diuresis","ANURIA");
+ else if(/DIURESIS\s+DISMINUIDA|\bOLIGURIA\b/.test(nu))copyPreviousRadio("diuresis","DISMINUIDA");
+ else if(/DIURESIS\s+CONSERVADA\s+(?:POR|MEDIANTE)\s+SONDA|DIURESIS POR SONDA/.test(nu))copyPreviousRadio("diuresis","CONSERVADA POR SONDA");
+ else if(/DIURESIS\s+CONSERVADA|DIURESIS\s+ADECUADA/.test(nu))copyPreviousRadio("diuresis","CONSERVADA");
+
+ if(/NO CANALIZA FLATOS|NO ELIMINA FLATOS/.test(nu))copyPreviousRadio("flatos","NO");
+ else if(/CANALIZA FLATOS|ELIMINA FLATOS/.test(nu))copyPreviousRadio("flatos","SÍ");
+
+ if(/NO DEAMBULA|POSTRADO|ENCAMADO/.test(nu))copyPreviousRadio("deambula","NO DEAMBULA");
+ else if(/DEAMBULA CON ASISTENCIA|DEAMBULA CON AYUDA/.test(nu))copyPreviousRadio("deambula","CON ASISTENCIA");
+ else if(/DEAMBULA SIN ASISTENCIA|DEAMBULA INDEPENDIENTEMENTE|\bDEAMBULA\b/.test(nu))copyPreviousRadio("deambula","SIN ASISTENCIA");
+
+ if(/[ÚU]LTIMA DEPOSICI[ÓO]N\s+HOY/.test(nu))setFieldFromPrevious("ultima","HOY");
+ else if(/[ÚU]LTIMA DEPOSICI[ÓO]N\s+AYER/.test(nu))setFieldFromPrevious("ultima","AYER");
+ else if(/[ÚU]LTIMA DEPOSICI[ÓO]N\s+HACE\s+2\s+D[IÍ]AS/.test(nu))setFieldFromPrevious("ultima","HACE 2 DÍAS");
+ else if(/[ÚU]LTIMA DEPOSICI[ÓO]N\s+HACE\s+\d+\s+D[IÍ]AS/.test(nu))setFieldFromPrevious("ultima","HACE 3 DÍAS O MÁS");
 
  const br=nu.match(/BRISTOL\s*(?:TIPO\s*)?([1-7])/);
  if(br)setFieldFromPrevious("bristol",br[1]);
 
- if(/DIARREA/.test(nu)&&$("aDiarrea"))$("aDiarrea").checked=true;
- if(/V[ÓO]MITO/.test(nu)&&$("aVomito"))$("aVomito").checked=true;
- if(/N[ÁA]USEA/.test(nu)&&$("aNausea"))$("aNausea").checked=true;
- if(/DOLOR ABDOMINAL/.test(nu)&&$("aDolor"))$("aDolor").checked=true;
- if(/DISTENSI[ÓO]N|GASES/.test(nu)&&$("aDistension"))$("aDistension").checked=true;
- if(/ESTRE[NÑ]IMIENTO/.test(nu)&&$("aEstreni"))$("aEstreni").checked=true;
- if(/MELENA/.test(nu)&&$("aMelena"))$("aMelena").checked=true;
+ if(/H[ÁA]BITO EVACUATORIO\s+IRREGULAR/.test(nu))setFieldFromPrevious("habito","IRREGULAR");
+ else if(/H[ÁA]BITO EVACUATORIO\s+REGULAR/.test(nu))setFieldFromPrevious("habito","REGULAR");
 
- const intolerance=nu.match(/INTOLERANCIAS?\s+ALIMENTARIAS?\s*:\s*([^.;]+)/);
- if(intolerance){
-  const v=intolerance[1].trim();
-  if(/NO REFIERE|NIEGA|NINGUNA/.test(v))setRadioFromPrevious("tieneIntolerancia","NO");
-  else{setRadioFromPrevious("tieneIntolerancia","SÍ");setFieldFromPrevious("intolerancia",v);}
+ // Síntomas: si la valoración dice "NO REFIERE", mantener todos apagados.
+ const noGi=/S[IÍ]NTOMAS GASTROINTESTINALES\s*:\s*(?:NO REFIERE|NIEGA|NINGUNO)/.test(nu);
+ if(noGi){
+  ["aNausea","aVomito","aDolor","aDistension","aDiarrea","aEstreni","aMelena"].forEach(id=>copyPreviousCheckbox(id,false));
+ }else{
+  copyPreviousCheckbox("aNausea",/\bN[ÁA]USEAS?\b/.test(nu));
+  copyPreviousCheckbox("aVomito",/\bV[ÓO]MITOS?\b/.test(nu));
+  copyPreviousCheckbox("aDolor",/DOLOR ABDOMINAL/.test(nu));
+  copyPreviousCheckbox("aDistension",/DISTENSI[ÓO]N|GASES/.test(nu));
+  copyPreviousCheckbox("aDiarrea",/\bDIARREA\b/.test(nu));
+  copyPreviousCheckbox("aEstreni",/ESTRE[NÑ]IMIENTO/.test(nu));
+  copyPreviousCheckbox("aMelena",/\bMELENA\b/.test(nu));
  }
 
- const allergy=nu.match(/ALERGIAS?\s+ALIMENTARIAS?\s*:\s*([^.;]+)/);
- if(allergy){
-  const v=allergy[1].trim();
-  if(/NO REFIERE|NIEGA|NINGUNA/.test(v))setRadioFromPrevious("tieneAlergia","NO");
-  else{setRadioFromPrevious("tieneAlergia","SÍ");setFieldFromPrevious("alergia",v);}
+ // Alergias / intolerancias en frases naturales.
+ if(/NO REFIERE ALERGIAS ALIMENTARIAS|NIEGA ALERGIAS ALIMENTARIAS|SIN ALERGIAS ALIMENTARIAS/.test(nu))copyPreviousRadio("tieneAlergia","NO");
+ else{
+  const a=nu.match(/(?:REFIERE\s+)?ALERGIA(?:S)?\s+(?:ALIMENTARIA(?:S)?\s+)?(?:A|:)\s*([^.;]+)/);
+  if(a){copyPreviousRadio("tieneAlergia","SÍ");setFieldFromPrevious("alergia",a[1].trim());}
  }
 
- if(/MASA MUSCULAR\s+(?:AUMENTADA|ABUNDANTE|BIEN DESARROLLADA|HIPERTROFIADA)/.test(ex))
-  setRadioFromPrevious("masaMuscular","AUMENTADA");
- if(/MASA GRASA\s+(?:AUMENTADA|ABUNDANTE)|AMPLIO TEJIDO GRASO|EXCESO DE TEJIDO ADIPOSO/.test(ex))
-  setRadioFromPrevious("masaGrasa","AUMENTADA");
+ if(/NO REFIERE INTOLERANCIAS ALIMENTARIAS|NIEGA INTOLERANCIAS ALIMENTARIAS|SIN INTOLERANCIAS ALIMENTARIAS/.test(nu))copyPreviousRadio("tieneIntolerancia","NO");
+ else{
+  const it=nu.match(/(?:REFIERE\s+)?(?:SER\s+)?INTOLERANTE\s+A\s+([^.;]+)|INTOLERANCIAS?\s+ALIMENTARIAS?\s*:\s*([^.;]+)/);
+  if(it){copyPreviousRadio("tieneIntolerancia","SÍ");setFieldFromPrevious("intolerancia",(it[1]||it[2]||"").trim());}
+ }
 
+ // Acompañante / informante.
+ const comp=nu.match(/ACOMPA[NÑ]AD[OA]\s+(?:DE|POR)\s+(?:SU\s+)?(HIJO|HIJA|MADRE|PADRE|ESPOSO|ESPOSA|HERMANO|HERMANA|CUIDADOR(?:A)?)/);
+ if(comp){
+  let c=comp[1].replace("CUIDADORA","CUIDADOR/A").replace("CUIDADOR","CUIDADOR/A");
+  setFieldFromPrevious("acompanante",c);
+ }
+ if(/INFORMACI[ÓO]N APORTADA POR FAMILIAR|INTERROGATORIO A FAMILIAR/.test(nu))setFieldFromPrevious("informante","FAMILIAR");
+ else if(/PACIENTE Y FAMILIAR/.test(nu))setFieldFromPrevious("informante","AMBOS");
+ else if(/PACIENTE COLABORA|INTERROGATORIO NUTRICIONAL/.test(nu))setFieldFromPrevious("informante","PACIENTE");
+
+ // Lactancia.
+ if(/BUEN AGARRE[^.;]*BUENA SUCCI[ÓO]N[^.;]*(?:BUENA PRODUCCI[ÓO]N|PRODUCCI[ÓO]N ADECUADA)/.test(nu))copyPreviousRadio("lactancia","BUEN AGARRE Y SUCCIÓN, BUENA PRODUCCIÓN");
+ else if(/BUEN AGARRE[^.;]*BUENA SUCCI[ÓO]N[^.;]*BAJA PRODUCCI[ÓO]N/.test(nu))copyPreviousRadio("lactancia","BUEN AGARRE Y SUCCIÓN, BAJA PRODUCCIÓN");
+ else if(/DIFICULTAD[^.;]*(?:AGARRE|SUCCI[ÓO]N)/.test(nu))copyPreviousRadio("lactancia","DIFICULTAD EN AGARRE Y/O SUCCIÓN");
+
+ // =========================================================
+ // ANTROPOMETRÍA Y DATOS ESTRUCTURADOS
+ // =========================================================
  const smart=parseSmartClinicalData();
  applyPreviousAnthropometry();
  applySmartClinicalData(smart);
 
- const bb=calculationsBase();
- if(Number.isFinite(bb.imc)&&bb.imc>=30&&radio("masaGrasa")==="CONSERVADA" &&
-    !/MASA GRASA\s+(?:CONSERVADA|DEPLECI[ÓO]N)/.test(ex)){
-   setRadioFromPrevious("masaGrasa","AUMENTADA");
- }
+ // Mantener masa grasa aumentada si estaba documentada.
+ if(/MASA GRASA\s+(?:AUMENTADA|ABUNDANTE)|AMPLIO TEJIDO GRASO|EXCESO DE TEJIDO ADIPOSO/.test(ex))
+  copyPreviousRadio("masaGrasa","AUMENTADA");
 
- // Función renal si viene en el documento.
+ // Función renal.
  const egfrDoc=parsedEgfr();
- if(egfrDoc!==null&&$("egfr")&&!val("egfr"))$("egfr").value=one(egfrDoc);
+ if(egfrDoc!==null&&$("egfr"))$("egfr").value=one(egfrDoc);
 
  updateBowelHabit();
- toggleAlergia(false);toggleIntolerancia(false);
- toggleWeightMode(false);toggleHeightMode(false);
+ toggleAlergia(false);
+ toggleIntolerancia(false);
+ toggleWeightMode(false);
+ toggleHeightMode(false);
  calculateAll();
 }
 
@@ -3362,7 +3450,7 @@ function shouldAutofillImportedAssessment(p){
 
  // Paciente recién importado o nunca autorrellenado correctamente.
  if(!p.touched)return true;
- if(st._autofillVersion!==65 && st._autofilledFromPrevious!==true)return true;
+ if(st._autofillVersion!==68 && st._autofilledFromPrevious!==true)return true;
 
  return false;
 }
@@ -3375,7 +3463,7 @@ function applyImportedAssessmentOnce(p){
  const old=p.state||{};
  const ns=captureState();
  ns._autofilledFromPrevious=true;
- ns._autofillVersion=65;
+ ns._autofillVersion=68;
  ns._sourceFingerprint=patientSourceFingerprint(p);
  ns._migratedV36=true;
  ns._profileManual=old._profileManual===true;
@@ -3457,8 +3545,15 @@ async function saveCurrentPatient(completed=false,show=true){
  if(!p)return false;
  p.completed=completed||p.completed;
  if($("hallazgo"))$("hallazgo").value=cleanLegacyHallazgo(val("hallazgo"));
+ const prevMeta=p.state||{};
  p.state=captureState();
  p.state._migratedV33=true;
+ p.state._autofilledFromPrevious=prevMeta._autofilledFromPrevious===true;
+ p.state._autofillVersion=prevMeta._autofillVersion||68;
+ p.state._sourceFingerprint=prevMeta._sourceFingerprint||patientSourceFingerprint(p);
+ p.state._profileManual=prevMeta._profileManual===true;
+ p.state._profileAutoReason=prevMeta._profileAutoReason||"";
+ p.state._profileConfidence=prevMeta._profileConfidence||"";
  p.note=nutritionNote();
  p.updatedAt=Date.now();
  syncCache();
@@ -5219,6 +5314,46 @@ function vgsScreeningText(){
  return v.applicable?v.label:"";
 }
 
+
+function importedScreeningText(){
+ const raw=String(val("sourceText")||"").trim();
+ if(!raw)return "";
+ const rx=/TAMIZAJE\s+NUTRICIONAL\s*:\s*([\s\S]*?)(?=\bDIAGN[ÓO]STICO\s+NUTRICIONAL\s*:|\bCIE\s*10\s*:|\bREQUERIMIENTO\s+NUTRICIONAL\b|\bPLAN\s+DIETOTERAP[ÉE]UTICO\s*:|$)/i;
+ const m=raw.match(rx);
+ if(!m)return "";
+ let s=m[1].replace(/\r/g," ").replace(/\n+/g," ").replace(/\s+/g," ").trim();
+ s=s.replace(/\s+\d+\.\s+AMB\s+\d+.*$/i,"").trim();
+ return s.replace(/^[\s:;-]+|[\s;]+$/g,"").trim();
+}
+function hasImportedScreening(){
+ return !!importedScreeningText();
+}
+function finalScreeningText(){
+ const imported=importedScreeningText();
+ if(imported)return finalClinicalText(imported).replace(/^TAMIZAJE\s+NUTRICIONAL\s*:\s*/i,"").trim();
+ return screeningText();
+}
+function importedScreeningKind(){
+ const s=normalizedUpper(importedScreeningText());
+ return {
+  nrs:/NRS[\s-]*2002|NUTRITIONAL RISK SCREENING/.test(s),
+  mna:/\bMNA\b|MNA[\s-]*SF|MINI NUTRITIONAL ASSESSMENT/.test(s),
+  vgs:/\bVGS\b|VALORACI[ÓO]N GLOBAL SUBJETIVA/.test(s)
+ };
+}
+function importedScreeningScore(){
+ const s=normalizedUpper(importedScreeningText());
+ const m=s.match(/(?:NRS[\s-]*2002|MNA(?:[\s-]*SF)?)[^0-9]{0,35}(\d{1,2})(?:\s*\/\s*14)?\s*PUNTOS?/);
+ return m?Number(m[1]):null;
+}
+function copyPreviousRadio(name,value){
+ if(!value)return;
+ setRadioFromPrevious(name,value);
+}
+function copyPreviousCheckbox(id,on){
+ const el=$(id);if(el)el.checked=!!on;
+}
+
 function screeningText(){
  const age=num(val("edad"))||0;
 
@@ -5244,45 +5379,51 @@ function calculationsBase(){
  return {w,h,age,imc};
 }
 function updateScreeningUI(){
+ const imported=importedScreeningText();
+ if($("importedScreeningNotice"))$("importedScreeningNotice").classList.toggle("hidden",!imported);
+
  const age=num(val("edad"))||0,older=age>=60;
  if($("adultRiskBox"))$("adultRiskBox").classList.toggle("hidden",older);
  if($("mnaQuickBox"))$("mnaQuickBox").classList.toggle("hidden",!older);
+
+ if(imported){
+  const k=importedScreeningKind(),score=importedScreeningScore();
+  if($("screenReasonText"))$("screenReasonText").textContent=`TAMIZAJE IMPORTADO DEL WORD: ${imported}`;
+  if(k.mna){
+   if($("screenMnaTotal"))$("screenMnaTotal").textContent=score!==null?`${score}/14`:"IMPORTADO";
+   if($("screenMnaResult"))$("screenMnaResult").textContent="MNA/MNA-SF IMPORTADO DEL WORD";
+  }else{
+   if($("adultRiskResult"))$("adultRiskResult").textContent=score!==null?`NRS-2002: ${score} PUNTOS`:"NRS/VGS IMPORTADO";
+   if($("adultStressResult"))$("adultStressResult").textContent="SE CONSERVA EL TAMIZAJE DOCUMENTADO";
+  }
+  return;
+ }
 
  if(older){
   const m=mnaResult();
   if($("screenMnaTotal"))$("screenMnaTotal").textContent=m.complete?`${m.total}/14`:"—";
   if($("screenMnaResult"))$("screenMnaResult").textContent=m.label;
-  if($("screenVgsResult"))$("screenVgsResult").textContent="NO APLICA";
   if($("screenReasonText"))$("screenReasonText").textContent=m.complete
    ?`MNA-SF A–F: A ${m.parts.a} + B ${m.parts.b} + C ${m.parts.c} + D ${m.parts.d} + E ${m.parts.e} + F ${m.parts.f} = ${m.total}/14. PÉRDIDA DE PESO: ${m.loss.label}.`
    :m.reason;
   return;
  }
 
- const n=automaticNRS2002(),v=automaticVGS();
- if($("screenVgsResult"))$("screenVgsResult").textContent=v.label;
- const vgsReason=v.reasons.length?` VGS BASADA EN: ${v.reasons.join(", ")}.`:" VGS SIN DATOS ACTUALES DE DETERIORO NUTRICIONAL DOCUMENTADOS.";
-
+ const n=automaticNRS2002();
  if(n.pending){
   if($("adultRiskResult"))$("adultRiskResult").textContent="NRS-2002: PENDIENTE";
   if($("adultStressResult"))$("adultStressResult").textContent="FALTA INGESTA ÚLTIMA SEMANA";
-  if($("screenReasonText"))$("screenReasonText").textContent=
-   `NRS-2002 PENDIENTE: FALTA VALORAR INGESTA DE LA ÚLTIMA SEMANA.${vgsReason}`;
+  if($("screenReasonText"))$("screenReasonText").textContent="NO SE ASIGNA PUNTAJE SIN DATO DE INGESTA. PREGUNTA CUÁNTO COMIÓ EN LA ÚLTIMA SEMANA RESPECTO A LO HABITUAL.";
   return;
  }
-
  if($("adultRiskResult"))$("adultRiskResult").textContent=`NRS-2002: ${n.total} PUNTOS`;
  if($("adultStressResult"))$("adultStressResult").textContent=n.total>=3?"CON RIESGO NUTRICIONAL":"SIN RIESGO NUTRICIONAL";
-
  if(!n.finalPerformed){
-  if($("screenReasonText"))$("screenReasonText").textContent=
-   `CRIBADO INICIAL NEGATIVO. IMC <20,5: ${n.initial.bmi?"SÍ":"NO"} · PÉRDIDA DE PESO EN 3 MESES: ${n.initial.loss?"SÍ":"NO"} · INGESTA REDUCIDA ÚLTIMA SEMANA: ${n.initial.reduced?"SÍ":"NO"} · ENFERMEDAD GRAVE: ${n.initial.severe?"SÍ":"NO"}. RESULTADO: SIN RIESGO NUTRICIONAL SEGÚN NRS-2002 (0 PUNTOS). REPETIR SEMANALMENTE.${vgsReason}`;
+  if($("screenReasonText"))$("screenReasonText").textContent=`CRIBADO INICIAL NEGATIVO. RESULTADO: SIN RIESGO NUTRICIONAL SEGÚN NRS-2002 (0 PUNTOS). REPETIR SEMANALMENTE.`;
   return;
  }
-
- const intakeReason=n.nutReason?.length?` ESTADO NUTRICIONAL: ${n.nutReason.join(", ")}.`:"";
  if($("screenReasonText"))$("screenReasonText").textContent=
-  `NRS-2002 = ESTADO NUTRICIONAL ${n.nut} + GRAVEDAD DE ENFERMEDAD ${n.dis}${n.agePt?` + EDAD ≥70 (${n.agePt})`:""} = ${n.total} PUNTOS.${intakeReason} ${n.disReason}. ${n.total<3?"SIN RIESGO NUTRICIONAL INMEDIATO; REPETIR SEMANALMENTE.":"CON RIESGO NUTRICIONAL; INICIAR PLAN DE CUIDADOS NUTRICIONALES."}${vgsReason}`;
+  `NRS-2002 = ESTADO NUTRICIONAL ${n.nut} + GRAVEDAD ${n.dis}${n.agePt?` + EDAD ≥70 (${n.agePt})`:""} = ${n.total} PUNTOS.`;
 }
 
 function macroClinicalContext(dietText){
@@ -6087,7 +6228,7 @@ function canonicalNormalNote(){
  a.push(`EXAMEN FÍSICO: ${exam()}`);
  a.push(`VALORACIÓN NUTRICIONAL: ${valuation()}`);
  const an=antro();if(an)a.push(`VALORACIÓN ANTROPOMÉTRICA: ${an}`);
- a.push(`TAMIZAJE NUTRICIONAL: ${screeningText()}`);
+ a.push(`TAMIZAJE NUTRICIONAL: ${finalScreeningText()}`);
  if(c.cl)a.push(`DIAGNÓSTICO NUTRICIONAL: ${diagnosisByBMI()}`);
  appendICD10Lines(a);
  const rr=finalRequirementLine();if(rr)a.push(rr);
@@ -6099,7 +6240,7 @@ function canonicalPregnancyNote(){
   `EXAMEN FÍSICO: ${maternityExam()}`,
   `VALORACIÓN NUTRICIONAL: ${pregnancyValuation()}`,
   `VALORACIÓN ANTROPOMÉTRICA: ${pregnancyAnthro()}`,
-  `TAMIZAJE NUTRICIONAL: ${screeningText()}`,
+  `TAMIZAJE NUTRICIONAL: ${finalScreeningText()}`,
   `DIAGNÓSTICO NUTRICIONAL: ${pregnancyDiagnosis()}`
  ];
  appendICD10Lines(a);
@@ -6112,7 +6253,7 @@ function canonicalPostpartumNote(){
   `EXAMEN FÍSICO: ${maternityExam()}`,
   `VALORACIÓN NUTRICIONAL: ${postpartumValuation()}`,
   `VALORACIÓN ANTROPOMÉTRICA: ${postpartumAnthro()}`,
-  `TAMIZAJE NUTRICIONAL: ${screeningText()}`,
+  `TAMIZAJE NUTRICIONAL: ${finalScreeningText()}`,
   `DIAGNÓSTICO NUTRICIONAL: ${postpartumDiagnosis()}`
  ];
  appendICD10Lines(a);

@@ -1037,6 +1037,19 @@ body{padding-bottom:92px}
  }
 }
 
+
+.importedRequirementNotice{
+ margin:0 0 7px;
+ padding:7px 8px;
+ border-radius:8px;
+ border:1px solid #bfe2cf;
+ background:#effaf4;
+ color:#256748;
+ font-size:8.5px;
+ line-height:1.3;
+ font-weight:900;
+}
+
 </style>
 </head>
 <body>
@@ -1472,6 +1485,7 @@ body{padding-bottom:92px}
  </section>
  <section id="engineSection" class="card section">
   <div class="secHead"><div class="step">6</div><div><h2>Requerimientos y plan</h2><p>Adapta energía, proteína, peso de cálculo y soporte según enfermedad, estado nutricional y guías vigentes.</p></div></div>
+  <div id="importedRequirementNotice" class="importedRequirementNotice hidden">✓ ESTE PACIENTE YA TRAE REQUERIMIENTO NUTRICIONAL EN EL WORD. SE CONSERVARÁ SIN RECALCULARLO.</div>
 
   <div class="grid2">
    <div>
@@ -1721,7 +1735,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&
 const makeId=p=>`${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,9)}`;
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
 
-const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v64", FALLBACK_KEY="nutri_word_rounds_v64";
+const DB_NAME="NutriWordRoundsDB", STORE="rounds", CACHE_KEY="nutri_word_round_current_v65", FALLBACK_KEY="nutri_word_rounds_v65";
 let db=null,currentRound=null,currentPatientId=null,history=[],loading=false,saveTimer=null;
 
 const simpleFields=["area","ambiente","cama","nombre","edad","cobertura","sexo","perfil","dieta","sourceText","alergia","intolerancia","ultima","consumoExacto","bristol","habito","hallazgo","peso","pesoEstimadoDoc","cb","cp","talla","talonRodilla","mediaEnvergadura","pesoPregestacional","edadGestacional","reqPerfil","cie10","plan","planObs","kcalKg","extraKcal","choPct","proPct","proKg","lipPct","clinicalProfile","renalSubtype","egfr","icuDay","hasIC","measuredEE","ibdActivity","pancreasType","surgeryScenario","suppName","suppMl","suppKcal","suppProtein","suppServings","acompanante","acompananteDetalle","informante","extremidadesDetalle","mExtSupDetalle","interApetitoCasaDias","interConsumoCasa","interPesoHabitual","interPesoIngreso","interPerdidaCasaKg","interPerdidaCasaDias","interApetitoHospDias","interConsumoHosp","interPerdidaHospKg","interDiasHospital"];
@@ -2356,6 +2370,7 @@ function syncWorkingPatient(){
  p.dieta=validDietText(val("dieta"))||patientDietText(p);p.sourceText=val("sourceText");
  const ns=captureState();
  ns._autofilledFromPrevious=true;
+ ns._autofillVersion=65;
  ns._sourceFingerprint=oldState._sourceFingerprint||patientSourceFingerprint(p);
  ns._migratedV36=true;
  ns._profileManual=oldState._profileManual===true;
@@ -2557,7 +2572,8 @@ function parseSmartClinicalData(){
  ],10,80);
  const heelKnee=firstSmartNumber(a,[
   /TAL[ÓO]N\s*[-\/]?\s*RODILLA\s*[:=\-]?\s*([0-9]+(?:[.,][0-9]+)?)(?:\s*CM)?\b/,
-  /ALTURA\s+(?:DE\s+)?RODILLA\s*[:=\-]?\s*([0-9]+(?:[.,][0-9]+)?)(?:\s*CM)?\b/
+  /ALTURA\s+(?:DE\s+)?RODILLA\s*[:=\-]?\s*([0-9]+(?:[.,][0-9]+)?)(?:\s*CM)?\b/,
+  /\bTR\s*[:=\-]?\s*([0-9]+(?:[.,][0-9]+)?)(?:\s*CM)?\b/
  ],20,80);
  const demiSpan=firstSmartNumber(a,[
   /MEDIA\s+ENVERGADURA\s*[:=\-]?\s*([0-9]+(?:[.,][0-9]+)?)(?:\s*CM)?\b/,
@@ -2568,6 +2584,12 @@ function parseSmartClinicalData(){
  const preWeight=firstSmartNumber(a,[
   /PESO\s+PREGESTACIONAL\s*[:=\-]?\s*([0-9]+(?:[.,][0-9]+)?)\s*KG\b/,
   /PESO\s+PRE\s*GESTACIONAL\s*[:=\-]?\s*([0-9]+(?:[.,][0-9]+)?)\s*KG\b/
+ ],20,350);
+ const importedIdealWeight=firstSmartNumber(a,[
+  /PESO\s+IDEAL\s*[:=\-]?\s*([0-9]+(?:[.,][0-9]+)?)\s*KG\b/
+ ],20,350);
+ const importedAdjustedWeight=firstSmartNumber(a,[
+  /PESO\s+AJUSTADO\s*[:=\-]?\s*([0-9]+(?:[.,][0-9]+)?)\s*KG\b/
  ],20,350);
 
  let weight=null,weightMode="";
@@ -2583,7 +2605,7 @@ function parseSmartClinicalData(){
  let heightCm=null,heightMode="TALLA";
  const hdefs=[
   ["TALLA REFERIDA",/\b(?:TALLA|ESTATURA)\s+(?:REFERIDA|REPORTADA|DECLARADA)\s*[:=\-]?\s*([0-9]+(?:[.,][0-9]+)?)\s*(CM|M)\b/],
-  ["TALLA ESTIMADA",/\b(?:TALLA|ESTATURA)\s+(?:ESTIMADA|CALCULADA)\s*[:=\-]?\s*([0-9]+(?:[.,][0-9]+)?)\s*(CM|M)\b/],
+  ["TALLA ESTIMADA",/\b(?:TALLA|ESTATURA)\s+(?:ESTIMADA|CALCULADA)(?:\s*\([^)]*\))?\s*[:=\-]?\s*([0-9]+(?:[.,][0-9]+)?)\s*(CM|M)\b/],
   ["TALLA",/\b(?:TALLA|ESTATURA)\s+(?:ACTUAL|MEDIDA|REAL)\s*[:=\-]?\s*([0-9]+(?:[.,][0-9]+)?)\s*(CM|M)\b/],
   ["TALLA",/\b(?:TALLA|ESTATURA)\s*[:=\-]\s*([0-9]+(?:[.,][0-9]+)?)\s*(CM|M)\b/]
  ];
@@ -2618,7 +2640,7 @@ function parseSmartClinicalData(){
  else if(/(?:[ÚU]LTIMA\s+DEPOSICI[ÓO]N|[ÚU]LTIMA\s+EVACUACI[ÓO]N)[^.;]{0,20}\bAYER\b/.test(nu))lastStool="AYER";
  else {const m=nu.match(/(?:[ÚU]LTIMA\s+DEPOSICI[ÓO]N|[ÚU]LTIMA\s+EVACUACI[ÓO]N)[^0-9]{0,20}(?:HACE\s+)?([0-9]+)\s+D[IÍ]AS?/);if(m){const d=Number(m[1]);lastStool=d<=1?"AYER":d===2?"HACE 2 DÍAS":"HACE 3 DÍAS O MÁS";}}
  const egfr=firstSmartNumber(raw,[/\bEGFR\s*[:=\-]?\s*([0-9]+(?:[.,][0-9]+)?)/,/\bTFG\s*[:=\-]?\s*([0-9]+(?:[.,][0-9]+)?)/,/FILTRADO\s+GLOMERULAR\s*[:=\-]?\s*([0-9]+(?:[.,][0-9]+)?)/],1,200);
- return {raw,a,nu,ex,cb,cp,heelKnee,demiSpan,preWeight,weight,weightMode,heightCm,heightMode,gestAge,age,sex,intake,bristol,lastStool,egfr};
+ return {raw,a,nu,ex,cb,cp,heelKnee,demiSpan,preWeight,importedIdealWeight,importedAdjustedWeight,weight,weightMode,heightCm,heightMode,gestAge,age,sex,intake,bristol,lastStool,egfr};
 }
 function nearestIntakeChip(n){
  if(n===null||!Number.isFinite(n))return null;const vals=[0,25,50,75,100];let best=vals[0];
@@ -2630,7 +2652,10 @@ function smartDetectedSummary(d){
  if(d.heightCm!==null)p.push(`${d.heightMode}: ${one(d.heightCm)} CM`);
  if(d.cb!==null)p.push(`CMB/CB: ${one(d.cb)} CM`);if(d.cp!==null)p.push(`CP: ${one(d.cp)} CM`);
  if(d.heelKnee!==null)p.push(`TALÓN-RODILLA: ${one(d.heelKnee)} CM`); if(d.demiSpan!==null)p.push(`MEDIA ENVERGADURA: ${one(d.demiSpan)} CM`);
- if(d.preWeight!==null)p.push(`PESO PREGESTACIONAL: ${one(d.preWeight)} KG`);if(d.gestAge!==null)p.push(`EG: ${one(d.gestAge)} SEM`);
+ if(d.preWeight!==null)p.push(`PESO PREGESTACIONAL: ${one(d.preWeight)} KG`);
+ if(d.importedIdealWeight!==null)p.push(`PESO IDEAL DEL WORD: ${one(d.importedIdealWeight)} KG`);
+ if(d.importedAdjustedWeight!==null)p.push(`PESO AJUSTADO DEL WORD: ${one(d.importedAdjustedWeight)} KG`);
+ if(d.gestAge!==null)p.push(`EG: ${one(d.gestAge)} SEM`);
  if(d.intake!==null)p.push(`CONSUMO: ${one(d.intake)}%`);if(d.lastStool)p.push(`ÚLTIMA DEPOSICIÓN: ${d.lastStool}`);
  if(d.bristol!==null)p.push(`BRISTOL: ${d.bristol}`);if(d.egfr!==null)p.push(`TFG/eGFR: ${one(d.egfr)}`);
  return p.join(" · ")||"SIN DATOS ESTRUCTURADOS DETECTADOS";
@@ -3321,6 +3346,45 @@ function setupSectionObserver(){
  secs.forEach(s=>ob.observe(s));
 }
 
+
+function sourceHasPreviousNutritionAssessment(p){
+ const u=normalizedUpper(p?.state?.sourceText||p?.sourceText||"");
+ return /EXAMEN F[IÍ]SICO|VALORACI[ÓO]N NUTRICIONAL|VALORACI[ÓO]N ANTROPOM[EÉ]TRICA|TAMIZAJE NUTRICIONAL|REQUERIMIENTO NUTRICIONAL/.test(u);
+}
+function shouldAutofillImportedAssessment(p){
+ if(!p||!sourceHasPreviousNutritionAssessment(p))return false;
+ const fp=patientSourceFingerprint(p);
+ const st=p.state||{};
+
+ // Documento nuevo/cambiado: volver a leerlo.
+ if(st._sourceFingerprint&&st._sourceFingerprint!==fp)return true;
+
+ // Paciente recién importado o nunca autorrellenado correctamente.
+ if(!p.touched)return true;
+ if(st._autofillVersion!==65 && st._autofilledFromPrevious!==true)return true;
+
+ return false;
+}
+function applyImportedAssessmentOnce(p){
+ if(!shouldAutofillImportedAssessment(p))return false;
+
+ // sourceText ya está cargado en pantalla por restoreState().
+ autofillPreviousAssessment();
+
+ const old=p.state||{};
+ const ns=captureState();
+ ns._autofilledFromPrevious=true;
+ ns._autofillVersion=65;
+ ns._sourceFingerprint=patientSourceFingerprint(p);
+ ns._migratedV36=true;
+ ns._profileManual=old._profileManual===true;
+ ns._profileAutoReason=old._profileAutoReason||"";
+ ns._profileConfidence=old._profileConfidence||"";
+ p.state=ns;
+
+ return true;
+}
+
 function openPatient(id){
  if(currentPatientId&&currentPatientId!==id){
   clearTimeout(saveTimer);
@@ -3345,6 +3409,13 @@ function openPatient(id){
  }
 
  restoreState(p.state);
+ const importedFilled=applyImportedAssessmentOnce(p);
+ if(importedFilled){
+  // Reaplicar visibilidad/modos después de colocar peso/talla/opciones del Word.
+  toggleWeightMode(false);
+  toggleHeightMode(false);
+  updateBowelHabit();
+ }
  toggleHeaderModeUI(p);
  $("noPatient").classList.add("hidden");$("patientForm").classList.remove("hidden");$("clinicalSections").classList.remove("hidden");
  toggleInterconsulta();
@@ -5285,6 +5356,7 @@ function calculateAll(){
  if($("mLip"))$("mLip").textContent=c.lipG!==null?Math.round(c.lipG)+" g/día":"—";
  updateScreeningUI();
  updateClinicalUI();
+ if($("importedRequirementNotice"))$("importedRequirementNotice").classList.toggle("hidden",!hasImportedRequirement());
  updateDiagnosisMeaning();
  updateProfileDetectionNote();
  if($("interconsultaResumen")){
@@ -5887,6 +5959,44 @@ function appendICD10Lines(arr){
  return arr;
 }
 
+
+function importedRequirementData(){
+ const raw=String(val("sourceText")||"").trim();
+ if(!raw)return null;
+
+ // Captura el requerimiento completo aunque esté antes o después del plan.
+ const rx=/(REQUERIMIENTO\\s+NUTRICIONAL(?:\\s+CON\\s+PESO\\s+(?:AJUSTADO|IDEAL))?(?:\\s*\\([^)]*\\))?\\s*:\\s*)([\\s\\S]*?)(?=\\bPLAN\\s+DIETOTERAP[ÉE]UTICO\\s*:|\\bEXAMEN\\s+F[IÍ]SICO\\s*:|\\bVALORACI[ÓO]N\\s+NUTRICIONAL\\s*:|$)/i;
+ const m=raw.match(rx);
+ if(!m)return null;
+
+ const heading=m[1].replace(/\\s+/g," ").trim().replace(/\\s*:\\s*$/, "");
+ let body=m[2].replace(/\\s+/g," ").trim();
+
+ // Si el requerimiento queda al final del documento, evitar arrastrar un encabezado de otro paciente.
+ body=body.replace(/\\s+\\d+\\.\\s+AMB\\s+\\d+.*$/i,"").trim();
+ if(!body)return null;
+
+ return {heading,body,full:`${heading}: ${body}`};
+}
+function hasImportedRequirement(){
+ return !!importedRequirementData();
+}
+function finalRequirementLine(){
+ const imported=importedRequirementData();
+ if(imported){
+  // Se conserva el cálculo ya documentado; solo se normaliza mayúscula/ortografía final.
+  return finalClinicalText(imported.full);
+ }
+ const r=req();
+ return r?`${requirementHeading()}: ${r}`:"";
+}
+function finalMaternityRequirementLine(){
+ const imported=importedRequirementData();
+ if(imported)return finalClinicalText(imported.full);
+ const r=maternityReq();
+ return r?`${requirementHeading()}: ${r}`:"";
+}
+
 function requirementHeading(){
  const g=calculations().guide,basis=weightBasisLabel(g);
  if(basis.includes("AJUSTADO"))return "REQUERIMIENTO NUTRICIONAL CON PESO AJUSTADO";
@@ -5901,7 +6011,7 @@ function canonicalNormalNote(){
  a.push(`TAMIZAJE NUTRICIONAL: ${screeningText()}`);
  if(c.cl)a.push(`DIAGNÓSTICO NUTRICIONAL: ${diagnosisByBMI()}`);
  appendICD10Lines(a);
- const r=req();if(r)a.push(`${requirementHeading()}: ${r}`);
+ const rr=finalRequirementLine();if(rr)a.push(rr);
  a.push(`PLAN DIETOTERAPÉUTICO: ${currentDietPlanText()}.`);
  return a;
 }
@@ -5914,7 +6024,7 @@ function canonicalPregnancyNote(){
   `DIAGNÓSTICO NUTRICIONAL: ${pregnancyDiagnosis()}`
  ];
  appendICD10Lines(a);
- a.push(`${requirementHeading()}: ${maternityReq()}`);
+ const rr=finalMaternityRequirementLine();if(rr)a.push(rr);
  a.push(`PLAN DIETOTERAPÉUTICO: ${currentDietPlanText()}.`);
  return a;
 }
@@ -5927,7 +6037,7 @@ function canonicalPostpartumNote(){
   `DIAGNÓSTICO NUTRICIONAL: ${postpartumDiagnosis()}`
  ];
  appendICD10Lines(a);
- a.push(`${requirementHeading()}: ${maternityReq()}`);
+ const rr=finalMaternityRequirementLine();if(rr)a.push(rr);
  a.push(`PLAN DIETOTERAPÉUTICO: ${currentDietPlanText()}.`);
  return a;
 }

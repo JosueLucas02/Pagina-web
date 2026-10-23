@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Ronda Nutricional desde Word</title>
+<meta name="theme-color" content="#ffffff">
 <style>
 :root{
  --bg:#f4f6f9;--card:#fff;--soft:#f8fafc;--line:#dfe5ec;--line2:#cfd8e3;--text:#172033;--muted:#708095;
@@ -1063,6 +1064,76 @@ body{padding-bottom:92px}
  font-weight:850;
 }
 
+.bottom{position:static!important;bottom:auto!important;margin-top:10px}
+.preview{display:block!important;overflow:visible!important;max-height:none!important}
+
+
+
+#actions,.actions,.bottom,.stickyActions,.footerActions,
+buttonBar,.saveBar,[class*="sticky"][class*="action"]{
+ position:static!important;
+ top:auto!important;
+ bottom:auto!important;
+ inset:auto!important;
+ transform:none!important;
+ z-index:auto!important;
+}
+#preview,.preview{
+ max-height:none!important;
+ overflow:visible!important;
+ height:auto!important;
+ padding-bottom:18px!important;
+}
+#patientForm,#clinicalSections,.card{
+ overflow:visible!important;
+}
+
+/* ===== V70 · LECTURA CÓMODA EN TELÉFONO ===== */
+html,body{overflow-x:clip}
+.top{position:static}
+.patientStrip{position:static!important;top:auto!important}
+.sectionQuickNav{top:0!important;z-index:60;padding:6px!important}
+#patientActionStrip{display:none!important}
+.section{scroll-margin-top:62px}
+.mobileActionBar{bottom:0!important}
+body{padding-bottom:150px!important}
+.bottom{margin-bottom:150px!important}
+input,select{font-size:16px!important;min-height:44px!important}
+textarea{font-size:14px!important}
+.label{font-size:12.5px!important}
+.qt{font-size:13px!important}
+.chip span{font-size:13.5px!important;min-height:38px!important;padding:7px 11px!important}
+.note,.dxItem,.dxCaution,.dxLiteral,.dxRenal,.dxStatus,.warn{font-size:12px!important;line-height:1.4!important}
+.secHead h2{font-size:16px!important}.secHead p{font-size:12px!important}
+.step{width:28px!important;height:28px!important;flex-basis:28px!important;font-size:12px!important}
+.metric span{font-size:11px!important}.metric b{font-size:13.5px!important}
+.patientPill{min-width:200px!important;max-width:240px!important;padding:8px!important}
+.patientPill b{font-size:12.5px!important}.patientPill small{font-size:11px!important}
+.patientStripTop h2{font-size:14px!important}.patientStripTop span{font-size:11px!important}
+.sectionQuickNav button{font-size:12.5px!important;min-height:36px!important;padding:5px 11px!important}
+.mobileActionButtons{grid-template-columns:48px 1fr 1fr 1.6fr!important}
+.mobileActionButtons button{font-size:13px!important;min-height:46px!important}
+.mobilePatientLine b{font-size:13px!important}
+#mobileSaveState,.lastChoiceText,.mobilePatientLine>span:first-child{font-size:11px!important}
+.badge{font-size:10.5px!important}.btn.small{font-size:12px!important;min-height:36px!important}
+.sourceText{font-size:12.5px!important}
+.preview{font-size:13px!important}
+.examGroupTitle{font-size:11px!important}
+.miniStatus{font-size:10px!important}
+.importedFillNote,.importedScreeningNotice,.importedRequirementNotice{font-size:11.5px!important}
+.patient small{font-size:11.5px!important}.pname{font-size:13px!important}
+.brand h1{font-size:18px!important}.brand p{font-size:12px!important}
+.top .actions .btn,.top .actions label.btn{font-size:13px!important;min-height:42px!important}
+.modalTop .actions .btn{font-size:13px!important;min-height:44px!important}
+.finalP p{font-size:13px!important}
+.tag{font-size:11px!important}
+.side h3{font-size:14px!important}
+.history strong{font-size:12.5px!important}.history small{font-size:11px!important}
+.importBox strong{font-size:13px!important}.importBox p{font-size:12px!important}
+summary{font-size:12.5px!important}
+.previousRaw summary::after{font-size:10px!important}
+#changesSection .sourceText{font-size:12px!important}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
 </style>
 </head>
 <body>
@@ -1759,15 +1830,22 @@ const checks=["aNausea","aVomito","aDolor","aDistension","aDiarrea","aEstreni","
 
 function flash(t){$("status").textContent=t;clearTimeout(flash.t);flash.t=setTimeout(()=>$("status").textContent="",2300)}
 function stripNumbering(s){return String(s||"").replace(/^\s*(?:\d+\s*[\.\)\-:]\s*|[•\-]\s*)/,"").trim()}
+function repairBrokenDecimals(s){
+ // Versiones anteriores escribían "64. 3 KG", "1, 3 G/KG" o "Z71. 3".
+ // Se vuelven a unir solo cuando el número va seguido de una unidad clínica.
+ return String(s??"")
+  .replace(/\b(\d{1,4})([.,]) (\d{1,2})(?=\s*(?:KG|CM|M²|M2\b|KCAL|G\b|G\/|GR?\s*D[IÍ]A|%|ML|MG|MMOL|MEQ|PUNTOS?\b|\/))/gi,"$1$2$3")
+  .replace(/\b([A-Z]\d{2})\. (\d{1,2})\b/g,"$1.$2");
+}
 function normalizedUpper(s){return String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase()}
 function isShortHeading(s){
  const t=stripNumbering(s).trim();if(!t||t.length>60)return false;
  if(/\bAMB\s*\d+/i.test(t))return false;
  const letters=t.replace(/[^A-Za-zÁÉÍÓÚÑáéíóúñ]/g,"");
- return letters.length>=4 && normalizedUpper(t)===normalizedUpper(t).toUpperCase() && !/[.!?]$/.test(t);
+ return letters.length>=4 && t===t.toUpperCase() && !/[.!?:;,]/.test(t) && !/\d{2,}/.test(t);
 }
 function parseDateText(s){
- const m=String(s).match(/\b(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})\b/);if(!m)return null;
+ const m=String(s).match(/(?<!\d)(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?!\d)/);if(!m)return null;
  return `${m[3]}-${String(m[2]).padStart(2,"0")}-${String(m[1]).padStart(2,"0")}`;
 }
 function parseHeader(text){
@@ -2098,7 +2176,7 @@ function inferAgeFromClinicalText(sourceText){
 }
 
 function parseParagraphs(paras,fileName){
- const clean=paras.map(x=>String(x||"").trim()).filter(x=>x!=="");
+ const clean=paras.map(x=>repairBrokenDecimals(String(x||"").trim())).filter(x=>x!=="");
  let prefix=[],patients=[],current=null,section="",serviceSection="";
 
  for(let i=0;i<clean.length;i++){
@@ -2161,7 +2239,8 @@ function parseParagraphs(paras,fileName){
 
  if(current)patients.push(current);
 
- const date=prefix.map(parseDateText).find(Boolean)||today();
+ const isoName=(String(fileName||"").match(/(?<!\d)(\d{4})-(\d{2})-(\d{2})(?!\d)/)||[]);
+ const date=prefix.map(parseDateText).find(Boolean)||parseDateText(fileName||"")||(isoName[0]||"")||today();
  patients=patients.map(p=>{
   const sourceText=p.sourceParas.join("\n\n");
   const edad=p.edad||inferAgeFromClinicalText(sourceText);
@@ -2443,7 +2522,8 @@ function renderRound(){
    `<small>${esc(p.dieta||"")}</small>`+
    `<div class="pacts"><button class="btn small soft" data-a="o">Abrir</button><button class="btn small light" data-a="w">Word</button><button class="btn small light" data-a="p">PDF</button></div>`;
   d.querySelector('[data-a="o"]').onclick=()=>openPatient(p.id);
-  d.querySelector('[data-a="w"]').onclick=()=>downloadDocx([p],safeName(p.nombre)+".docx",true);
+  d.querySelector('[data-a="w"]').onclick=()=>{syncWorkingPatient();downloadDocx([p],safeName(p.nombre)+".docx",true)};
+  d.querySelector('[data-a="p"]').onclick=()=>{syncWorkingPatient();downloadPdfPatients([p],safeName(p.nombre)+".pdf",true)};
   box.appendChild(d);
  });
 
@@ -2501,7 +2581,7 @@ function setFieldFromPrevious(id,value){
  el.value=String(value);
 }
 function previousAssessmentUpper(){
- return normalizedUpper(val("sourceText")||"");
+ return normalizedUpper(repairBrokenDecimals(val("sourceText")||""));
 }
 function previousNumber(u,rx){
  const m=u.match(rx);if(!m)return null;
@@ -2882,6 +2962,11 @@ function rebuildPatientNoteFromState(p){
   if($("dieta"))$("dieta").value=patientDietText(p);
   if($("sourceText"))$("sourceText").value=p.sourceText||p.state?.sourceText||"";
   if($("hallazgo"))$("hallazgo").value=cleanLegacyHallazgo(val("hallazgo"));
+  // Paciente que nunca se abrió: copiar primero la valoración previa del Word.
+  if(shouldAutofillImportedAssessment(p)){
+   autofillPreviousAssessment();
+   p.state._autofilledFromPrevious=true;
+  }
 
   calculateAll();
   const note=nutritionNote();
@@ -3591,7 +3676,7 @@ function captureState(){
  return s;
 }
 function restoreState(s){
- loading=true;try{
+ const prevLoading=loading;loading=true;try{
   checks.forEach(id=>{if($(id))$(id).checked=false});
   radios.forEach(n=>document.querySelectorAll(`input[name="${n}"]`).forEach(x=>x.checked=false));
   Object.entries(s||{}).forEach(([k,v])=>{
@@ -3606,7 +3691,7 @@ function restoreState(s){
   if($("informante")&&!val("informante"))$("informante").value="PACIENTE";
   if($("clinicalProfile")&&!val("clinicalProfile"))$("clinicalProfile").value="AUTO";
   if($("surgeryScenario")&&!val("surgeryScenario"))$("surgeryScenario").value="AUTO";
-  if($("renalSubtype")&&!val("renalSubtype"))$("renalSubtype").value="CKD_STABLE";
+  if($("renalSubtype")&&!val("renalSubtype"))$("renalSubtype").value="NO_DIALYSIS";
   if($("icuDay")&&!val("icuDay"))$("icuDay").value="1";
   if($("hasIC")&&!val("hasIC"))$("hasIC").value="NO";
   if($("ibdActivity")&&!val("ibdActivity"))$("ibdActivity").value="ACTIVA";
@@ -3614,7 +3699,7 @@ function restoreState(s){
   syncAgeProfile();updateProfileVisibility();applyMaternityDefaults(val("perfil"),false);updateProfileDetectionNote();
   toggleAlergia(false);toggleIntolerancia(false);toggleCompanion();toggleExtremityDetail();toggleMaternityExtremityDetail();toggleInterconsulta();
   toggleWeightMode(false);toggleHeightMode(false);updateNpoVisibility();updateBowelHabit();autoRequirementProfile();calculateAll();
- }finally{loading=false}
+ }finally{loading=prevLoading}
 }
 async function saveCurrentPatient(completed=false,show=true){
  if(!currentRound||!currentPatientId)return false;
@@ -5469,8 +5554,8 @@ function screeningText(){
  let nrs="";
  if(n.pending)nrs="NRS-2002 PENDIENTE: FALTA VALORAR LA INGESTA DE LA ÚLTIMA SEMANA";
  else if(n.total===0)nrs="SIN RIESGO NUTRICIONAL SEGÚN NRS-2002 (0 PUNTOS)";
- else if(n.total<3)nrs=`SIN RIESGO NUTRICIONAL SEGÚN NRS-2002 (${n.total} PUNTOS)`;
- else nrs=`CON RIESGO NUTRICIONAL SEGÚN NRS-2002 (${n.total} PUNTOS)`;
+ else if(n.total<3)nrs=`SIN RIESGO NUTRICIONAL SEGÚN NRS-2002 (${ptsLabel(n.total)})`;
+ else nrs=`CON RIESGO NUTRICIONAL SEGÚN NRS-2002 (${ptsLabel(n.total)})`;
  return `${nrs}. ${v}.`;
 }
 
@@ -5821,7 +5906,11 @@ function interconsultaNarrative(){
 
 function valuation(){
  const x=consciousnessText(),p=[];
- p.push(`PACIENTE ${x.c}, ${x.o}${x.coll==="SÍ"?" Y COLABORA CON EL INTERROGATORIO NUTRICIONAL":" Y NO COLABORA CON EL INTERROGATORIO NUTRICIONAL"}.`);
+ if(x.c==="NO RESPONDE")p.push("PACIENTE NO RESPONDE AL INTERROGATORIO NUTRICIONAL.");
+ else{
+  const o=x.o==="NO VALORABLE"?"ORIENTACIÓN NO VALORABLE":x.o;
+  p.push(`PACIENTE ${x.c}, ${o}${x.coll==="SÍ"?" Y COLABORA CON EL INTERROGATORIO NUTRICIONAL":" Y NO COLABORA CON EL INTERROGATORIO NUTRICIONAL"}.`);
+ }
  const comp=companionNarrative();if(comp)p.push(comp);
  const inter=interconsultaNarrative();if(inter)p.push(inter);
 
@@ -5831,7 +5920,7 @@ function valuation(){
  else{
   if(radio("viaoral")==="TOLERA")p.push("TOLERA ADECUADAMENTE LA VÍA ORAL.");
   if(radio("viaoral")==="NO TOLERA")p.push("NO TOLERA ADECUADAMENTE LA VÍA ORAL.");
-  const intake=currentIntakePercent();p.push(`REFIERE APETITO ${radio("apetito")} CON UN CONSUMO DEL ${intake!==null?one(intake):0}% DE LA INGESTA PRESCRITA.`);
+  const intake=currentIntakePercent();p.push(intake!==null?`REFIERE APETITO ${radio("apetito")} CON UN CONSUMO DEL ${one(intake)}% DE LA INGESTA PRESCRITA.`:`REFIERE APETITO ${radio("apetito")}.`);
  }
  if(route!=="NPO"){
   if(radio("masticacion")==="SIN INCONVENIENTES"&&radio("deglucion")==="SIN INCONVENIENTES")p.push("NO REFIERE INCONVENIENTES PARA MASTICAR NI DEGLUTIR.");
@@ -5899,7 +5988,7 @@ function exam(){
 function maternityExam(){
  let ext=radio("mExtSup");
  if(ext==="ASIMÉTRICAS"&&val("mExtSupDetalle").trim())ext+=`, ${up(val("mExtSupDetalle"))}`;
- let h=`FACIE ${radio("mFacie")}, MÚSCULO TEMPORAL: ${radio("mTemporal")}; REGIÓN PERIORBITARIA: ${radio("mPeriorb")}; PIEZAS DENTALES ${radio("mDientes")} MUCOSA ORAL Y PIEL ${radio("mHidratacion")}, REGIÓN CLAVICULAR: ${radio("mClavicula")} - REGIÓN ACROMIÓN: CURVAS REDONDEADAS EN BRAZOS, HOMBROS Y CUELLO; ABDOMEN: ${radio("mAbdomen")}, EXTREMIDADES SUPERIORES: ${ext}, REGIÓN TRICIPITAL: ${radio("mTricipital")}. EXTREMIDADES INFERIORES: CUÁDRICEPS ANTERIOR: ${radio("mCuadriceps")} - REGIÓN PATELAR: ${radio("mPatelar")}. REGIÓN POSTERIOR DE LA PANTORRILLA: ${radio("mGemelos")}. ${radio("mEdema")==="SÍ"?"CON PRESENCIA DE EDEMA":"SIN PRESENCIA DE EDEMA"}.`;
+ let h=`FACIE ${radio("mFacie")}, MÚSCULO TEMPORAL: ${radio("mTemporal")}; REGIÓN PERIORBITARIA: ${radio("mPeriorb")}; PIEZAS DENTALES ${radio("mDientes")}, MUCOSA ORAL Y PIEL ${radio("mHidratacion")}, REGIÓN CLAVICULAR: ${radio("mClavicula")} - REGIÓN ACROMIÓN: CURVAS REDONDEADAS EN BRAZOS, HOMBROS Y CUELLO; ABDOMEN: ${radio("mAbdomen")}, EXTREMIDADES SUPERIORES: ${ext}, REGIÓN TRICIPITAL: ${radio("mTricipital")}. EXTREMIDADES INFERIORES: CUÁDRICEPS ANTERIOR: ${radio("mCuadriceps")} - REGIÓN PATELAR: ${radio("mPatelar")}. REGIÓN POSTERIOR DE LA PANTORRILLA: ${radio("mGemelos")}. ${radio("mEdema")==="SÍ"?"CON PRESENCIA DE EDEMA":"SIN PRESENCIA DE EDEMA"}.`;
  if(val("hallazgo").trim())h+=` ${up(val("hallazgo"))}.`;
  return h;
 }
@@ -6168,7 +6257,10 @@ function automaticNutritionICD10(){
  const age=num(val("edad"))||0,c=calculations(),m=age>=60?mnaResult():null;
  const muscle=["MODERADA DEPLECIÓN","SEVERA DEPLECIÓN"].includes(radio("masaMuscular"));
  const loss=age>=60?inferredWeightLossMNA():null;
- const corroborated=age>=60&&m?.complete&&m.total<=7&&(
+ // Con tamizaje importado, solo cuenta el MNA escrito en el Word (no uno recalculado distinto).
+ let mnaTotal=m?.complete?m.total:null;
+ if(hasImportedScreening())mnaTotal=importedScreeningKind().mna?importedScreeningScore():null;
+ const corroborated=age>=60&&mnaTotal!==null&&mnaTotal<=7&&(
    (Number.isFinite(c.imc)&&c.imc<23) || muscle || (loss&&loss.points===0)
  );
  if(corroborated)
@@ -6185,8 +6277,17 @@ function diagnosisWithICD10(baseDiagnosis){
  return `${String(baseDiagnosis||"").replace(/[.]+$/g,"")}. CIE-10: ${d.code} - ${d.title}.`;
 }
 
+function ptsLabel(n){return `${n} ${Number(n)===1?"PUNTO":"PUNTOS"}`}
 function screeningEvidenceForDiagnosis(){
  const age=num(val("edad"))||0;
+ // Si el tamizaje se conserva del Word, el diagnóstico debe decir lo mismo.
+ const imported=importedScreeningText();
+ if(imported){
+  return finalClinicalText(imported)
+   .replace(/^TAMIZAJE\s+NUTRICIONAL\s*:\s*/i,"")
+   .replace(/[.\s]+$/,"")
+   .replace(/\.\s+(?=VGS|MNA|NRS)/g,"; ");
+ }
 
  if(age>=60){
   const m=mnaResult();
@@ -6199,8 +6300,8 @@ function screeningEvidenceForDiagnosis(){
  let nrs="";
  if(n.pending)nrs="NRS-2002 PENDIENTE";
  else if(n.total===0)nrs="SIN RIESGO NUTRICIONAL SEGÚN NRS-2002 (0 PUNTOS)";
- else if(n.total<3)nrs=`SIN RIESGO NUTRICIONAL SEGÚN NRS-2002 (${n.total} PUNTOS)`;
- else nrs=`CON RIESGO NUTRICIONAL SEGÚN NRS-2002 (${n.total} PUNTOS)`;
+ else if(n.total<3)nrs=`SIN RIESGO NUTRICIONAL SEGÚN NRS-2002 (${ptsLabel(n.total)})`;
+ else nrs=`CON RIESGO NUTRICIONAL SEGÚN NRS-2002 (${ptsLabel(n.total)})`;
  return `${nrs}; ${v.label}`;
 }
 function diagnosisByBMI(){
@@ -6380,7 +6481,7 @@ function canonicalPostpartumNote(){
 }
 
 function clinicalSpellingFix(s){
- let t=String(s||"").normalize("NFC").toLocaleUpperCase("es-EC");
+ let t=repairBrokenDecimals(String(s||"").normalize("NFC").toLocaleUpperCase("es-EC"));
 
  // Corrección del texto clínico importado y generado.
  // No modifica nombres propios, códigos, fechas ni números.
@@ -6529,7 +6630,9 @@ function clinicalSpellingFix(s){
  t=t.replace(/KG\/M2/g,"KG/M²")
     .replace(/ML\/MIN\/1[,.]73\s*M2/g,"ML/MIN/1,73 M²")
     .replace(/\s+([,.;:])/g,"$1")
-    .replace(/([,.;:])(?=[A-ZÁÉÍÓÚÑ0-9])/g,"$1 ")
+    .replace(/([;:])(?=[A-ZÁÉÍÓÚÑ0-9])/g,"$1 ")
+    .replace(/([,.])(?=[A-ZÁÉÍÓÚÑ])/g,"$1 ")
+    .replace(/([^0-9\s])([,.])(?=[0-9])/g,"$1$2 ")
     .replace(/\s{2,}/g," ")
     .replace(/\s+\./g,".")
     .replace(/\.{2,}/g,".")
@@ -6639,9 +6742,15 @@ async function finishRound(){
  if(currentRound.prefix?.length){const pre=document.createElement("div");pre.className="finalP";pre.innerHTML=currentRound.prefix.map(x=>`<p><strong>${esc(x)}</strong></p>`).join("");c.appendChild(pre)}
  let lastSection=null;currentRound.patients.forEach((p,i)=>{if(p.section&&p.section!==lastSection){const h=document.createElement("div");h.innerHTML=`<div style="font:700 10pt Calibri,Arial;margin:12px 0 8px">${esc(p.section)}</div>`;c.appendChild(h);lastSection=p.section}const sec=document.createElement("div");sec.className="finalP";sec.innerHTML=patientFullLines(p,false).map((x,j)=>`<p>${j===0?`<strong>${esc(x)}</strong>`:esc(x)}</p>`).join("");c.appendChild(sec)});$("finalModal").style.display="flex"}
 function closeFinal(){$("finalModal").style.display="none"}
+function roundBaseName(r){
+ let s=String(r?.fileName||"hospital").replace(/\.docx?$/i,"");
+ // Evita "Ronda_Completa_..._Ronda_Completa_..._docx" al reexportar.
+ while(/^Ronda_Completa_\d{4}-\d{2}-\d{2}_/i.test(s))s=s.replace(/^Ronda_Completa_\d{4}-\d{2}-\d{2}_/i,"");
+ return safeName(s.replace(/_docx$/i,""))||"hospital";
+}
 function safeName(s){return String(s||"paciente").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^A-Za-z0-9_-]+/g,"_")}
 function exportCurrentWord(){syncWorkingPatient();const p=currentRound?.patients.find(x=>x.id===currentPatientId);if(!p)return;downloadDocx([p],safeName(p.nombre)+".docx",true)}
-function exportFullWord(){syncWorkingPatient();if(!currentRound)return;downloadFullRound(currentRound,`Ronda_Completa_${currentRound.date}_${safeName(currentRound.fileName||"hospital")}.docx`)}
+function exportFullWord(){syncWorkingPatient();if(!currentRound)return;downloadFullRound(currentRound,`Ronda_Completa_${currentRound.date}_${roundBaseName(currentRound)}.docx`)}
 function exportCurrentPdf(){
  syncWorkingPatient();
  const p=currentRound?.patients.find(x=>x.id===currentPatientId);
@@ -6651,7 +6760,7 @@ function exportCurrentPdf(){
 function exportFullPdf(){
  syncWorkingPatient();
  if(!currentRound)return;
- downloadPdfRound(currentRound,`Ronda_Completa_${currentRound.date}_${safeName(currentRound.fileName||"hospital")}.pdf`);
+ downloadPdfRound(currentRound,`Ronda_Completa_${currentRound.date}_${roundBaseName(currentRound)}.pdf`);
 }
 
 /* DOCX Calibri 10 */
@@ -6841,7 +6950,7 @@ document.addEventListener("input",e=>{
 document.addEventListener("change",e=>{
  if(currentPatientId&&!loading){
   markCurrentPatientEdited();
-  if(e.target.name||e.target.matches("select,input[type=checkbox]"))updatePreview();
+  if(e.target.name||e.target.matches("select,input[type=checkbox]"))calculateAll();
   scheduleSave();
  }
 });
@@ -6883,29 +6992,3 @@ boot();
 </script>
 </body>
 </html>
-
-<style>
-.bottom{position:static!important;bottom:auto!important;margin-top:10px}
-.preview{display:block!important;overflow:visible!important;max-height:none!important}
-</style>
-
-<style id="v33NoOverlay">
-#actions,.actions,.bottom,.stickyActions,.footerActions,
-buttonBar,.saveBar,[class*="sticky"][class*="action"]{
- position:static!important;
- top:auto!important;
- bottom:auto!important;
- inset:auto!important;
- transform:none!important;
- z-index:auto!important;
-}
-#preview,.preview{
- max-height:none!important;
- overflow:visible!important;
- height:auto!important;
- padding-bottom:18px!important;
-}
-#patientForm,#clinicalSections,.card{
- overflow:visible!important;
-}
-</style>
